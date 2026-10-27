@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "android/**"
+      - "kurs.html"
       - ".github/workflows/android.yml"
   workflow_dispatch:
 
@@ -25,6 +26,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+
+      - name: App-Seite in die APK legen
+        run: |
+          mkdir -p android/app/src/main/assets
+          {
+            printf '<!doctype html><html lang="de"><head><meta charset="utf-8">'
+            printf '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
+            printf '<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%%}[hidden]{display:none!important}</style>'
+            printf '</head><body>'
+            cat kurs.html
+            printf '</body></html>'
+          } > android/app/src/main/assets/index.html
 
       - name: APK bauen
         run: gradle -p android assembleRelease --no-daemon

@@ -361,13 +361,21 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     <div id="localBox" hidden>
       <h2>Diese Version</h2>
       <div class="panel">
-        <p class="small" style="margin:0 0 10px">Du nutzt die App direkt im Browser. Deine Daten liegen nur auf diesem Gerät in diesem Browser. Sichere sie ab und zu als Datei, besonders bevor du Browserdaten löschst oder das Gerät wechselst.</p>
+        <p class="small" style="margin:0 0 10px">Deine Daten liegen nur auf diesem Gerät. Sichere sie ab und zu als Datei, besonders bevor du Browserdaten löschst oder das Gerät wechselst.</p>
         <div class="btnrow" style="margin-top:0"><button class="btn ghost" type="button" id="exportBtn">Daten sichern</button><label class="btn ghost">Daten laden<input type="file" id="importInput" accept="application/json,.json" hidden></label></div>
         <div class="status" id="ioStatus"></div>
         <div class="field" style="margin-top:14px"><label class="label" for="apiKey">Anthropic-API-Schlüssel (optional, für kcal-Schätzung)</label><input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…"></div>
         <p class="small muted" style="margin:6px 0 0">Ohne Schlüssel trägst du kcal und Eiweiß selbst ein. Mit Schlüssel schätzt Claude aus Text oder Foto. Der Schlüssel bleibt nur in diesem Browser, die Kosten laufen über dein Anthropic-Konto (ca. 1 Cent pro Schätzung). Einen Schlüssel bekommst du unter console.anthropic.com.</p>
         <div class="btnrow"><button class="btn ghost" type="button" id="keySave">Schlüssel speichern</button><button class="btn ghost" type="button" id="keyClear">Schlüssel entfernen</button></div>
         <div class="status" id="keyStatus"></div>
+        <h3 style="margin-top:18px">Sync über GitHub</h3>
+        <p class="small muted" style="margin:0 0 8px">Speichert deine Daten zusätzlich in einem privaten GitHub-Repo. So hast du sie auf mehreren Geräten, und Claude kann Auswertungen und Wochenpläne darin pflegen.</p>
+        <div class="fields">
+          <div class="field"><label class="label" for="syncRepo">Repo (besitzer/name)</label><input id="syncRepo" type="text" autocomplete="off" placeholder="name/weightplan-data"></div>
+          <div class="field"><label class="label" for="syncToken">GitHub-Zugangsschlüssel</label><input id="syncToken" type="password" autocomplete="off" placeholder="github_pat_…"></div>
+        </div>
+        <div class="btnrow"><button class="btn ghost" type="button" id="syncSave">Verbinden und synchronisieren</button><button class="btn ghost" type="button" id="syncNowBtn">Jetzt synchronisieren</button><button class="btn ghost" type="button" id="syncOff">Trennen</button></div>
+        <div class="status" id="syncStatus"></div>
       </div>
     </div>
     <p class="small muted">Der Verbrauch ist eine Schätzung: Grundumsatz nach Mifflin-St Jeor mal 1,2 für sitzenden Alltag, dazu Schritte nach der ACSM-Gehformel. Eine Woche Abnehmen entspricht etwa 7.000 kcal Defizit pro kg. Das ersetzt keine ärztliche Beratung.</p>
@@ -963,8 +971,9 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     if (!lastPlan || !base) return;
     const { week, plan } = lastPlan;
     try {
-      if (plan) { await base.collection("plans").doc(week).set(plan); plans[week] = plan; }
-      else { await base.collection("plans").doc(week).delete(); delete plans[week]; }
+      const now = new Date().toISOString();
+      if (plan) { const back = { ...plan, updatedAt: now }; await base.collection("plans").doc(week).set(back); plans[week] = back; }
+      else { const gone = { days: [], swaps: [], deleted: true, updatedAt: now }; await base.collection("plans").doc(week).set(gone); plans[week] = gone; }
       lastPlan = null; setStatus("planStatus", "Änderung rückgängig gemacht.");
     } catch (e) { setStatus("planStatus", "Rückgängig fehlgeschlagen (" + (e && e.code || "Fehler") + ").", true); }
     renderAll();
@@ -975,7 +984,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     const wn = weekNo(curPlan);
     $("planName").textContent = `Plan ${wn >= 1 ? "Woche " + wn : ""} · ${dm(curPlan)}–${dm(addDays(curPlan, 6))}`;
     const isProposal = !!(pendingPlan && pendingPlan.week === curPlan);
-    const p = isProposal ? pendingPlan.plan : plans[curPlan], el = $("planBody");
+    const p = isProposal ? pendingPlan.plan : (plans[curPlan] && !plans[curPlan].deleted ? plans[curPlan] : null), el = $("planBody");
     $("planProposal").hidden = !isProposal;
     $("planUndo").hidden = !(lastPlan && lastPlan.week === curPlan) || isProposal;
     $("planPrompt").placeholder = p ? "z. B. Heute kein Frühstück und ich esse abends auswärts" : "z. B. Erstelle einen Plan für diese Woche, Montag und Dienstag Büro";
@@ -1066,7 +1075,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
       return {
         path,
         get: async () => snap(path),
-        set: async (d) => { if (!lsSet(LS + path, JSON.stringify(d))) throw { code: "quota_exceeded" }; notify(path); },
+        set: async (d) => { if (!lsSet(LS + path, JSON.stringify(d))) throw { code: "quota_exceeded" }; notify(path); onLocalWrite(); },
         delete: async () => { try { localStorage.removeItem(LS + path); } catch (e) {} notify(path); },
         onSnapshot: (next) => listen(path, () => next(snap(path))),
         collection: (name) => collRef(path + "/" + name)
@@ -1136,9 +1145,93 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
   const use = (n) => !STANDALONE ? claude.use(n)
     : Promise.resolve(n === "db" ? localDb() : n === "user" ? { id: async () => "local" } : n === "sample" ? localSample() : null);
 
+  // ---- GitHub sync (standalone only): one JSON file, newest updatedAt per document wins ----
+  const SYNC_FILE = "weightplan.json", USER_ROOT = "data/users/local/";
+  let syncTimer = null, syncing = false, syncAgain = false;
+  const syncCfg = () => { const r = lsGet(LS + "syncRepo"), t = lsGet(LS + "syncToken"); return r && t ? { repo: r, token: t } : null; };
+  function onLocalWrite() { if (!STANDALONE || !syncCfg() || applyingRemote) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500); }
+  let applyingRemote = false;
+  const b64enc = (str) => { const bytes = new TextEncoder().encode(str); let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); };
+  const b64dec = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0)));
+  function localDocs() {
+    const out = {};
+    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(LS + USER_ROOT)) out[k.slice((LS + USER_ROOT).length)] = JSON.parse(localStorage.getItem(k)); } } catch (e) {}
+    return out;
+  }
+  async function gh(cfg, method, body, raw) {
+    return fetch(`https://api.github.com/repos/${cfg.repo}/contents/${SYNC_FILE}`, {
+      method, cache: "no-store",
+      headers: { Authorization: "Bearer " + cfg.token, Accept: raw ? "application/vnd.github.raw+json" : "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", ...(body ? { "Content-Type": "application/json" } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {})
+    });
+  }
+  async function syncNow() {
+    const cfg = syncCfg(); if (!cfg) return;
+    if (syncing) { syncAgain = true; return; }
+    syncing = true; setStatus("syncStatus", "Synchronisiere …");
+    try {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        let sha = null, remote = {};
+        const r = await gh(cfg, "GET");
+        if (r.status === 401 || r.status === 403) throw "Zugangsschlüssel abgelehnt. Prüfe Schlüssel und Repo-Rechte (Contents: Lesen und Schreiben).";
+        if (r.ok) {
+          const j = await r.json(); sha = j.sha;
+          let text = j.content ? b64dec(j.content) : "";
+          if (!text) { const rr = await gh(cfg, "GET", null, true); text = rr.ok ? await rr.text() : ""; }
+          if (text) { const parsed = JSON.parse(text); remote = parsed && parsed.docs || {}; }
+        } else if (r.status !== 404) throw "GitHub antwortet nicht wie erwartet (" + r.status + ").";
+        const local = localDocs(), merged = {};
+        let localChanged = false, remoteChanged = false;
+        new Set([...Object.keys(local), ...Object.keys(remote)]).forEach((k) => {
+          const a = local[k], b = remote[k];
+          const pick = !a ? b : !b ? a : ((b.updatedAt || "") > (a.updatedAt || "") ? b : a);
+          merged[k] = pick;
+          const same = (x) => x && JSON.stringify(x) === JSON.stringify(pick);
+          if (!same(a)) localChanged = true;
+          if (!same(b)) remoteChanged = true;
+        });
+        if (localChanged) {
+          applyingRemote = true;
+          Object.entries(merged).forEach(([k, v]) => { if (JSON.stringify(v) !== JSON.stringify(local[k])) lsSet(LS + USER_ROOT + k, JSON.stringify(v)); });
+          applyingRemote = false;
+          db && db.reloadAll && db.reloadAll();
+        }
+        if (remoteChanged || !sha) {
+          const body = { message: "Weightplan-Sync " + new Date().toISOString(), content: b64enc(JSON.stringify({ app: "weightplan", updatedAt: new Date().toISOString(), docs: merged })), ...(sha ? { sha } : {}) };
+          const w = await gh(cfg, "PUT", body);
+          if (w.status === 409 || w.status === 422) continue; // someone else wrote in between: merge again
+          if (!w.ok) throw "Hochladen fehlgeschlagen (" + w.status + ").";
+        }
+        lsSet(LS + "syncLast", new Date().toISOString());
+        setStatus("syncStatus", "Synchronisiert um " + new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + ".");
+        break;
+      }
+    } catch (e) {
+      setStatus("syncStatus", typeof e === "string" ? e : "Keine Verbindung zu GitHub. Deine Einträge sind lokal gespeichert und werden später übertragen.", true);
+    } finally {
+      syncing = false;
+      if (syncAgain) { syncAgain = false; setTimeout(syncNow, 500); }
+    }
+  }
+
   if (STANDALONE) {
+    if (lsGet(LS + "syncRepo")) $("syncRepo").value = lsGet(LS + "syncRepo");
+    if (lsGet(LS + "syncToken")) $("syncToken").placeholder = "gespeichert";
+    $("syncSave").onclick = () => {
+      const repo = $("syncRepo").value.trim().replace(/^https:\/\/github\.com\//, "").replace(/\/$/, ""), tok = $("syncToken").value.trim();
+      if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) { setStatus("syncStatus", "Repo bitte als besitzer/name angeben.", true); return; }
+      if (!tok && !lsGet(LS + "syncToken")) { setStatus("syncStatus", "Bitte den Zugangsschlüssel eintragen.", true); return; }
+      lsSet(LS + "syncRepo", repo); if (tok) lsSet(LS + "syncToken", tok);
+      $("syncToken").value = ""; $("syncToken").placeholder = "gespeichert";
+      syncNow();
+    };
+    $("syncNowBtn").onclick = () => syncNow();
+    $("syncOff").onclick = () => { try { localStorage.removeItem(LS + "syncToken"); localStorage.removeItem(LS + "syncRepo"); } catch (e) {} $("syncRepo").value = ""; $("syncToken").placeholder = "github_pat_…"; setStatus("syncStatus", "Sync getrennt. Deine Daten bleiben auf diesem Gerät."); };
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncNow(); });
+    setInterval(syncNow, 5 * 60 * 1000);
+    setTimeout(syncNow, 800);
     $("localBox").hidden = false;
-    $("profilIntro").textContent = "Deine Angaben und Einträge bleiben in diesem Browser auf diesem Gerät. Niemand sonst sieht sie.";
+    $("profilIntro").textContent = "Deine Angaben und Einträge bleiben auf diesem Gerät. Niemand sonst sieht sie.";
     if (lsGet(LS + "apiKey")) $("apiKey").placeholder = "gespeichert";
     $("keySave").onclick = () => {
       const k = $("apiKey").value.trim();
@@ -1153,8 +1246,14 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     $("exportBtn").onclick = () => {
       const out = {};
       try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(LS + "data/")) out[k.slice(LS.length)] = JSON.parse(localStorage.getItem(k)); } } catch (e) {}
-      const blob = new Blob([JSON.stringify({ app: "kurs", exportedAt: new Date().toISOString(), docs: out }, null, 1)], { type: "application/json" });
-      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "weightplan-sicherung-" + todayStr() + ".json";
+      const text = JSON.stringify({ app: "kurs", exportedAt: new Date().toISOString(), docs: out }, null, 1);
+      const name = "weightplan-sicherung-" + todayStr() + ".json";
+      if (window.WeightplanAndroid) { // Android app: save through the native bridge into Downloads
+        const where = window.WeightplanAndroid.saveFile(name, text);
+        setStatus("ioStatus", where ? `${Object.keys(out).length} Einträge gesichert: ${where}` : "Sichern fehlgeschlagen.", !where);
+        return;
+      }
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = name;
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       setStatus("ioStatus", Object.keys(out).length + " Einträge gesichert.");
     };
