@@ -6,7 +6,7 @@ Eine schlanke Web-App zum Abnehmen: Essen und Schritte eintragen, kcal schätzen
 
 ## Funktionen
 
-- **Heute:** Aufnahme und Eiweiß gegen das Tagesziel, Verbrauch, Bilanz und Wochenschnitt. Mahlzeiten frei beschreiben oder fotografieren und von Claude schätzen lassen, oder Werte selbst eintragen. Schritte flach und mit Steigung, Gewicht, Tagesart, Event-Tag.
+- **Heute:** Aufnahme und Eiweiß gegen das Tagesziel, Verbrauch, Bilanz und Wochenschnitt. Mahlzeiten frei beschreiben oder fotografieren und von Claude schätzen lassen, oder Werte selbst eintragen. Bei Fotos speichert die App ein verkleinertes Bild mit der Mahlzeit, dazu Claudes Beschreibung und die Aufschlüsselung nach Zutaten (Gramm, kcal, Eiweiß). Schritte flach und mit Steigung, Gewicht, Tagesart, Event-Tag.
 - **Woche:** Tagesbilanz, Wochensumme, erwartete gegen tatsächliche Gewichtsveränderung (Dienstag zu Dienstag).
 - **Verlauf:** Gewichtskurve mit Zwischenzielen und Erwartung laut Bilanz, Tagesgraphen für Aufnahme und Verbrauch, Energiebilanz und Eiweiß.
 - **Plan:** Mahlzeiten der Woche mit Mengen, kcal und Eiweiß. Über ein Textfeld passt Claude den Plan an („Heute kein Frühstück, abends auswärts“) oder erstellt einen neuen; der Vorschlag wird erst nach „Übernehmen“ gespeichert und lässt sich rückgängig machen.
@@ -46,7 +46,7 @@ Außerhalb von claude.ai (z. B. lokal im Browser) nutzt die App stattdessen den 
 ```
 data/users/<id>/profile            Profil: Ziele, Verbrauchsfaktoren, Meilensteine, Hinweise für die Schätzung
 data/users/<id>/profile/days/<JJJJ-MM-TT>
-    meals: [{ id, label, kcal, protein }]
+    meals: [{ id, label, kcal, protein, photo?, seen?, parts?: [{ name, grams, kcal, protein }] }]
     flatSteps, inclineSteps, weight, dayType, event
 data/users/<id>/profile/plans/<Montag JJJJ-MM-TT>
     days: [{ date, type, meals: [{ slot, name, detail, kcal, protein }] }]
