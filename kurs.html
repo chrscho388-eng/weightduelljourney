@@ -144,9 +144,17 @@ tr.sum td { font-weight: 600; background: var(--accent-soft); }
 .pmeal .slot { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
 .pmeal .detail { grid-column: 1 / -1; font-size: 14px; color: var(--muted); }
 .pmeal .mv { font-family: var(--font-data); font-size: 14px; white-space: pre-line; text-align: right; line-height: 1.35; }
-#weekTable tbody tr[data-date] { cursor: pointer; }
-#weekTable tbody tr[data-date]:hover td { background: var(--accent-soft); }
-#weekTable tbody tr[data-date] td:first-child::after { content: " ›"; color: var(--muted); }
+.daylist { padding: 0; overflow: hidden; }
+.dayrow { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; width: 100%; padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.dayrow:last-child { border-bottom: 0; }
+.dayrow:hover { background: var(--accent-soft); }
+.dayrow:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.dayrow .dtag { font-weight: 600; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; min-width: 0; }
+.dayrow .dbal { font-family: var(--font-data); text-align: right; font-size: 15px; }
+.dayrow .dsub { grid-column: 1 / -1; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dayrow .dsub b { color: var(--fg); font-weight: 500; font-family: var(--font-data); }
+.dayrow.sum { cursor: default; background: var(--accent-soft); }
+.dayrow.empty .dbal { color: var(--muted); font-family: var(--font-body); font-size: 13px; }
 
 /* chart */
 .chart { width: 100%; height: auto; display: block; }
@@ -256,7 +264,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     </div>
     <h2>Tagesbilanz</h2>
     <p class="small muted" style="margin:-4px 0 8px">Tipp auf einen Tag, um seine Einträge zu sehen und zu bearbeiten.</p>
-    <div class="tablewrap"><table id="weekTable"></table></div>
+    <div class="panel daylist" id="weekTable"></div>
     <h2>Wochensumme</h2>
     <div class="panel" id="weekSum"></div>
   </section>
@@ -488,11 +496,11 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     const kin = intake(d), pr = protein(d), out = burn(d), bal = kin - out;
     const target = d.event ? S.eventKcal : S.kcalTarget;
     $("gKcal").textContent = fmt(kin);
-    $("gKcalOf").textContent = d.event ? `Event-Tag, ca. ${fmt(S.eventKcal)} kcal` : `von ${fmt(target)} kcal · noch ${fmt(Math.max(0, target - kin))}`;
+    $("gKcalOf").textContent = (d.event ? `Event-Tag, Rahmen ${fmt(S.eventKcal)} kcal` : `von ${fmt(target)} kcal`) + (kin > target ? ` · ${fmt(kin - target)} drüber` : ` · noch ${fmt(target - kin)}`);
     $("gKcalBar").firstElementChild.style.width = Math.min(100, kin / target * 100) + "%";
     $("gKcalBar").classList.toggle("over", kin > target);
     $("gProt").textContent = fmt(pr) + " g";
-    $("gProtOf").textContent = `von ${S.proteinTarget} g · noch ${fmt(Math.max(0, S.proteinTarget - pr))} g`;
+    $("gProtOf").textContent = `von ${S.proteinTarget} g · ` + (pr >= S.proteinTarget ? `Ziel erreicht (+${fmt(pr - S.proteinTarget)} g)` : `noch ${fmt(S.proteinTarget - pr)} g`);
     $("gProtBar").firstElementChild.style.width = Math.min(100, pr / S.proteinTarget * 100) + "%";
 
     // week-to-date average
@@ -708,15 +716,18 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
     const wn = weekNo(curWeek);
     $("weekName").textContent = `${wn >= 1 ? "Woche " + wn : "Vor dem Start"} · ${dm(curWeek)}–${dm(addDays(curWeek, 6))}`;
     const st = weekStats(curWeek);
-    let h = `<thead><tr><th>Tag</th><th>Schritte</th><th>Aufnahme</th><th>Verbrauch</th><th>Bilanz</th><th>Eiweiß</th></tr></thead><tbody>`;
+    let h = "";
     st.rows.forEach((r) => {
-      const tag = `${WD[weekday(r.date)]} ${dm(r.date)}${r.d.dayType ? ` <span class="pill">${esc(r.d.dayType)}</span>` : ""}${r.d.event ? ' <span class="pill warn">Event</span>' : ""}${r.d.weight ? ` <span class="pill">${fmt(r.d.weight, 1)} kg</span>` : ""}`;
-      if (r.empty) h += `<tr data-date="${r.date}"><td>${tag}</td><td colspan="5" style="text-align:left" class="muted">offen</td></tr>`;
-      else h += `<tr data-date="${r.date}"><td>${tag}</td><td>${stepsTxt(r.d)}</td><td>${fmt(r.kin)}</td><td>${fmt(r.out)}</td><td class="${r.bal > 0 ? "pos" : "neg"}">${signed(r.bal)}</td><td>${fmt(r.pr)}</td></tr>`;
+      const tag = `<span>${WD[weekday(r.date)]} ${dm(r.date)} ›</span>${r.d.dayType ? ` <span class="pill">${esc(r.d.dayType)}</span>` : ""}${r.d.event ? ' <span class="pill warn">Event</span>' : ""}${r.d.weight ? ` <span class="pill">${fmt(r.d.weight, 1)} kg</span>` : ""}`;
+      if (r.empty) h += `<button class="dayrow empty" data-date="${r.date}"><span class="dtag">${tag}</span><span class="dbal">offen</span></button>`;
+      else h += `<button class="dayrow" data-date="${r.date}"><span class="dtag">${tag}</span><span class="dbal ${r.bal > 0 ? "pos" : "neg"}">${signed(r.bal)} kcal</span>
+        <span class="dsub">Aufnahme <b>${fmt(r.kin)}</b> · Verbrauch <b>${fmt(r.out)}</b> · Eiweiß <b>${fmt(r.pr)} g</b></span>
+        <span class="dsub">Schritte: ${stepsTxt(r.d)}</span></button>`;
     });
-    if (st.avg) h += `<tr class="sum"><td>Schnitt (${st.n} ${st.n === 1 ? "Tag" : "Tage"})</td><td></td><td>${fmt(r5(st.avg.kin))}</td><td>${fmt(r5(st.avg.out))}</td><td>${signed(r5(st.avg.bal))}</td><td>${fmt(st.avg.pr)}</td></tr>`;
-    $("weekTable").innerHTML = h + "</tbody>";
-    $("weekTable").querySelectorAll("tr[data-date]").forEach((tr) => { tr.tabIndex = 0; tr.title = "Tag öffnen"; const go = () => { curDay = tr.dataset.date; endEdit(); location.hash = "#heute"; renderDay(); }; tr.onclick = go; tr.onkeydown = (e) => { if (e.key === "Enter") go(); }; });
+    if (st.avg) h += `<div class="dayrow sum"><span class="dtag">Schnitt (${st.n} ${st.n === 1 ? "Tag" : "Tage"})</span><span class="dbal ${st.avg.bal > 0 ? "pos" : "neg"}">${signed(r5(st.avg.bal))} kcal</span>
+        <span class="dsub">Aufnahme <b>${fmt(r5(st.avg.kin))}</b> · Verbrauch <b>${fmt(r5(st.avg.out))}</b> · Eiweiß <b>${fmt(st.avg.pr)} g</b></span></div>`;
+    $("weekTable").innerHTML = h;
+    $("weekTable").querySelectorAll("button[data-date]").forEach((b) => { b.title = "Tag öffnen"; b.onclick = () => { curDay = b.dataset.date; endEdit(); location.hash = "#heute"; renderDay(); }; });
     const actual = (st.wStart && st.wEnd) ? st.wEnd - st.wStart : null;
     $("weekSum").innerHTML = !st.n ? `<div class="muted">Für diese Woche gibt es noch keine Einträge.</div>` : `
       <div class="fields">
