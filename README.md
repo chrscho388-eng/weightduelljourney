@@ -29,6 +29,17 @@ Beim ersten „kcal schätzen lassen“ fragt die App einmal um Erlaubnis. Die S
 
 **Ohne Claude:** Öffnest du `kurs.html` direkt im Browser, läuft die App im Notbetrieb. Die Daten liegen dann nur in diesem Browser, mit Sichern und Laden als Datei. Die Schätzung geht dort nur mit eigenem Anthropic-API-Schlüssel.
 
+## Android-App (APK)
+
+Die APK ist ein Starter: Sie öffnet die Weightplan-App auf claude.ai in Chrome ohne Adressleiste, mit eigenem Symbol und Namen. Daten, Anmeldung und kcal-Schätzung kommen aus deinem Claude-Konto in Chrome.
+
+1. Auf dem Handy [Releases → latest](https://github.com/chrscho388-eng/weightduelljourney/releases/tag/latest) öffnen und `Weightplan.apk` herunterladen.
+2. Die Datei antippen. Android fragt, ob Chrome Apps installieren darf: „Einstellungen“ → „Aus dieser Quelle zulassen“ einschalten → zurück → „Installieren“.
+3. Falls Google Play Protect warnt („Unbekannte App“): „Trotzdem installieren“. Die APK ist nicht im Play Store, der Quellcode liegt in `android/`.
+4. Weightplan über das neue Symbol starten. Beim ersten Mal in Chrome bei claude.ai anmelden, falls noch nicht geschehen.
+
+Die APK wird bei jeder Änderung in `android/` automatisch über GitHub Actions gebaut. Die App-Adresse steht in `android/app/src/main/java/de/weightplan/app/MainActivity.java`. Wer seine eigene Kopie veröffentlicht hat, trägt dort den eigenen Link ein.
+
 ## Wie die App läuft
 
 Die App ist eine einzelne Datei, [`kurs.html`](kurs.html), ohne Build-Schritt. Sie läuft als Claude-Artifact auf claude.ai und nutzt dort drei Laufzeitfunktionen über `window.claude.use(...)`:
