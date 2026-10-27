@@ -2,7 +2,7 @@
 
 Eine schlanke Web-App zum Abnehmen: Essen und Schritte eintragen, kcal schätzen lassen, Tages- und Wochenbilanz, Gewichtsverlauf, Tagesgraphen und ein Mahlzeitenplan pro Woche.
 
-**App öffnen:** https://claude.ai/artifact/ASMW4wKwuuup6b16ptVRnH (Zugang über Einladung mit dem Recht „Mitwirkende“)
+**So nutzt du die App:** Jede Person holt sie sich in ihr eigenes Claude, siehe [In dein eigenes Claude holen](#in-dein-eigenes-claude-holen). Deine Daten liegen dann in deinem Claude-Konto, und die kcal-Schätzung läuft über dein Claude.
 
 ## Funktionen
 
@@ -11,6 +11,23 @@ Eine schlanke Web-App zum Abnehmen: Essen und Schritte eintragen, kcal schätzen
 - **Verlauf:** Gewichtskurve mit Zwischenzielen und Erwartung laut Bilanz, Tagesgraphen für Aufnahme und Verbrauch, Energiebilanz und Eiweiß.
 - **Plan:** Mahlzeiten der Woche mit Mengen, kcal und Eiweiß.
 - **Profil:** persönliche Angaben und Ziele, daraus berechnet die App den Verbrauch.
+
+## In dein eigenes Claude holen
+
+Du brauchst ein Claude-Konto mit Zugang zu **Claude Code im Web** (claude.ai/code, ab dem Pro-Tarif).
+
+1. Öffne [claude.ai/code](https://claude.ai/code) und starte eine neue Sitzung. Ein Repo musst du nicht verbinden.
+2. Schick Claude diese Nachricht:
+
+   > Lade https://raw.githubusercontent.com/chrscho388-eng/weightduelljourney/main/kurs.html und https://raw.githubusercontent.com/chrscho388-eng/weightduelljourney/main/artifact-capabilities.json herunter. Lies kurs.html vollständig und veröffentliche sie unverändert als Artifact mit dem Icon "scale" und genau den Capabilities aus artifact-capabilities.json. Gib mir danach den Link.
+
+3. Öffne den Link, den Claude dir gibt, und leg im Tab **Profil** deine Daten an. Den Link kannst du dir im Browser als Lesezeichen oder auf den Home-Bildschirm legen.
+
+Beim ersten „kcal schätzen lassen“ fragt die App einmal um Erlaubnis. Die Schätzung zählt dann zu deinem eigenen Claude-Kontingent.
+
+**Updates:** Wenn sich `kurs.html` hier im Repo ändert, schick Claude in einer Sitzung: „Lade kurs.html neu aus dem Repo und veröffentliche sie als Update von <dein App-Link>, Capabilities unverändert.“ Deine Daten bleiben dabei erhalten.
+
+**Ohne Claude:** Öffnest du `kurs.html` direkt im Browser, läuft die App im Notbetrieb. Die Daten liegen dann nur in diesem Browser, mit Sichern und Laden als Datei. Die Schätzung geht dort nur mit eigenem Anthropic-API-Schlüssel.
 
 ## Wie die App läuft
 
@@ -22,7 +39,7 @@ Die App ist eine einzelne Datei, [`kurs.html`](kurs.html), ohne Build-Schritt. S
 | `user` | Die eigene, anonyme Nutzer-ID für den privaten Bereich. |
 | `sample` | kcal-Schätzung durch Claude aus Text oder Foto, über das Claude-Konto der Person. |
 
-Außerhalb von claude.ai (z. B. lokal im Browser) zeigt die App einen Hinweis, dass der Speicher nicht erreichbar ist. Die Oberfläche lässt sich trotzdem ansehen.
+Außerhalb von claude.ai (z. B. lokal im Browser) nutzt die App stattdessen den Browserspeicher (`localStorage`) und für die Schätzung optional einen eigenen API-Schlüssel.
 
 ### Datenmodell
 
@@ -45,6 +62,3 @@ data/users/<id>/profile/plans/<Montag JJJJ-MM-TT>
 
 Alles sind Schätzungen und ersetzen keine ärztliche Beratung.
 
-## Mitwirken
-
-Siehe [CONTRIBUTING.md](CONTRIBUTING.md).
