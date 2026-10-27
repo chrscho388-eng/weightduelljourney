@@ -75,7 +75,8 @@ h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin
 .bar { height: 6px; background: var(--line); border-radius: 3px; margin-top: 8px; overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
 .bar.over > i { background: var(--warn); }
-.balance-row { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 14px; }
+.balance-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin-top: 12px; font-size: 15px; max-width: 360px; }
+.balance-row b { text-align: right; }
 .balance-row b { font-family: var(--font-data); font-weight: 500; }
 .pos { color: var(--bad); } .neg { color: var(--good); }
 
@@ -99,7 +100,7 @@ input[type=number] { font-family: var(--font-data); }
 .meals li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .meals li:last-child { border-bottom: 0; }
 .meals .mname { min-width: 0; overflow-wrap: anywhere; }
-.meals .mv { font-family: var(--font-data); font-size: 14px; text-align: right; white-space: nowrap; }
+.meals .mv { font-family: var(--font-data); font-size: 14px; text-align: right; white-space: pre-line; line-height: 1.35; }
 .meals .x { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px 6px; }
 .meals .mname button { all: unset; cursor: pointer; }
 .meals .mname button:focus-visible { outline: 2px solid var(--accent); }
@@ -142,7 +143,10 @@ tr.sum td { font-weight: 600; background: var(--accent-soft); }
 .pmeal:last-child { border-bottom: 0; }
 .pmeal .slot { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
 .pmeal .detail { grid-column: 1 / -1; font-size: 14px; color: var(--muted); }
-.pmeal .mv { font-family: var(--font-data); font-size: 14px; white-space: nowrap; }
+.pmeal .mv { font-family: var(--font-data); font-size: 14px; white-space: pre-line; text-align: right; line-height: 1.35; }
+#weekTable tbody tr[data-date] { cursor: pointer; }
+#weekTable tbody tr[data-date]:hover td { background: var(--accent-soft); }
+#weekTable tbody tr[data-date] td:first-child::after { content: " ›"; color: var(--muted); }
 
 /* chart */
 .chart { width: 100%; height: auto; display: block; }
@@ -234,10 +238,11 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <div class="field"><label class="label" for="inclineSteps" id="inclineLabel">Schritte mit Steigung</label><input id="inclineSteps" type="number" inputmode="numeric" min="0" step="500"></div>
         <div class="field"><label class="label" for="flatSteps">Schritte flach</label><input id="flatSteps" type="number" inputmode="numeric" min="0" step="500"></div>
         <div class="field"><label class="label" for="weight">Gewicht (kg)</label><input id="weight" type="number" inputmode="decimal" min="40" step="0.1" placeholder="dienstags"></div>
-        <div class="field"><label class="label" for="dayType">Tag</label>
+        <div class="field"><label class="label" for="dayType">Tagesart</label>
           <select id="dayType"><option value="HO">Home Office</option><option value="Büro">Büro</option><option value="WE">Wochenende</option><option value="Frei">Feiertag / frei</option></select></div>
       </div>
-      <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="eventDay" style="width:auto"> Event-Tag (Kalorienziel frei)</label>
+      <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="eventDay" style="width:auto"> Event-Tag (z. B. Essen auswärts, Feier)</label>
+      <p class="small muted" style="margin:6px 0 0">Die Tagesart erscheint in der Wochenübersicht, und Claude berücksichtigt sie beim Anpassen des Plans. An Event-Tagen gilt statt des normalen Kalorienziels ein freier Rahmen. Die Bilanz zählt trotzdem voll.</p>
       <div class="status" id="saveStatus"></div>
     </div>
   </section>
@@ -250,6 +255,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <button class="iconbtn" id="nextWeek" aria-label="Nächste Woche">›</button>
     </div>
     <h2>Tagesbilanz</h2>
+    <p class="small muted" style="margin:-4px 0 8px">Tipp auf einen Tag, um seine Einträge zu sehen und zu bearbeiten.</p>
     <div class="tablewrap"><table id="weekTable"></table></div>
     <h2>Wochensumme</h2>
     <div class="panel" id="weekSum"></div>
@@ -494,9 +500,9 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     const wdays = []; for (let i = 0; i <= weekday(curDay); i++) { const x = addDays(mon, i); if (hasData(dayDoc(x))) wdays.push(dayDoc(x)); }
     const avgBal = wdays.length ? wdays.reduce((a, x) => a + intake(x) - burn(x), 0) / wdays.length : null;
     $("balanceRow").innerHTML =
-      `<span>Verbrauch <b>${fmt(out)}</b> kcal</span>` +
-      `<span>Bilanz <b class="${bal > 0 ? "pos" : "neg"}">${signed(bal)}</b> kcal</span>` +
-      (avgBal != null ? `<span>Schnitt ${wn >= 1 ? "Woche " + wn : "Woche"} (${wdays.length} T.) <b class="${avgBal > 0 ? "pos" : "neg"}">${signed(Math.round(avgBal / 5) * 5)}</b></span>` : "");
+      `<span>Verbrauch</span><b>${fmt(out)} kcal</b>` +
+      `<span>Bilanz heute</span><b class="${bal > 0 ? "pos" : "neg"}">${signed(bal)} kcal</b>` +
+      (avgBal != null ? `<span>Schnitt ${wn >= 1 ? "Woche " + wn : "dieser Woche"} (${wdays.length} ${wdays.length === 1 ? "Tag" : "Tage"})</span><b class="${avgBal > 0 ? "pos" : "neg"}">${signed(Math.round(avgBal / 5) * 5)} kcal</b>` : "");
 
     // meals
     const ul = $("mealList"); ul.innerHTML = "";
@@ -506,7 +512,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       const nm = document.createElement("div"); nm.className = "mname";
       const b = document.createElement("button"); b.textContent = m.label; b.title = "Bearbeiten"; b.onclick = () => startEdit(m);
       nm.append(b);
-      const v = document.createElement("div"); v.className = "mv"; v.textContent = `${fmt(m.kcal)} kcal · ${fmt(m.protein)} g`;
+      const v = document.createElement("div"); v.className = "mv"; v.textContent = `${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß`;
       const x = document.createElement("button"); x.className = "x"; x.setAttribute("aria-label", "Löschen: " + m.label); x.textContent = "×";
       x.onclick = () => saveDay(curDay, (doc) => { doc.meals = doc.meals.filter((y) => y.id !== m.id); });
       li.append(nm, v, x);
@@ -545,7 +551,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     parts.forEach((pt) => {
       const tr = document.createElement("tr");
       const a = document.createElement("td"); a.textContent = pt.name + (pt.grams ? ` (${fmt(pt.grams)} g)` : "");
-      const b = document.createElement("td"); b.textContent = `${fmt(pt.kcal)} kcal · ${fmt(pt.protein)} g`;
+      const b = document.createElement("td"); b.textContent = `${fmt(pt.kcal)} kcal · ${fmt(pt.protein)} g Eiweiß`;
       tr.append(a, b); t.append(tr);
     });
     return t;
@@ -642,7 +648,7 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
       items.forEach((it, i) => {
         const li = document.createElement("li");
         const nm = document.createElement("div"); nm.className = "mname"; nm.textContent = it.label;
-        const v = document.createElement("div"); v.className = "mv"; v.textContent = `${fmt(it.kcal)} kcal · ${fmt(it.protein)} g`;
+        const v = document.createElement("div"); v.className = "mv"; v.textContent = `${fmt(it.kcal)} kcal\n${fmt(it.protein)} g Eiweiß`;
         const x = document.createElement("button"); x.className = "x"; x.textContent = "×"; x.setAttribute("aria-label", "Posten entfernen");
         x.onclick = () => { pendingEst.splice(i, 1); li.remove(); if (!pendingEst.length) $("estPreview").hidden = true; };
         li.append(nm, v, x);
@@ -704,12 +710,13 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
     const st = weekStats(curWeek);
     let h = `<thead><tr><th>Tag</th><th>Schritte</th><th>Aufnahme</th><th>Verbrauch</th><th>Bilanz</th><th>Eiweiß</th></tr></thead><tbody>`;
     st.rows.forEach((r) => {
-      const tag = `${WD[weekday(r.date)]} ${dm(r.date)}${r.d.event ? ' <span class="pill warn">Event</span>' : ""}${r.d.weight ? ` <span class="pill">${fmt(r.d.weight, 1)} kg</span>` : ""}`;
-      if (r.empty) h += `<tr><td>${tag}</td><td colspan="5" style="text-align:left" class="muted">offen</td></tr>`;
-      else h += `<tr><td>${tag}</td><td>${stepsTxt(r.d)}</td><td>${fmt(r.kin)}</td><td>${fmt(r.out)}</td><td class="${r.bal > 0 ? "pos" : "neg"}">${signed(r.bal)}</td><td>${fmt(r.pr)}</td></tr>`;
+      const tag = `${WD[weekday(r.date)]} ${dm(r.date)}${r.d.dayType ? ` <span class="pill">${esc(r.d.dayType)}</span>` : ""}${r.d.event ? ' <span class="pill warn">Event</span>' : ""}${r.d.weight ? ` <span class="pill">${fmt(r.d.weight, 1)} kg</span>` : ""}`;
+      if (r.empty) h += `<tr data-date="${r.date}"><td>${tag}</td><td colspan="5" style="text-align:left" class="muted">offen</td></tr>`;
+      else h += `<tr data-date="${r.date}"><td>${tag}</td><td>${stepsTxt(r.d)}</td><td>${fmt(r.kin)}</td><td>${fmt(r.out)}</td><td class="${r.bal > 0 ? "pos" : "neg"}">${signed(r.bal)}</td><td>${fmt(r.pr)}</td></tr>`;
     });
-    if (st.avg) h += `<tr class="sum"><td>Schnitt (${st.n} T.)</td><td></td><td>${fmt(r5(st.avg.kin))}</td><td>${fmt(r5(st.avg.out))}</td><td>${signed(r5(st.avg.bal))}</td><td>${fmt(st.avg.pr)}</td></tr>`;
+    if (st.avg) h += `<tr class="sum"><td>Schnitt (${st.n} ${st.n === 1 ? "Tag" : "Tage"})</td><td></td><td>${fmt(r5(st.avg.kin))}</td><td>${fmt(r5(st.avg.out))}</td><td>${signed(r5(st.avg.bal))}</td><td>${fmt(st.avg.pr)}</td></tr>`;
     $("weekTable").innerHTML = h + "</tbody>";
+    $("weekTable").querySelectorAll("tr[data-date]").forEach((tr) => { tr.tabIndex = 0; tr.title = "Tag öffnen"; const go = () => { curDay = tr.dataset.date; endEdit(); location.hash = "#heute"; renderDay(); }; tr.onclick = go; tr.onkeydown = (e) => { if (e.key === "Enter") go(); }; });
     const actual = (st.wStart && st.wEnd) ? st.wEnd - st.wStart : null;
     $("weekSum").innerHTML = !st.n ? `<div class="muted">Für diese Woche gibt es noch keine Einträge.</div>` : `
       <div class="fields">
@@ -886,7 +893,9 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
     const today = todayStr();
     const eaten = [];
     for (let i = 0; i < 7; i++) { const d = addDays(mon, i); if (d > today) break; const doc = days[d]; if (doc && (doc.meals || []).length) eaten.push(`${WDL[weekday(d)]} ${d}: ` + doc.meals.map((m) => `${m.label} (${m.kcal} kcal, ${m.protein} g)`).join("; ") + (doc.event ? " [Event-Tag]" : "")); }
+    const types = []; for (let i = 0; i < 7; i++) { const d = addDays(mon, i), doc = days[d]; if (doc && (doc.dayType || doc.event)) types.push(`${WDL[weekday(d)]} ${d}: ${[doc.dayType, doc.event ? "Event-Tag" : ""].filter(Boolean).join(", ")}`); }
     return `Du passt den Wochen-Mahlzeitenplan einer Person an, die abnehmen will.
+${types.length ? "Tagesarten laut Log (HO = Home Office, WE = Wochenende):\n" + types.join("\n") : ""}
 Heute ist ${WDL[weekday(today)]}, ${today}. Die Woche geht von ${mon} (Montag) bis ${addDays(mon, 6)} (Sonntag).
 Tagesziel: ${S.kcalTarget} kcal und ${S.proteinTarget} g Eiweiß. Event-Tage sind beim Kalorienziel frei.
 ${S.estimateHints ? "Hinweise und Vorlieben der Person:\n" + S.estimateHints.slice(0, 1500) + "\n" : ""}${eaten.length ? "Diese Woche schon gegessen (laut Log):\n" + eaten.join("\n") + "\n" : ""}
@@ -964,14 +973,14 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     h += p.note ? `<p class="small muted" style="margin-top:12px">${esc(p.note)}</p>` : "";
     (p.days || []).forEach((d) => {
       const tk = (d.meals || []).reduce((a, m) => a + (m.kcal || 0), 0), tp = (d.meals || []).reduce((a, m) => a + (m.protein || 0), 0);
-      h += `<div class="planday panel${d.date === todayStr() ? " today" : ""}"><h3><span>${WD[weekday(d.date)]} ${dm(d.date)}${d.type ? ` <span class="pill">${esc(d.type)}</span>` : ""}</span><span class="num">${fmt(tk)} kcal · ${fmt(tp)} g</span></h3>`;
+      h += `<div class="planday panel${d.date === todayStr() ? " today" : ""}"><h3><span>${WD[weekday(d.date)]} ${dm(d.date)}${d.type ? ` <span class="pill">${esc(d.type)}</span>` : ""}</span><span class="num">${fmt(tk)} kcal · ${fmt(tp)} g Eiweiß</span></h3>`;
       if (d.info) h += `<div class="small muted">${esc(d.info)}</div>`;
-      (d.meals || []).forEach((m) => h += `<div class="pmeal"><div><div class="slot">${esc(m.slot || "")}</div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal · ${fmt(m.protein)} g</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}</div>`);
+      (d.meals || []).forEach((m) => h += `<div class="pmeal"><div><div class="slot">${esc(m.slot || "")}</div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}</div>`);
       h += `</div>`;
     });
     if ((p.swaps || []).length) {
-      h += `<h3>Tauschgerichte</h3><div class="panel">`;
-      p.swaps.forEach((m) => h += `<div class="pmeal"><div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal · ${fmt(m.protein)} g</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}</div>`);
+      h += `<h3>Tauschgerichte</h3><p class="small muted" style="margin:-4px 0 8px">Alternativen mit ähnlichen Werten. Du kannst sie gegen jedes Abendessen der Woche tauschen.</p><div class="panel">`;
+      p.swaps.forEach((m) => h += `<div class="pmeal"><div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}</div>`);
       h += `</div>`;
     }
     el.innerHTML = h;
