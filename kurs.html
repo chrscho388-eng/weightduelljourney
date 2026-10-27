@@ -1,0 +1,901 @@
+<title>Kurs 79,5</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column like a trail log, sticky header with today's numbers, tab bar at the bottom. */
+:root {
+  --bg: #F3F4EF;
+  --surface: #FFFFFF;
+  --line: #DCDFD5;
+  --fg: #1C221E;
+  --muted: #5F6A62;
+  --accent: #2E6A4E;
+  --accent-soft: #DDEBE2;
+  --warn: #B45309;
+  --bad: #B42318;
+  --good: #2E6A4E;
+  --chart-goal: #8A938C;
+  --s1: #1F7A52;
+  --s2: #3D5FC4;
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131815; --surface: #1B211D; --line: #2C352F; --fg: #E6EAE5; --muted: #9AA59D;
+    --accent: #6FBF94; --accent-soft: #23392D; --warn: #F0A35E; --bad: #F2867C; --good: #6FBF94; --chart-goal: #6E786F; --s1: #3FA874; --s2: #6E8BEA;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131815; --surface: #1B211D; --line: #2C352F; --fg: #E6EAE5; --muted: #9AA59D;
+  --accent: #6FBF94; --accent-soft: #23392D; --warn: #F0A35E; --bad: #F2867C; --good: #6FBF94; --chart-goal: #6E786F; --s1: #3FA874; --s2: #6E8BEA;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.45;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap {
+  max-width: 640px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 calc(88px + env(safe-area-inset-bottom, 0px));
+}
+header.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); padding-block: 14px 10px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+}
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: .01em; display: flex; align-items: baseline; gap: 8px; }
+.grade { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .08em; border: 1.5px solid var(--fg); border-radius: 3px; padding: 0 5px; transform: translateY(-2px); }
+.top-meta { font-size: 13px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 24px 0 10px; text-wrap: balance; }
+h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin: 18px 0 8px; }
+.label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+/* date row */
+.daybar { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.daybar .dname { flex: 1; min-width: 0; font-family: var(--font-display); font-size: 22px; font-weight: 600; }
+.iconbtn { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-size: 18px; cursor: pointer; }
+.iconbtn:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* gauges */
+.gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.gauge { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.gauge .val { font-family: var(--font-data); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.gauge .of { font-size: 13px; color: var(--muted); }
+.bar { height: 6px; background: var(--line); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.bar.over > i { background: var(--warn); }
+.balance-row { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 14px; }
+.balance-row b { font-family: var(--font-data); font-weight: 500; }
+.pos { color: var(--bad); } .neg { color: var(--good); }
+
+/* forms */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+input, select, textarea {
+  font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 9px 10px; width: 100%; min-width: 0;
+}
+textarea { resize: vertical; min-height: 64px; }
+input[type=number] { font-family: var(--font-data); }
+.btn { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 14px; border: 1px solid var(--accent); background: var(--accent); color: var(--bg); cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+/* meals */
+.meals { list-style: none; margin: 0; padding: 0; }
+.meals li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.meals li:last-child { border-bottom: 0; }
+.meals .mname { min-width: 0; overflow-wrap: anywhere; }
+.meals .mv { font-family: var(--font-data); font-size: 14px; text-align: right; white-space: nowrap; }
+.meals .x { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px 6px; }
+.meals .mname button { all: unset; cursor: pointer; }
+.meals .mname button:focus-visible { outline: 2px solid var(--accent); }
+.empty { color: var(--muted); padding: 10px 0; font-size: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 5px 10px; border-radius: 999px; cursor: pointer; }
+.chip.on { border-color: var(--accent); background: var(--accent-soft); }
+.preview { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+.status { font-size: 13px; color: var(--muted); margin-top: 6px; min-height: 1.2em; }
+.status.err { color: var(--bad); }
+
+/* tables */
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+td { font-family: var(--font-data); }
+td:first-child { font-family: var(--font-body); }
+tr:last-child td { border-bottom: 0; }
+tr.sum td { font-weight: 600; background: var(--accent-soft); }
+.pill { display: inline-block; font-family: var(--font-body); font-size: 12px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.pill.warn { background: transparent; border: 1px solid var(--warn); color: var(--warn); }
+
+/* plan */
+.planday { margin-top: 12px; }
+.planday h3 { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.planday h3 .num { font-size: 14px; color: var(--muted); font-weight: 400; }
+.planday.today { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 10px; }
+.pmeal { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.pmeal:last-child { border-bottom: 0; }
+.pmeal .slot { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.pmeal .detail { grid-column: 1 / -1; font-size: 14px; color: var(--muted); }
+.pmeal .mv { font-family: var(--font-data); font-size: 14px; white-space: nowrap; }
+
+/* chart */
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font-family: var(--font-data); font-size: 18px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); margin-top: 6px; }
+.chart .hit { fill: transparent; cursor: pointer; }
+.chart .hit:hover, .chart .hit.on { fill: var(--line); fill-opacity: .45; }
+.ctitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ctitle h3 { margin: 0 0 6px; }
+.cread { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.3em; }
+.cread b { color: var(--fg); font-family: var(--font-data); font-weight: 500; }
+.dchart { display: flex; flex-direction: column; gap: 4px; }
+.charts { display: flex; flex-direction: column; gap: 12px; }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+
+/* tabs */
+nav.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+nav.tabs a { text-align: center; padding: 12px 2px 14px; color: var(--muted); text-decoration: none; font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: .02em; border-top: 3px solid transparent; }
+nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--accent); }
+.notice { margin-top: 16px; padding: 12px; border: 1px solid var(--warn); border-radius: 10px; font-size: 14px; }
+@media (prefers-reduced-motion: no-preference) { .bar > i { transition: width .3s ease; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span id="brandName">Kurs</span> <span class="grade" id="gradeBadge">9 %</span></div>
+    <div class="top-meta" id="topMeta">lädt …</div>
+  </header>
+
+  <div id="dbNotice" class="notice" hidden>Der Speicher ist in dieser Ansicht nicht erreichbar. Öffne die App angemeldet in Claude, dann erscheinen deine Einträge.</div>
+  <div id="roNotice" class="notice" hidden>Du kannst hier gerade nichts speichern. Bitte die Person, die dir die App geteilt hat, dich als „Mitwirkende“ einzuladen. Deine Einträge bleiben trotzdem privat.</div>
+
+  <!-- HEUTE -->
+  <section id="view-heute" data-view>
+    <div class="daybar">
+      <button class="iconbtn" id="prevDay" aria-label="Vorheriger Tag">‹</button>
+      <div class="dname" id="dayName">–</div>
+      <button class="iconbtn" id="nextDay" aria-label="Nächster Tag">›</button>
+    </div>
+    <div class="gauges">
+      <div class="gauge"><div class="label">Aufnahme</div><div class="val" id="gKcal">0</div><div class="of" id="gKcalOf">von 2.000 kcal</div><div class="bar" id="gKcalBar"><i style="width:0"></i></div></div>
+      <div class="gauge"><div class="label">Eiweiß</div><div class="val" id="gProt">0 g</div><div class="of" id="gProtOf">von 180 g</div><div class="bar" id="gProtBar"><i style="width:0"></i></div></div>
+    </div>
+    <div class="balance-row" id="balanceRow"></div>
+
+    <h2>Essen</h2>
+    <div class="panel">
+      <ul class="meals" id="mealList"></ul>
+    </div>
+
+    <div id="planChipsWrap" hidden>
+      <h3>Aus dem Plan übernehmen</h3>
+      <div class="chips" id="planChips"></div>
+    </div>
+
+    <h3>Mahlzeit eintragen</h3>
+    <div class="panel">
+      <div class="field">
+        <label class="label" for="mealText">Was hast du gegessen?</label>
+        <textarea id="mealText" placeholder="z. B. 250 g griechischer Joghurt mit 60 g Whey und 100 g Beeren"></textarea>
+      </div>
+      <div class="btnrow">
+        <button class="btn" id="estimateBtn" hidden>kcal schätzen lassen</button>
+        <label class="btn ghost" id="photoLabel" hidden>Foto schätzen<input type="file" id="photoInput" accept="image/*" hidden></label>
+      </div>
+      <div class="status" id="estStatus"></div>
+      <div id="estPreview" class="preview" hidden>
+        <ul class="meals" id="estList"></ul>
+        <div class="small muted" id="estNote"></div>
+        <div class="btnrow"><button class="btn" id="estAccept">Übernehmen</button><button class="btn ghost" id="estDiscard">Verwerfen</button></div>
+      </div>
+      <h3 class="small label" style="margin-top:14px">Oder selbst eintragen</h3>
+      <div class="fields">
+        <div class="field"><label class="label" for="manKcal">kcal</label><input id="manKcal" type="number" inputmode="numeric" min="0" step="5"></div>
+        <div class="field"><label class="label" for="manProt">Eiweiß (g)</label><input id="manProt" type="number" inputmode="numeric" min="0" step="1"></div>
+      </div>
+      <div class="btnrow"><button class="btn ghost" id="manAdd">Eintragen</button><button class="btn ghost" id="editCancel" hidden>Bearbeiten abbrechen</button></div>
+    </div>
+
+    <h2>Bewegung und Gewicht</h2>
+    <div class="panel">
+      <div class="fields">
+        <div class="field"><label class="label" for="inclineSteps" id="inclineLabel">Schritte mit Steigung</label><input id="inclineSteps" type="number" inputmode="numeric" min="0" step="500"></div>
+        <div class="field"><label class="label" for="flatSteps">Schritte flach</label><input id="flatSteps" type="number" inputmode="numeric" min="0" step="500"></div>
+        <div class="field"><label class="label" for="weight">Gewicht (kg)</label><input id="weight" type="number" inputmode="decimal" min="40" step="0.1" placeholder="dienstags"></div>
+        <div class="field"><label class="label" for="dayType">Tag</label>
+          <select id="dayType"><option value="HO">Home Office</option><option value="Büro">Büro</option><option value="WE">Wochenende</option><option value="Frei">Feiertag / frei</option></select></div>
+      </div>
+      <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="eventDay" style="width:auto"> Event-Tag (Kalorienziel frei)</label>
+      <div class="status" id="saveStatus"></div>
+    </div>
+  </section>
+
+  <!-- WOCHE -->
+  <section id="view-woche" data-view hidden>
+    <div class="daybar">
+      <button class="iconbtn" id="prevWeek" aria-label="Vorherige Woche">‹</button>
+      <div class="dname" id="weekName">–</div>
+      <button class="iconbtn" id="nextWeek" aria-label="Nächste Woche">›</button>
+    </div>
+    <h2>Tagesbilanz</h2>
+    <div class="tablewrap"><table id="weekTable"></table></div>
+    <h2>Wochensumme</h2>
+    <div class="panel" id="weekSum"></div>
+  </section>
+
+  <!-- VERLAUF -->
+  <section id="view-verlauf" data-view hidden>
+    <h2>Gewicht</h2>
+    <div class="panel">
+      <svg class="chart" id="chart" viewBox="0 0 600 300" role="img" aria-label="Gewichtsverlauf mit Spätestens-Zielen"></svg>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>gewogen</span>
+        <span><i style="background:var(--warn)"></i>erwartet laut Bilanz</span>
+        <span><i style="background:var(--chart-goal)"></i>Spätestens-Ziele</span>
+      </div>
+    </div>
+    <div class="ctitle" style="margin-top:24px"><h2 style="margin:0">Tageswerte</h2>
+      <div class="chips" id="rangeChips" role="group" aria-label="Zeitraum">
+        <button class="chip on" data-range="14">14 Tage</button><button class="chip" data-range="30">30 Tage</button><button class="chip" data-range="0">Alles</button>
+      </div></div>
+    <p class="small muted" style="margin:6px 0 10px">Tipp auf einen Tag zeigt die Werte.</p>
+    <div class="charts">
+      <div class="panel dchart">
+        <div class="ctitle"><h3>Aufnahme und Verbrauch</h3></div>
+        <div class="cread" id="readEnergy"></div>
+        <svg class="chart" id="chEnergy" viewBox="0 0 600 230" role="img" aria-label="Tägliche Kalorienaufnahme und Verbrauch"></svg>
+        <div class="legend"><span><i style="background:var(--s1);height:10px;width:10px"></i>Aufnahme</span><span><i style="background:var(--s2)"></i>Verbrauch</span><span><i style="background:var(--chart-goal)"></i>kcal-Ziel</span></div>
+      </div>
+      <div class="panel dchart">
+        <div class="ctitle"><h3>Energiebilanz</h3></div>
+        <div class="cread" id="readBal"></div>
+        <svg class="chart" id="chBal" viewBox="0 0 600 230" role="img" aria-label="Tägliche Energiebilanz mit 7-Tage-Schnitt"></svg>
+        <div class="legend"><span><i style="background:var(--good);height:10px;width:10px"></i>Defizit</span><span><i style="background:var(--bad);height:10px;width:10px"></i>Überschuss</span><span><i style="background:var(--fg)"></i>Schnitt 7 Tage</span></div>
+      </div>
+      <div class="panel dchart">
+        <div class="ctitle"><h3>Eiweiß</h3></div>
+        <div class="cread" id="readProt"></div>
+        <svg class="chart" id="chProt" viewBox="0 0 600 230" role="img" aria-label="Tägliche Eiweißaufnahme"></svg>
+        <div class="legend"><span><i style="background:var(--s1);height:10px;width:10px"></i>Eiweiß</span><span><i style="background:var(--chart-goal)"></i>Ziel</span></div>
+      </div>
+    </div>
+
+    <h2>Alle Wochen</h2>
+    <div class="tablewrap"><table id="allWeeks"></table></div>
+    <h2>Zwischenziele</h2>
+    <div class="tablewrap"><table id="goalTable"></table></div>
+  </section>
+
+  <!-- PLAN -->
+  <section id="view-plan" data-view hidden>
+    <div class="daybar">
+      <button class="iconbtn" id="prevPlan" aria-label="Vorherige Woche">‹</button>
+      <div class="dname" id="planName">–</div>
+      <button class="iconbtn" id="nextPlan" aria-label="Nächste Woche">›</button>
+    </div>
+    <div id="planBody"></div>
+  </section>
+
+  <!-- PROFIL -->
+  <section id="view-profil" data-view hidden>
+    <h2 id="profilTitle">Dein Profil</h2>
+    <p class="small muted" id="profilIntro">Deine Angaben und Einträge sind privat. Niemand sonst sieht sie, auch nicht die Person, die dir die App geteilt hat.</p>
+    <form id="profileForm" class="panel">
+      <div class="fields">
+        <div class="field"><label class="label" for="pName">Name (optional)</label><input id="pName" type="text" maxlength="40"></div>
+        <div class="field"><label class="label" for="pSex">Geschlecht</label><select id="pSex"><option value="m">männlich</option><option value="w">weiblich</option></select></div>
+        <div class="field"><label class="label" for="pAge">Alter</label><input id="pAge" type="number" inputmode="numeric" min="14" max="100" required></div>
+        <div class="field"><label class="label" for="pHeight">Größe (cm)</label><input id="pHeight" type="number" inputmode="numeric" min="120" max="230" required></div>
+        <div class="field"><label class="label" for="pStartW">Startgewicht (kg)</label><input id="pStartW" type="number" inputmode="decimal" step="0.1" min="35" required></div>
+        <div class="field"><label class="label" for="pStartD">gewogen am</label><input id="pStartD" type="date" required></div>
+        <div class="field"><label class="label" for="pGoalW">Zielgewicht (kg)</label><input id="pGoalW" type="number" inputmode="decimal" step="0.1" min="35" required></div>
+        <div class="field"><label class="label" for="pGoalD">Ziel spätestens am</label><input id="pGoalD" type="date" required></div>
+        <div class="field"><label class="label" for="pKcal">kcal pro Tag</label><input id="pKcal" type="number" inputmode="numeric" step="50" min="1200" required></div>
+        <div class="field"><label class="label" for="pProt">Eiweiß pro Tag (g)</label><input id="pProt" type="number" inputmode="numeric" step="5" min="40" required></div>
+        <div class="field"><label class="label" for="pIncline">Steigung Laufband (%)</label><input id="pIncline" type="number" inputmode="decimal" step="0.5" min="0" max="15" value="9"></div>
+        <div class="field"><label class="label" for="pSpeed">Tempo (km/h)</label><input id="pSpeed" type="number" inputmode="decimal" step="0.1" min="1" max="8" value="3.5"></div>
+      </div>
+      <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pRail" style="width:auto"> Hände beim Gehen locker abgestützt (−5 % Verbrauch)</label>
+      <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für die kcal-Schätzung</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal, nie light"></textarea></div>
+      <div class="small muted" id="pCalc" style="margin-top:10px"></div>
+      <div class="btnrow"><button class="btn" type="submit" id="pSave">Profil speichern</button></div>
+      <div class="status" id="pStatus"></div>
+    </form>
+    <p class="small muted">Der Verbrauch ist eine Schätzung: Grundumsatz nach Mifflin-St Jeor mal 1,2 für sitzenden Alltag, dazu Schritte nach der ACSM-Gehformel. Eine Woche Abnehmen entspricht etwa 7.000 kcal Defizit pro kg. Das ersetzt keine ärztliche Beratung.</p>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="Bereiche">
+  <a href="#heute" data-tab="heute">Heute</a>
+  <a href="#woche" data-tab="woche">Woche</a>
+  <a href="#verlauf" data-tab="verlauf">Verlauf</a>
+  <a href="#plan" data-tab="plan">Plan</a>
+  <a href="#profil" data-tab="profil">Profil</a>
+</nav>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n, d = 0) => (n == null || isNaN(n)) ? "–" : Number(n).toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const signed = (n) => (n > 0 ? "+" : n < 0 ? "−" : "") + fmt(Math.abs(n));
+  const signedKg = (n) => (n > 0 ? "+" : n < 0 ? "−" : "±") + fmt(Math.abs(n), 1) + " kg";
+
+  // ---- profile (data/users/<id>/profile); neutral placeholder until it loads ----
+  const DEFAULTS = {
+    name: "", sex: "m", age: null, heightCm: null, inclinePct: 9, speedKmh: 3.5, handrail: false,
+    baseKcal: 2300, flatFactor: 0.036, inclineFactor: 0.07,
+    kcalTarget: 2000, eventKcal: 3000, proteinTarget: 150,
+    startDate: null, startWeightDate: null, startWeight: null, goalWeight: null, goalDate: null,
+    kcalPerKg: 7000, milestones: null, estimateHints: ""
+  };
+  let S = { ...DEFAULTS };
+  let hasProfile = false, profileKnown = false;
+  // Energy model: Mifflin-St Jeor x 1.2 (sedentary); flat steps ~0.0004 kcal per kg;
+  // treadmill steps via the ACSM walking formula, stride ~0.0027 x height at slow pace.
+  function deriveFactors(p) {
+    const kg = p.startWeight, cm = p.heightCm;
+    const bmr = 10 * kg + 6.25 * cm - 5 * p.age + (p.sex === "w" ? -161 : 5);
+    const v = p.speedKmh * 1000 / 60, g = (p.inclinePct || 0) / 100;
+    const kcalMin = (3.5 + 0.1 * v + 1.8 * v * g) * kg / 1000 * 5;
+    const stepsMin = v / (0.0027 * cm);
+    return {
+      baseKcal: Math.round(bmr * 1.2 / 10) * 10,
+      flatFactor: Math.round(0.0004 * kg * 1000) / 1000,
+      inclineFactor: Math.round(kcalMin / stepsMin * (p.handrail ? 0.95 : 1) * 1000) / 1000
+    };
+  }
+  const milestones = () => (S.milestones && S.milestones.length > 1) ? S.milestones
+    : (S.startWeightDate && S.goalDate ? [{ date: S.startWeightDate, kg: S.startWeight }, { date: S.goalDate, kg: S.goalWeight }] : []);
+  const pctTxt = () => fmt(S.inclinePct, S.inclinePct % 1 ? 1 : 0) + " %";
+
+  // ---- dates (all YYYY-MM-DD, Berlin calendar) ----
+  const todayStr = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const toUTC = (s) => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+  const fromUTC = (t) => new Date(t).toISOString().slice(0, 10);
+  const addDays = (s, n) => fromUTC(toUTC(s) + n * 86400000);
+  const weekday = (s) => (new Date(toUTC(s)).getUTCDay() + 6) % 7; // 0 = Mo
+  const mondayOf = (s) => addDays(s, -weekday(s));
+  const WD = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+  const WDL = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+  const dm = (s) => { const [, m, d] = s.split("-"); return `${d}.${m}.`; };
+  const weekNo = (mon) => S.startDate ? Math.floor((toUTC(mon) - toUTC(S.startDate)) / (7 * 86400000)) + 1 : 1;
+
+  // ---- state ----
+  let db = null, sample = null, sampleImages = false, base = null;
+  const days = {};      // date -> doc
+  const plans = {};     // monday -> doc
+  let curDay = todayStr();
+  let curWeek = mondayOf(curDay);
+  let curPlan = mondayOf(curDay);
+  let editingId = null;
+  let pendingEst = null;
+
+  const dayDoc = (d) => days[d] || { date: d, meals: [] };
+  const intake = (doc) => (doc.meals || []).reduce((a, m) => a + (Number(m.kcal) || 0), 0);
+  const protein = (doc) => (doc.meals || []).reduce((a, m) => a + (Number(m.protein) || 0), 0);
+  const burn = (doc) => {
+    if (doc.burnOverride) return doc.burnOverride;
+    const f = Number(doc.flatSteps) || 0, i = Number(doc.inclineSteps) || 0;
+    return Math.round((S.baseKcal + f * S.flatFactor + i * S.inclineFactor) / 5) * 5;
+  };
+  const hasData = (doc) => (doc.meals && doc.meals.length) || doc.flatSteps || doc.inclineSteps;
+
+  // ---- writes: one at a time per doc ----
+  const chains = {};
+  function saveDay(date, mutate) {
+    const doc = JSON.parse(JSON.stringify(dayDoc(date)));
+    mutate(doc);
+    doc.date = date;
+    doc.updatedAt = new Date().toISOString();
+    days[date] = doc;
+    renderAll();
+    if (!base) { setStatus("saveStatus", "Nicht gespeichert: Speicher nicht erreichbar.", true); return; }
+    chains[date] = (chains[date] || Promise.resolve()).then(() => base.collection("days").doc(date).set(doc))
+      .then(() => setStatus("saveStatus", "Gespeichert"))
+      .catch((e) => { if (e && e.code === "invalid_argument") $("roNotice").hidden = false; setStatus("saveStatus", "Speichern fehlgeschlagen (" + (e && e.code || "Fehler") + ").", true); });
+  }
+  function setStatus(id, txt, err) { const el = $(id); el.textContent = txt || ""; el.classList.toggle("err", !!err); }
+
+  // ---- routing ----
+  const VIEWS = ["heute", "woche", "verlauf", "plan", "profil"];
+  function route() {
+    let v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "heute";
+    if (profileKnown && !hasProfile) v = "profil";
+    document.querySelectorAll("[data-view]").forEach((s) => s.hidden = s.id !== "view-" + v);
+    document.querySelectorAll("nav.tabs a").forEach((a) => { if (a.dataset.tab === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    window.scrollTo(0, 0);
+  }
+  window.addEventListener("hashchange", route);
+
+  // ---- render: header ----
+  function renderTop() {
+    $("brandName").textContent = S.goalWeight ? "Kurs " + fmt(S.goalWeight, 1) : "Kurs";
+    $("gradeBadge").textContent = pctTxt();
+    $("inclineLabel").textContent = "Schritte bei " + pctTxt();
+    if (!hasProfile) { $("topMeta").textContent = profileKnown ? "Profil anlegen" : "lädt …"; return; }
+    const weights = Object.values(days).filter((d) => d.weight).sort((a, b) => a.date < b.date ? -1 : 1);
+    const last = weights.length ? weights[weights.length - 1] : { weight: S.startWeight, date: S.startWeightDate };
+    const toGo = last.weight - S.goalWeight;
+    $("topMeta").innerHTML = `<span class="num">${fmt(last.weight, 1)} kg</span> · noch <span class="num">${fmt(toGo, 1)} kg</span><br>Woche ${Math.max(0, weekNo(mondayOf(todayStr())))}`;
+  }
+
+  // ---- render: today ----
+  function renderDay() {
+    const d = dayDoc(curDay);
+    const wn = weekNo(mondayOf(curDay));
+    $("dayName").textContent = `${WDL[weekday(curDay)]}, ${dm(curDay)}${curDay === todayStr() ? " · heute" : ""}`;
+    const kin = intake(d), pr = protein(d), out = burn(d), bal = kin - out;
+    const target = d.event ? S.eventKcal : S.kcalTarget;
+    $("gKcal").textContent = fmt(kin);
+    $("gKcalOf").textContent = d.event ? `Event-Tag, ca. ${fmt(S.eventKcal)} kcal` : `von ${fmt(target)} kcal · noch ${fmt(Math.max(0, target - kin))}`;
+    $("gKcalBar").firstElementChild.style.width = Math.min(100, kin / target * 100) + "%";
+    $("gKcalBar").classList.toggle("over", kin > target);
+    $("gProt").textContent = fmt(pr) + " g";
+    $("gProtOf").textContent = `von ${S.proteinTarget} g · noch ${fmt(Math.max(0, S.proteinTarget - pr))} g`;
+    $("gProtBar").firstElementChild.style.width = Math.min(100, pr / S.proteinTarget * 100) + "%";
+
+    // week-to-date average
+    const mon = mondayOf(curDay);
+    const wdays = []; for (let i = 0; i <= weekday(curDay); i++) { const x = addDays(mon, i); if (hasData(dayDoc(x))) wdays.push(dayDoc(x)); }
+    const avgBal = wdays.length ? wdays.reduce((a, x) => a + intake(x) - burn(x), 0) / wdays.length : null;
+    $("balanceRow").innerHTML =
+      `<span>Verbrauch <b>${fmt(out)}</b> kcal</span>` +
+      `<span>Bilanz <b class="${bal > 0 ? "pos" : "neg"}">${signed(bal)}</b> kcal</span>` +
+      (avgBal != null ? `<span>Schnitt ${wn >= 1 ? "Woche " + wn : "Woche"} (${wdays.length} T.) <b class="${avgBal > 0 ? "pos" : "neg"}">${signed(Math.round(avgBal / 5) * 5)}</b></span>` : "");
+
+    // meals
+    const ul = $("mealList"); ul.innerHTML = "";
+    if (!(d.meals || []).length) ul.innerHTML = `<li class="empty" style="display:block">Noch nichts eingetragen. Beschreibe unten, was du gegessen hast.</li>`;
+    (d.meals || []).forEach((m) => {
+      const li = document.createElement("li");
+      const nm = document.createElement("div"); nm.className = "mname";
+      const b = document.createElement("button"); b.textContent = m.label; b.title = "Bearbeiten"; b.onclick = () => startEdit(m);
+      nm.append(b);
+      const v = document.createElement("div"); v.className = "mv"; v.textContent = `${fmt(m.kcal)} kcal · ${fmt(m.protein)} g`;
+      const x = document.createElement("button"); x.className = "x"; x.setAttribute("aria-label", "Löschen: " + m.label); x.textContent = "×";
+      x.onclick = () => saveDay(curDay, (doc) => { doc.meals = doc.meals.filter((y) => y.id !== m.id); });
+      li.append(nm, v, x); ul.append(li);
+    });
+
+    // plan chips
+    const plan = plans[mon];
+    const pday = plan && (plan.days || []).find((x) => x.date === curDay);
+    const wrap = $("planChipsWrap"), chips = $("planChips"); chips.innerHTML = "";
+    if (pday && (pday.meals || []).length) {
+      wrap.hidden = false;
+      pday.meals.forEach((pm) => {
+        const taken = (d.meals || []).some((m) => m.fromPlan === pm.name);
+        const c = document.createElement("button"); c.className = "chip" + (taken ? " on" : "");
+        c.textContent = `${pm.slot ? pm.slot + ": " : ""}${pm.name} · ${fmt(pm.kcal)}`;
+        c.onclick = () => { if (taken) return; addMeals([{ label: pm.name + (pm.detail ? " (" + pm.detail + ")" : ""), kcal: pm.kcal, protein: pm.protein, fromPlan: pm.name }]); };
+        chips.append(c);
+      });
+    } else wrap.hidden = true;
+
+    // inputs (don't clobber focused field)
+    const setIf = (id, val) => { const el = $(id); if (document.activeElement !== el) el.value = val ?? ""; };
+    setIf("inclineSteps", d.inclineSteps || "");
+    setIf("flatSteps", d.flatSteps || "");
+    setIf("weight", d.weight || "");
+    if (document.activeElement !== $("dayType")) $("dayType").value = d.dayType || defaultType(curDay);
+    $("eventDay").checked = !!d.event;
+  }
+  function defaultType(s) { const w = weekday(s); return w >= 5 ? "WE" : "HO"; }
+
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  function addMeals(items) {
+    saveDay(curDay, (doc) => {
+      doc.meals = doc.meals || [];
+      if (!doc.dayType) doc.dayType = defaultType(curDay);
+      items.forEach((it) => doc.meals.push({ id: uid(), label: String(it.label).slice(0, 300), kcal: Math.round(Number(it.kcal) || 0), protein: Math.round(Number(it.protein) || 0), ...(it.fromPlan ? { fromPlan: it.fromPlan } : {}) }));
+    });
+  }
+  function startEdit(m) {
+    editingId = m.id;
+    $("mealText").value = m.label; $("manKcal").value = m.kcal; $("manProt").value = m.protein;
+    $("manAdd").textContent = "Änderung speichern"; $("editCancel").hidden = false;
+    $("mealText").focus();
+  }
+  function endEdit() {
+    editingId = null; $("mealText").value = ""; $("manKcal").value = ""; $("manProt").value = "";
+    $("manAdd").textContent = "Eintragen"; $("editCancel").hidden = true;
+  }
+  $("editCancel").onclick = endEdit;
+  $("manAdd").onclick = () => {
+    const label = $("mealText").value.trim(), kcal = Number($("manKcal").value), prot = Number($("manProt").value) || 0;
+    if (!label || !(kcal >= 0) || $("manKcal").value === "") { setStatus("estStatus", "Bitte Beschreibung und kcal angeben, oder schätzen lassen.", true); return; }
+    if (editingId) {
+      const id = editingId;
+      saveDay(curDay, (doc) => { doc.meals = doc.meals.map((m) => m.id === id ? { ...m, label, kcal: Math.round(kcal), protein: Math.round(prot) } : m); });
+    } else addMeals([{ label, kcal, protein: prot }]);
+    setStatus("estStatus", ""); endEdit();
+  };
+
+  // ---- estimation via Claude ----
+  function estPrompt(text, withImage) {
+    const who = [S.sex === "w" ? "Frau" : "Mann", S.age ? S.age + " Jahre" : "", S.heightCm ? S.heightCm + " cm" : ""].filter(Boolean).join(", ");
+    return `Du schätzt Nährwerte für ein Ernährungslog (Abnehmen; ${who}).
+Regeln:
+- Gib für jeden Posten genau EINEN Mittelwert an, niemals Spannen.
+- Gewichtsangaben gelten roh, wenn nicht anders gesagt. Fehlen Mengen, nimm übliche Portionen für einen Erwachsenen an.
+- Bei Marken- oder Restaurantprodukten nutze die bekannten Herstellerangaben.
+- Fasse ein Gericht als einen Posten zusammen; getrennte Lebensmittel oder Getränke als getrennte Posten.
+- label: kurz und auf Deutsch, mit den wichtigsten Mengen.
+${withImage ? "- Das Bild zeigt die Mahlzeit. Schätze die Portion aus dem Bild, der Text ergänzt es.\n" : ""}${S.estimateHints ? "Persönliche Hinweise der Person (nur für die Schätzung):\n" + S.estimateHints.slice(0, 600) + "\n" : ""}
+Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
+{"items":[{"label":"…","kcal":0,"protein":0}],"note":"eine kurze Annahme, die die Schätzung am stärksten beeinflusst"}
+
+Mahlzeit: ${text || "(siehe Bild)"}`;
+  }
+  async function runEstimate(image) {
+    const text = $("mealText").value.trim();
+    if (!text && !image) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast.", true); return; }
+    $("estimateBtn").disabled = true; setStatus("estStatus", "Claude schätzt …");
+    try {
+      const opts = { modelTier: "default" };
+      if (image) opts.images = [image];
+      const res = await sample.json(estPrompt(text, !!image), opts);
+      const items = (res && Array.isArray(res.items) ? res.items : []).filter((x) => x && x.label).map((x) => ({ label: String(x.label), kcal: Math.round(Number(x.kcal) || 0), protein: Math.round(Number(x.protein) || 0) }));
+      if (!items.length) throw { code: "empty" };
+      pendingEst = items;
+      const ul = $("estList"); ul.innerHTML = "";
+      items.forEach((it, i) => {
+        const li = document.createElement("li");
+        const nm = document.createElement("div"); nm.className = "mname"; nm.textContent = it.label;
+        const v = document.createElement("div"); v.className = "mv"; v.textContent = `${fmt(it.kcal)} kcal · ${fmt(it.protein)} g`;
+        const x = document.createElement("button"); x.className = "x"; x.textContent = "×"; x.setAttribute("aria-label", "Posten entfernen");
+        x.onclick = () => { pendingEst.splice(i, 1); li.remove(); if (!pendingEst.length) $("estPreview").hidden = true; };
+        li.append(nm, v, x); ul.append(li);
+      });
+      const tk = items.reduce((a, x) => a + x.kcal, 0), tp = items.reduce((a, x) => a + x.protein, 0);
+      $("estNote").textContent = `Zusammen ${fmt(tk)} kcal und ${fmt(tp)} g Eiweiß.` + (res.note ? " Annahme: " + res.note : "");
+      $("estPreview").hidden = false; setStatus("estStatus", "Prüfen und übernehmen. Einzelne Posten kannst du nach dem Übernehmen antippen und anpassen.");
+    } catch (e) {
+      const c = e && e.code;
+      if (c === "not_granted") { setStatus("estStatus", "Schätzen ist nicht erlaubt worden. Trag kcal und Eiweiß selbst ein.", true); $("estimateBtn").hidden = true; $("photoLabel").hidden = true; }
+      else if (c === "rate_limited") setStatus("estStatus", "Gerade zu viele Anfragen. Versuch es in einer Minute erneut.", true);
+      else setStatus("estStatus", "Die Schätzung hat nicht geklappt. Formuliere es etwas genauer oder trag die Werte selbst ein.", true);
+    } finally { $("estimateBtn").disabled = false; }
+  }
+  $("estimateBtn").onclick = () => runEstimate(null);
+  $("photoInput").onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) runEstimate(f); e.target.value = ""; };
+  $("estAccept").onclick = () => { if (pendingEst && pendingEst.length) addMeals(pendingEst); pendingEst = null; $("estPreview").hidden = true; $("mealText").value = ""; setStatus("estStatus", "Eingetragen."); };
+  $("estDiscard").onclick = () => { pendingEst = null; $("estPreview").hidden = true; setStatus("estStatus", ""); };
+
+  // ---- day inputs ----
+  const numOrNull = (v) => v === "" ? null : Number(v);
+  $("inclineSteps").onchange = (e) => saveDay(curDay, (d) => { d.inclineSteps = numOrNull(e.target.value); if (!d.dayType) d.dayType = defaultType(curDay); });
+  $("flatSteps").onchange = (e) => saveDay(curDay, (d) => { d.flatSteps = numOrNull(e.target.value); if (!d.dayType) d.dayType = defaultType(curDay); });
+  $("weight").onchange = (e) => saveDay(curDay, (d) => { const w = numOrNull(e.target.value); if (w) d.weight = Math.round(w * 10) / 10; else delete d.weight; });
+  $("dayType").onchange = (e) => saveDay(curDay, (d) => { d.dayType = e.target.value; });
+  $("eventDay").onchange = (e) => saveDay(curDay, (d) => { d.event = e.target.checked; });
+  $("prevDay").onclick = () => { curDay = addDays(curDay, -1); endEdit(); renderDay(); };
+  $("nextDay").onclick = () => { curDay = addDays(curDay, 1); endEdit(); renderDay(); };
+
+  // ---- week ----
+  function weekStats(mon) {
+    let sum = 0, n = 0, kin = 0, out = 0, pr = 0;
+    const rows = [];
+    for (let i = 0; i < 7; i++) {
+      const date = addDays(mon, i), d = dayDoc(date);
+      if (!hasData(d)) { rows.push({ date, d, empty: true }); continue; }
+      const a = intake(d), b = burn(d);
+      rows.push({ date, d, kin: a, out: b, bal: a - b, pr: protein(d) });
+      sum += a - b; kin += a; out += b; pr += protein(d); n++;
+    }
+    const wStart = days[addDays(mon, 1)] && days[addDays(mon, 1)].weight;
+    const wEnd = days[addDays(mon, 8)] && days[addDays(mon, 8)].weight;
+    return { rows, sum, n, avg: n ? { kin: kin / n, out: out / n, bal: sum / n, pr: pr / n } : null, expected: sum / S.kcalPerKg, wStart, wEnd };
+  }
+  const r5 = (x) => Math.round(x / 5) * 5;
+  function stepsTxt(d) {
+    const p = [];
+    if (d.inclineSteps) p.push(fmt(d.inclineSteps) + " @" + pctTxt());
+    if (d.flatSteps) p.push(fmt(d.flatSteps) + " flach");
+    return p.join(" + ") || "–";
+  }
+  function renderWeek() {
+    const wn = weekNo(curWeek);
+    $("weekName").textContent = `${wn >= 1 ? "Woche " + wn : "Vor dem Start"} · ${dm(curWeek)}–${dm(addDays(curWeek, 6))}`;
+    const st = weekStats(curWeek);
+    let h = `<thead><tr><th>Tag</th><th>Schritte</th><th>Aufnahme</th><th>Verbrauch</th><th>Bilanz</th><th>Eiweiß</th></tr></thead><tbody>`;
+    st.rows.forEach((r) => {
+      const tag = `${WD[weekday(r.date)]} ${dm(r.date)}${r.d.event ? ' <span class="pill warn">Event</span>' : ""}${r.d.weight ? ` <span class="pill">${fmt(r.d.weight, 1)} kg</span>` : ""}`;
+      if (r.empty) h += `<tr><td>${tag}</td><td colspan="5" style="text-align:left" class="muted">offen</td></tr>`;
+      else h += `<tr><td>${tag}</td><td>${stepsTxt(r.d)}</td><td>${fmt(r.kin)}</td><td>${fmt(r.out)}</td><td class="${r.bal > 0 ? "pos" : "neg"}">${signed(r.bal)}</td><td>${fmt(r.pr)}</td></tr>`;
+    });
+    if (st.avg) h += `<tr class="sum"><td>Schnitt (${st.n} T.)</td><td></td><td>${fmt(r5(st.avg.kin))}</td><td>${fmt(r5(st.avg.out))}</td><td>${signed(r5(st.avg.bal))}</td><td>${fmt(st.avg.pr)}</td></tr>`;
+    $("weekTable").innerHTML = h + "</tbody>";
+    const actual = (st.wStart && st.wEnd) ? st.wEnd - st.wStart : null;
+    $("weekSum").innerHTML = !st.n ? `<div class="muted">Für diese Woche gibt es noch keine Einträge.</div>` : `
+      <div class="fields">
+        <div><div class="label">Summe Bilanz</div><div class="num" style="font-size:20px">${signed(r5(st.sum))} kcal</div><div class="small muted">${st.n} von 7 Tagen erfasst</div></div>
+        <div><div class="label">Erwartet</div><div class="num" style="font-size:20px">${signedKg(st.expected)}</div><div class="small muted">Summe / ${fmt(S.kcalPerKg)} kcal pro kg</div></div>
+        <div><div class="label">Tatsächlich (Di → Di)</div><div class="num" style="font-size:20px">${actual == null ? "offen" : signedKg(actual)}</div><div class="small muted">${st.wStart ? fmt(st.wStart, 1) : "?"} → ${st.wEnd ? fmt(st.wEnd, 1) : "Di " + dm(addDays(curWeek, 8))} kg</div></div>
+      </div>`;
+  }
+  $("prevWeek").onclick = () => { curWeek = addDays(curWeek, -7); renderWeek(); };
+  $("nextWeek").onclick = () => { curWeek = addDays(curWeek, 7); renderWeek(); };
+
+  // ---- history ----
+  function renderHistory() {
+    const MS = milestones();
+    // all weeks table
+    const first = mondayOf(Object.keys(days).sort()[0] || S.startDate || todayStr());
+    const lastMon = mondayOf(todayStr());
+    let h = `<thead><tr><th>Woche</th><th>Summe</th><th>Erwartet</th><th>Tatsächlich</th><th>Gewicht</th></tr></thead><tbody>`;
+    let any = false;
+    for (let m = lastMon; m >= first; m = addDays(m, -7)) {
+      const st = weekStats(m); if (!st.n && !st.wStart) continue; any = true;
+      const wn = weekNo(m), act = (st.wStart && st.wEnd) ? st.wEnd - st.wStart : null;
+      h += `<tr><td>${wn >= 1 ? "W" + wn : "W0"} · ${dm(m)}</td><td>${signed(r5(st.sum))}</td><td>${signedKg(st.expected)}</td><td>${act == null ? "offen" : signedKg(act)}</td><td>${st.wStart ? fmt(st.wStart, 1) : "–"}</td></tr>`;
+    }
+    $("allWeeks").innerHTML = any ? h + "</tbody>" : `<tbody><tr><td class="muted">Noch keine Wochen erfasst.</td></tr></tbody>`;
+
+    // goals table
+    const weights = Object.values(days).filter((d) => d.weight).sort((a, b) => a.date < b.date ? -1 : 1);
+    let g = `<thead><tr><th>Spätestens bis</th><th>Ziel</th><th>Stand</th></tr></thead><tbody>`;
+    MS.slice(1).forEach((ms) => {
+      const w = weights.filter((x) => x.date <= ms.date).pop();
+      const reached = weights.some((x) => x.weight <= ms.kg);
+      const state = reached ? `<span class="pill">erreicht</span>` : (todayStr() > ms.date ? `<span class="pill warn">verpasst</span>` : (w ? `noch ${fmt(w.weight - ms.kg, 1)} kg` : "–"));
+      g += `<tr><td>${WD[weekday(ms.date)]} ${dm(ms.date)}${ms.date.slice(2, 4)}</td><td>${fmt(ms.kg, 1)} kg</td><td>${state}</td></tr>`;
+    });
+    $("goalTable").innerHTML = g + "</tbody>";
+
+    // chart
+    if (MS.length < 2) { $("chart").innerHTML = ""; return; }
+    const W = 600, H = 300, L = 46, R = 16, T = 16, B = 36;
+    const x0 = toUTC(MS[0].date), x1 = toUTC(MS[MS.length - 1].date);
+    const allKg = weights.map((w) => w.weight).concat(MS.map((m) => m.kg));
+    const yMax = Math.ceil(Math.max(...allKg) + 0.5), yMin = Math.floor(Math.min(...allKg, S.goalWeight) - 0.5);
+    const X = (s) => L + (toUTC(s) - x0) / (x1 - x0) * (W - L - R);
+    const Y = (kg) => T + (yMax - kg) / (yMax - yMin) * (H - T - B);
+    let svg = "";
+    const step = yMax - yMin > 24 ? 5 : 2;
+    for (let k = yMin; k <= yMax; k += step) svg += `<line x1="${L}" x2="${W - R}" y1="${Y(k)}" y2="${Y(k)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${Y(k) + 4}" text-anchor="end">${k}</text>`;
+    const MON = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+    const months = []; for (let m = addDays(MS[0].date.slice(0, 8) + "01", 32).slice(0, 8) + "01"; m <= MS[MS.length - 1].date; m = addDays(m, 32).slice(0, 8) + "01") months.push(m);
+    const every = Math.ceil(months.length / 7);
+    months.filter((_, i) => i % every === 0).forEach((s) => {
+      const lbl = MON[Number(s.slice(5, 7)) - 1];
+      svg += `<line x1="${X(s)}" x2="${X(s)}" y1="${T}" y2="${H - B}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/><text x="${X(s) + 4}" y="${H - B + 22}">${lbl}</text>`;
+    });
+    svg += `<line x1="${L}" x2="${W - R}" y1="${Y(S.goalWeight)}" y2="${Y(S.goalWeight)}" stroke="var(--chart-goal)" stroke-width="1" stroke-dasharray="5 4"/>`;
+    svg += `<polyline fill="none" stroke="var(--chart-goal)" stroke-width="2" points="${MS.map((m) => X(m.date) + "," + Y(m.kg)).join(" ")}"/>`;
+    MS.slice(1).forEach((m) => svg += `<circle cx="${X(m.date)}" cy="${Y(m.kg)}" r="3" fill="var(--chart-goal)"/>`);
+    // expected from balance, starting at start weight
+    let cum = 0; const exp = [[S.startWeightDate, S.startWeight]];
+    const end = todayStr();
+    for (let d = addDays(S.startWeightDate, 0); d <= end; d = addDays(d, 1)) {
+      const doc = dayDoc(d); if (!hasData(doc)) continue;
+      cum += intake(doc) - burn(doc); exp.push([addDays(d, 1), S.startWeight + cum / S.kcalPerKg]);
+    }
+    if (exp.length > 1) svg += `<polyline fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 4" points="${exp.map(([d, k]) => X(d) + "," + Y(k)).join(" ")}"/>`;
+    if (weights.length) {
+      svg += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${weights.map((w) => X(w.date) + "," + Y(w.weight)).join(" ")}"/>`;
+      weights.forEach((w, i) => svg += `<circle cx="${X(w.date)}" cy="${Y(w.weight)}" r="${i === weights.length - 1 ? 5 : 3.5}" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`);
+      const lw = weights[weights.length - 1];
+      svg += `<text x="${Math.min(X(lw.date) + 10, W - R - 60)}" y="${Y(lw.weight) - 8}" style="fill:var(--fg)">${fmt(lw.weight, 1)}</text>`;
+    }
+    $("chart").innerHTML = svg;
+  }
+
+  // ---- daily charts ----
+  let range = 14, selDate = null;
+  document.querySelectorAll("#rangeChips .chip").forEach((c) => c.onclick = () => {
+    range = Number(c.dataset.range);
+    document.querySelectorAll("#rangeChips .chip").forEach((x) => x.classList.toggle("on", x === c));
+    renderDaily();
+  });
+  function dailyRows() {
+    const end = todayStr();
+    const firstData = Object.keys(days).filter((d) => hasData(days[d])).sort()[0] || end;
+    let start = range ? addDays(end, -(range - 1)) : firstData;
+    const rows = [];
+    for (let d = start; d <= end; d = addDays(d, 1)) {
+      const doc = dayDoc(d), has = !!hasData(doc);
+      rows.push(has ? { date: d, has, kin: intake(doc), out: burn(doc), bal: intake(doc) - burn(doc), pr: protein(doc), ev: !!doc.event } : { date: d, has });
+    }
+    rows.forEach((r, i) => { // rolling 7-day mean of recorded days
+      const win = rows.slice(Math.max(0, i - 6), i + 1).filter((x) => x.has);
+      r.avg7 = r.has && win.length ? win.reduce((a, x) => a + x.bal, 0) / win.length : null;
+    });
+    return rows;
+  }
+  function niceStep(span) { for (const st of [10, 20, 25, 50, 100, 250, 500, 1000, 2000]) if (span / st <= 5) return st; return 5000; }
+  // bar path with a rounded data end (radius 4) and a square base on the baseline
+  function barPath(x, w, y0, y1) {
+    const r = Math.min(4, w / 2, Math.abs(y1 - y0));
+    if (y1 <= y0) return `M${x},${y0}V${y1 + r}Q${x},${y1} ${x + r},${y1}H${x + w - r}Q${x + w},${y1} ${x + w},${y1 + r}V${y0}Z`;
+    return `M${x},${y0}V${y1 - r}Q${x},${y1} ${x + r},${y1}H${x + w - r}Q${x + w},${y1} ${x + w},${y1 - r}V${y0}Z`;
+  }
+  function drawDaily(svgId, rows, o) {
+    const W = 600, H = 230, L = 62, R = 10, T = 12, B = 30;
+    const vals = [];
+    rows.forEach((r) => { if (r.has) { vals.push(o.bar(r)); if (o.line) { const v = o.line(r); if (v != null) vals.push(v); } } });
+    if (o.ref != null) vals.push(o.ref);
+    if (!vals.length) { $(svgId).innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">Noch keine Einträge in diesem Zeitraum</text>`; return; }
+    let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+    const step = niceStep(hi - lo || 100);
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi * 1.05 / step) * step; if (hi === lo) hi = lo + step;
+    const n = rows.length, band = (W - L - R) / n;
+    const bw = Math.max(2, Math.min(28, band - 2));
+    const X = (i) => L + i * band + (band - bw) / 2, XC = (i) => L + i * band + band / 2;
+    const Y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
+    let g = "";
+    for (let v = lo; v <= hi + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${Y(v) + 5}" text-anchor="end">${fmt(v)}</text>`;
+    const every = Math.ceil(n / 7);
+    rows.forEach((r, i) => { if ((n - 1 - i) % every === 0) g += `<text x="${XC(i)}" y="${H - 6}" text-anchor="middle">${dm(r.date).slice(0, 6)}</text>`; });
+    let marks = "";
+    rows.forEach((r, i) => { if (r.has) marks += `<path d="${barPath(X(i), bw, Y(0), Y(o.bar(r)))}" fill="${o.barColor(r)}"/>`; });
+    if (lo < 0) marks += `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1"/>`;
+    if (o.ref != null) marks += `<line x1="${L}" x2="${W - R}" y1="${Y(o.ref)}" y2="${Y(o.ref)}" stroke="var(--chart-goal)" stroke-width="2" stroke-dasharray="6 4"/>`;
+    if (o.line) {
+      let seg = [], segs = [];
+      rows.forEach((r, i) => { const v = r.has ? o.line(r) : null; if (v == null) { if (seg.length) segs.push(seg); seg = []; } else seg.push([XC(i), Y(v)]); });
+      if (seg.length) segs.push(seg);
+      segs.forEach((sg) => {
+        if (sg.length > 1) marks += `<polyline fill="none" stroke="${o.lineColor}" stroke-width="2" stroke-linejoin="round" points="${sg.map((p) => p.join(",")).join(" ")}"/>`;
+        if (n <= 31) sg.forEach((p) => marks += `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="${o.lineColor}" stroke="var(--surface)" stroke-width="2"/>`);
+      });
+    }
+    let hits = "";
+    rows.forEach((r, i) => hits += `<rect class="hit${r.date === selDate ? " on" : ""}" data-date="${r.date}" x="${L + i * band}" y="${T}" width="${band}" height="${H - T - B}"/>`);
+    $(svgId).innerHTML = g + hits + marks;
+    $(svgId).querySelectorAll(".hit").forEach((h) => {
+      const pick = () => { selDate = h.dataset.date; renderDaily(); };
+      h.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") pick(); });
+      h.addEventListener("click", pick);
+    });
+  }
+  function renderDaily() {
+    const rows = dailyRows();
+    if (!rows.some((r) => r.date === selDate)) selDate = null;
+    drawDaily("chEnergy", rows, { bar: (r) => r.kin, barColor: () => "var(--s1)", line: (r) => r.out, lineColor: "var(--s2)", ref: S.kcalTarget });
+    drawDaily("chBal", rows, { bar: (r) => r.bal, barColor: (r) => r.bal > 0 ? "var(--bad)" : "var(--good)", line: (r) => r.avg7, lineColor: "var(--fg)" });
+    drawDaily("chProt", rows, { bar: (r) => r.pr, barColor: () => "var(--s1)", ref: S.proteinTarget });
+    const rec = rows.filter((r) => r.has);
+    const avg = (f) => rec.length ? rec.reduce((a, r) => a + f(r), 0) / rec.length : null;
+    const sel = selDate && rows.find((r) => r.date === selDate);
+    const lbl = sel ? `${WD[weekday(sel.date)]} ${dm(sel.date)}` : `Schnitt ${rec.length} Tage`;
+    if (sel && !sel.has) { ["readEnergy", "readBal", "readProt"].forEach((id) => $(id).innerHTML = `${lbl}: keine Einträge`); return; }
+    if (!rec.length) { ["readEnergy", "readBal", "readProt"].forEach((id) => $(id).textContent = ""); return; }
+    const v = sel ? { kin: sel.kin, out: sel.out, bal: sel.bal, pr: sel.pr } : { kin: avg((r) => r.kin), out: avg((r) => r.out), bal: avg((r) => r.bal), pr: avg((r) => r.pr) };
+    $("readEnergy").innerHTML = `${lbl}: Aufnahme <b>${fmt(r5(v.kin))}</b> · Verbrauch <b>${fmt(r5(v.out))}</b> kcal${sel && sel.ev ? " · Event-Tag" : ""}`;
+    $("readBal").innerHTML = `${lbl}: <b>${signed(r5(v.bal))}</b> kcal${sel && sel.avg7 != null ? ` · Schnitt 7 Tage <b>${signed(r5(sel.avg7))}</b>` : ` · entspricht <b>${signedKg(v.bal * 7 / S.kcalPerKg)}</b> pro Woche`}`;
+    $("readProt").innerHTML = `${lbl}: <b>${fmt(v.pr)} g</b> von ${fmt(S.proteinTarget)} g`;
+  }
+
+  // ---- plan ----
+  function renderPlan() {
+    const wn = weekNo(curPlan);
+    $("planName").textContent = `Plan ${wn >= 1 ? "Woche " + wn : ""} · ${dm(curPlan)}–${dm(addDays(curPlan, 6))}`;
+    const p = plans[curPlan], el = $("planBody");
+    if (!p) { el.innerHTML = `<div class="panel muted" style="margin-top:14px">Für diese Woche gibt es noch keinen Plan.</div>`; return; }
+    let h = p.note ? `<p class="small muted" style="margin-top:12px">${esc(p.note)}</p>` : "";
+    (p.days || []).forEach((d) => {
+      const tk = (d.meals || []).reduce((a, m) => a + (m.kcal || 0), 0), tp = (d.meals || []).reduce((a, m) => a + (m.protein || 0), 0);
+      h += `<div class="planday panel${d.date === todayStr() ? " today" : ""}"><h3><span>${WD[weekday(d.date)]} ${dm(d.date)}${d.type ? ` <span class="pill">${esc(d.type)}</span>` : ""}</span><span class="num">${fmt(tk)} kcal · ${fmt(tp)} g</span></h3>`;
+      if (d.info) h += `<div class="small muted">${esc(d.info)}</div>`;
+      (d.meals || []).forEach((m) => h += `<div class="pmeal"><div><div class="slot">${esc(m.slot || "")}</div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal · ${fmt(m.protein)} g</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}</div>`);
+      h += `</div>`;
+    });
+    if ((p.swaps || []).length) {
+      h += `<h3>Tauschgerichte</h3><div class="panel">`;
+      p.swaps.forEach((m) => h += `<div class="pmeal"><div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal · ${fmt(m.protein)} g</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}</div>`);
+      h += `</div>`;
+    }
+    el.innerHTML = h;
+  }
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  $("prevPlan").onclick = () => { curPlan = addDays(curPlan, -7); renderPlan(); };
+  $("nextPlan").onclick = () => { curPlan = addDays(curPlan, 7); renderPlan(); };
+
+  // ---- profile ----
+  const PF = { pName: "name", pSex: "sex", pAge: "age", pHeight: "heightCm", pStartW: "startWeight", pStartD: "startWeightDate", pGoalW: "goalWeight", pGoalD: "goalDate", pKcal: "kcalTarget", pProt: "proteinTarget", pIncline: "inclinePct", pSpeed: "speedKmh", pHints: "estimateHints" };
+  const NUMS = ["age", "heightCm", "startWeight", "goalWeight", "kcalTarget", "proteinTarget", "inclinePct", "speedKmh"];
+  function readForm() {
+    const p = {};
+    for (const [id, k] of Object.entries(PF)) { const v = $(id).value.trim(); p[k] = NUMS.includes(k) ? (v === "" ? null : Number(v)) : v; }
+    p.handrail = $("pRail").checked;
+    return p;
+  }
+  function calcPreview() {
+    const p = readForm();
+    if (!(p.startWeight && p.heightCm && p.age && p.speedKmh != null)) { $("pCalc").textContent = ""; return; }
+    const f = deriveFactors(p);
+    const day = (n) => Math.round((f.baseKcal + n * f.inclineFactor) / 10) * 10;
+    let txt = `Grundbedarf ca. ${fmt(f.baseKcal)} kcal am Tag. Mit 10.000 Schritten bei ${fmt(p.inclinePct, p.inclinePct % 1 ? 1 : 0)} % ca. ${fmt(day(10000))} kcal.`;
+    if (p.kcalTarget) txt += ` Bei ${fmt(p.kcalTarget)} kcal Aufnahme und 10.000 Schritten wären das etwa ${fmt((day(10000) - p.kcalTarget) * 7 / 7000, 1)} kg pro Woche.`;
+    $("pCalc").textContent = txt;
+  }
+  Object.keys(PF).concat(["pRail"]).forEach((id) => $(id).addEventListener("input", calcPreview));
+  function fillForm() {
+    for (const [id, k] of Object.entries(PF)) if (document.activeElement !== $(id)) $(id).value = S[k] ?? (id === "pIncline" ? 9 : id === "pSpeed" ? 3.5 : id === "pStartD" ? todayStr() : "");
+    $("pRail").checked = !!S.handrail;
+    $("profilTitle").textContent = hasProfile ? "Dein Profil" : "Willkommen! Lege zuerst dein Profil an";
+    calcPreview();
+  }
+  $("profileForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!base) { setStatus("pStatus", "Speicher nicht erreichbar.", true); return; }
+    const p = readForm();
+    if (p.goalWeight >= p.startWeight) { setStatus("pStatus", "Das Zielgewicht muss unter dem Startgewicht liegen.", true); return; }
+    if (p.goalDate <= p.startWeightDate) { setStatus("pStatus", "Das Zieldatum muss nach dem Startdatum liegen.", true); return; }
+    const startChanged = !hasProfile || p.startWeight !== S.startWeight || p.startWeightDate !== S.startWeightDate || p.goalWeight !== S.goalWeight || p.goalDate !== S.goalDate;
+    const next = { ...S, ...p, ...deriveFactors(p), startDate: mondayOf(p.startWeightDate) };
+    if (startChanged) next.milestones = null; // custom milestones only kept while start and goal stay the same
+    delete next.updatedAt;
+    next.updatedAt = new Date().toISOString();
+    $("pSave").disabled = true;
+    try {
+      await base.set(next);
+      if (!days[p.startWeightDate] || !days[p.startWeightDate].weight) saveDay(p.startWeightDate, (d) => { d.weight = p.startWeight; });
+      setStatus("pStatus", "Gespeichert.");
+      if (!hasProfile) location.hash = "#heute";
+    } catch (err) {
+      if (err && err.code === "invalid_argument") $("roNotice").hidden = false;
+      setStatus("pStatus", "Speichern fehlgeschlagen (" + (err && err.code || "Fehler") + ").", true);
+    } finally { $("pSave").disabled = false; }
+  });
+
+  function renderAll() { renderTop(); if (hasProfile) { renderDay(); renderWeek(); renderHistory(); renderDaily(); renderPlan(); } }
+
+  // ---- boot ----
+  $("pStartD").value = todayStr();
+  route(); renderAll();
+  (async () => {
+    db = await claude.use("db");
+    const user = await claude.use("user");
+    const id = user ? await user.id() : null;
+    if (!db || !id) { $("dbNotice").hidden = false; return; }
+    base = db.doc("data/users/" + id + "/profile");
+    base.onSnapshot((s) => {
+      profileKnown = true;
+      hasProfile = !!(s.exists && s.data().startWeight);
+      S = { ...DEFAULTS, ...(s.exists ? s.data() : {}) };
+      fillForm(); renderAll(); route();
+    }, () => { $("dbNotice").hidden = false; });
+    base.collection("days").onSnapshot((snap) => {
+      snap.docChanges().forEach((ch) => { if (ch.type === "removed") delete days[ch.doc.id]; else days[ch.doc.id] = JSON.parse(JSON.stringify(ch.doc.data())); });
+      renderAll();
+    }, () => { $("dbNotice").hidden = false; });
+    base.collection("plans").onSnapshot((snap) => {
+      snap.docChanges().forEach((ch) => { if (ch.type === "removed") delete plans[ch.doc.id]; else plans[ch.doc.id] = ch.doc.data(); });
+      renderAll();
+    }, () => {});
+  })();
+  (async () => {
+    sample = await claude.use("sample");
+    if (!sample) return;
+    $("estimateBtn").hidden = false;
+    try { const lim = await sample.limits(); if (lim && lim.images) { sampleImages = true; $("photoLabel").hidden = false; } } catch (e) {}
+  })();
+  // refresh "today" at midnight-ish when the app stays open
+  let lastToday = todayStr();
+  setInterval(() => { const t = todayStr(); if (t !== lastToday) { if (curDay === lastToday) curDay = t; lastToday = t; renderAll(); } }, 60000);
+})();
+</script>
