@@ -31,14 +31,21 @@ Beim ersten „kcal schätzen lassen“ fragt die App einmal um Erlaubnis. Die S
 
 ## Android-App (APK)
 
-Die APK ist ein Starter: Sie öffnet die Weightplan-App auf claude.ai in Chrome ohne Adressleiste, mit eigenem Symbol und Namen. Daten, Anmeldung und kcal-Schätzung kommen aus deinem Claude-Konto in Chrome.
+Die APK ist eine eigenständige App: `kurs.html` ist eingebaut und läuft ohne claude.ai. Daten liegen auf dem Handy und können über ein privates GitHub-Repo synchronisiert werden. Fotos lassen sich direkt mit der Kamera aufnehmen.
 
 1. Auf dem Handy [Releases → latest](https://github.com/chrscho388-eng/weightduelljourney/releases/tag/latest) öffnen und `Weightplan.apk` herunterladen.
-2. Die Datei antippen. Android fragt, ob Chrome Apps installieren darf: „Einstellungen“ → „Aus dieser Quelle zulassen“ einschalten → zurück → „Installieren“.
-3. Falls Google Play Protect warnt („Unbekannte App“): „Trotzdem installieren“. Die APK ist nicht im Play Store, der Quellcode liegt in `android/`.
-4. Weightplan über das neue Symbol starten. Beim ersten Mal in Chrome bei claude.ai anmelden, falls noch nicht geschehen.
+2. Die Datei antippen und die Installation aus dieser Quelle erlauben („Einstellungen“ → „Aus dieser Quelle zulassen“ → zurück → „Installieren“).
+3. Warnt Google Play Protect („Unbekannte App“): „Trotzdem installieren“. Der Quellcode liegt in `android/`.
 
-Die APK wird bei jeder Änderung in `android/` automatisch über GitHub Actions gebaut. Die App-Adresse steht in `android/app/src/main/java/de/weightplan/app/MainActivity.java`. Wer seine eigene Kopie veröffentlicht hat, trägt dort den eigenen Link ein.
+### Sync über GitHub (optional)
+
+1. Ein **privates** Repo anlegen, z. B. `weightplan-data`.
+2. Einen [Fine-grained Token](https://github.com/settings/personal-access-tokens/new) nur für dieses Repo erstellen, Berechtigung **Contents: Read and write**.
+3. In der App unter Profil → „Sync über GitHub“ Repo (`besitzer/name`) und Token eintragen und „Verbinden und synchronisieren“ tippen.
+
+Die App schreibt `weightplan.json` in das Repo. Pro Eintrag gewinnt die neueste Änderung (`updatedAt`). Wer Claude Zugriff auf das Repo gibt, kann dort Wochenauswertungen und Pläne pflegen, die die App beim nächsten Sync übernimmt. Für die kcal-Schätzung per Text oder Foto braucht die App einen eigenen Anthropic-API-Schlüssel (Profil → Schätzung).
+
+Die APK wird bei jeder Änderung an `kurs.html` oder `android/` automatisch über GitHub Actions gebaut.
 
 ## Wie die App läuft
 
