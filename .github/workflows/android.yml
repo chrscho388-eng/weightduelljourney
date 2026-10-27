@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "android/**"
+      - "android-web/**"
       - "kurs.html"
       - ".github/workflows/android.yml"
   workflow_dispatch:
@@ -39,22 +40,43 @@ jobs:
             printf '</body></html>'
           } > android/app/src/main/assets/index.html
 
-      - name: APK bauen
-        run: gradle -p android assembleRelease --no-daemon
+      - name: Signaturschlüssel bereitstellen
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+        run: |
+          if [ -n "$SIGNING_KEYSTORE" ]; then
+            echo "$SIGNING_KEYSTORE" | base64 -d > "$RUNNER_TEMP/weightplan.jks"
+            echo "SIGNING_KEYSTORE_FILE=$RUNNER_TEMP/weightplan.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Kein fester Signaturschlüssel hinterlegt, Updates erfordern Neuinstallation."
+            mkdir -p ~/.android
+            [ -f ~/.android/debug.keystore ] || keytool -genkeypair -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -validity 10000 -dname "CN=Android Debug"
+          fi
 
-      - name: APK umbenennen
-        run: cp android/app/build/outputs/apk/release/app-release.apk Weightplan.apk
+      - name: APKs bauen
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          gradle -p android assembleRelease --no-daemon
+          gradle -p android-web assembleRelease --no-daemon
+
+      - name: APKs umbenennen
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk Weightplan.apk
+          cp android-web/app/build/outputs/apk/release/app-release.apk Weightplan-Web.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: Weightplan-apk
-          path: Weightplan.apk
+          path: |
+            Weightplan.apk
+            Weightplan-Web.apk
 
       - name: Als Release "latest" veröffentlichen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest Weightplan.apk \
-            --title "Weightplan (aktuelle APK)" \
-            --notes "Automatisch gebaut aus ${GITHUB_SHA::7}. Auf dem Handy herunterladen und installieren, Anleitung in der README."
+          gh release create latest Weightplan.apk Weightplan-Web.apk \
+            --title "Weightplan (aktuelle APKs)" \
+            --notes "Automatisch gebaut aus ${GITHUB_SHA::7}. Weightplan.apk ist die eigenständige App, Weightplan-Web.apk öffnet die claude.ai-Version. Anleitung in der README."

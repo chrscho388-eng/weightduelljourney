@@ -53,6 +53,11 @@ header.top {
 }
 .brand { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: .01em; display: flex; align-items: baseline; gap: 8px; }
 .grade { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .08em; border: 1.5px solid var(--fg); border-radius: 3px; padding: 0 5px; transform: translateY(-2px); }
+.topright { display: flex; align-items: center; gap: 10px; }
+.syncbtn { font: 600 14px var(--font-body); color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+.syncbtn:disabled { opacity: .6; cursor: default; }
+.syncmsg { font-size: 13px; color: var(--muted); padding: 8px 0 0; }
+.syncmsg.err { color: var(--bad); }
 .top-meta { font-size: 13px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 24px 0 10px; text-wrap: balance; }
 h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin: 18px 0 8px; }
@@ -143,6 +148,12 @@ tr.sum td { font-weight: 600; background: var(--accent-soft); }
 .pmeal:last-child { border-bottom: 0; }
 .pmeal .slot { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
 .pmeal .detail { grid-column: 1 / -1; font-size: 14px; color: var(--muted); }
+.pmeal .recipe { grid-column: 1 / -1; font-size: 14px; }
+.pmeal .recipe summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 4px 0; }
+.pmeal .recipe ul, .pmeal .recipe ol { margin: 6px 0; padding-left: 20px; }
+.pmeal .recipe li { margin: 2px 0; }
+tr.weekrow { cursor: pointer; }
+tr.weekrow:hover td { background: var(--accent-soft); }
 .pmeal .mv { font-family: var(--font-data); font-size: 14px; white-space: pre-line; text-align: right; line-height: 1.35; }
 .daylist { padding: 0; overflow: hidden; }
 .dayrow { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; width: 100%; padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
@@ -186,8 +197,9 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 <div class="wrap">
   <header class="top">
     <div class="brand"><span id="brandName">Weightplan</span> <span class="grade" id="gradeBadge">9 %</span></div>
-    <div class="top-meta" id="topMeta">lädt …</div>
+    <div class="topright"><div class="top-meta" id="topMeta">lädt …</div><button class="syncbtn" type="button" id="syncHdr" hidden>⟳ Sync</button></div>
   </header>
+  <div class="syncmsg" id="syncHdrMsg" hidden></div>
 
   <div id="dbNotice" class="notice" hidden>Der Speicher ist in dieser Ansicht nicht erreichbar. Öffne die App angemeldet in Claude, dann erscheinen deine Einträge.</div>
   <div id="roNotice" class="notice" hidden>Du kannst hier gerade nichts speichern. Bitte die Person, die dir die App geteilt hat, dich als „Mitwirkende“ einzuladen. Deine Einträge bleiben trotzdem privat.</div>
@@ -364,7 +376,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <p class="small" style="margin:0 0 10px">Deine Daten liegen nur auf diesem Gerät. Sichere sie ab und zu als Datei, besonders bevor du Browserdaten löschst oder das Gerät wechselst.</p>
         <div class="btnrow" style="margin-top:0"><button class="btn ghost" type="button" id="exportBtn">Daten sichern</button><label class="btn ghost">Daten laden<input type="file" id="importInput" accept="application/json,.json" hidden></label></div>
         <div class="status" id="ioStatus"></div>
-        <div class="field" style="margin-top:14px"><label class="label" for="apiKey">Anthropic-API-Schlüssel (optional, für kcal-Schätzung)</label><input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…"></div>
+        <div class="field" style="margin-top:14px"><label class="label" for="apiKey">Anthropic-API-Schlüssel (optional, für Schätzung, Plan und Rezepte)</label><input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…"></div>
         <p class="small muted" style="margin:6px 0 0">Ohne Schlüssel trägst du kcal und Eiweiß selbst ein. Mit Schlüssel schätzt Claude aus Text oder Foto. Der Schlüssel bleibt nur in diesem Browser, die Kosten laufen über dein Anthropic-Konto (ca. 1 Cent pro Schätzung). Einen Schlüssel bekommst du unter console.anthropic.com.</p>
         <div class="btnrow"><button class="btn ghost" type="button" id="keySave">Schlüssel speichern</button><button class="btn ghost" type="button" id="keyClear">Schlüssel entfernen</button></div>
         <div class="status" id="keyStatus"></div>
@@ -758,9 +770,13 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
     for (let m = lastMon; m >= first; m = addDays(m, -7)) {
       const st = weekStats(m); if (!st.n && !st.wStart) continue; any = true;
       const wn = weekNo(m), act = (st.wStart && st.wEnd) ? st.wEnd - st.wStart : null;
-      h += `<tr><td>${wn >= 1 ? "W" + wn : "W0"} · ${dm(m)}</td><td>${signed(r5(st.sum))}</td><td>${signedKg(st.expected)}</td><td>${act == null ? "offen" : signedKg(act)}</td><td>${st.wStart ? fmt(st.wStart, 1) : "–"}</td></tr>`;
+      h += `<tr class="weekrow" data-week="${m}" tabindex="0" title="Woche öffnen"><td>${wn >= 1 ? "W" + wn : "W0"} · ${dm(m)} ›</td><td>${signed(r5(st.sum))}</td><td>${signedKg(st.expected)}</td><td>${act == null ? "offen" : signedKg(act)}</td><td>${st.wStart ? fmt(st.wStart, 1) : "–"}</td></tr>`;
     }
     $("allWeeks").innerHTML = any ? h + "</tbody>" : `<tbody><tr><td class="muted">Noch keine Wochen erfasst.</td></tr></tbody>`;
+    $("allWeeks").querySelectorAll("tr[data-week]").forEach((r) => {
+      const open = () => { curWeek = r.dataset.week; location.hash = "#woche"; renderWeek(); };
+      r.onclick = open; r.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
+    });
 
     // goals table
     const weights = Object.values(days).filter((d) => d.weight).sort((a, b) => a.date < b.date ? -1 : 1);
@@ -991,19 +1007,69 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     if (!p) { el.innerHTML = `<div class="panel muted" style="margin-top:14px">Für diese Woche gibt es noch keinen Plan.${sample ? " Beschreib oben, was du brauchst, dann erstellt Claude einen." : ""}</div>`; return; }
     let h = isProposal ? `<p style="margin-top:12px"><span class="pill warn">Vorschlag</span></p>` : "";
     h += p.note ? `<p class="small muted" style="margin-top:12px">${esc(p.note)}</p>` : "";
-    (p.days || []).forEach((d) => {
+    (p.days || []).forEach((d, di) => {
       const tk = (d.meals || []).reduce((a, m) => a + (m.kcal || 0), 0), tp = (d.meals || []).reduce((a, m) => a + (m.protein || 0), 0);
       h += `<div class="planday panel${d.date === todayStr() ? " today" : ""}"><h3><span>${WD[weekday(d.date)]} ${dm(d.date)}${d.type ? ` <span class="pill">${esc(d.type)}</span>` : ""}</span><span class="num">${fmt(tk)} kcal · ${fmt(tp)} g Eiweiß</span></h3>`;
       if (d.info) h += `<div class="small muted">${esc(d.info)}</div>`;
-      (d.meals || []).forEach((m) => h += `<div class="pmeal"><div><div class="slot">${esc(m.slot || "")}</div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}</div>`);
+      (d.meals || []).forEach((m, mi) => h += `<div class="pmeal"><div><div class="slot">${esc(m.slot || "")}</div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}${recipeHtml(m, isProposal ? null : "d" + di + ":" + mi)}</div>`);
       h += `</div>`;
     });
     if ((p.swaps || []).length) {
       h += `<h3>Tauschgerichte</h3><p class="small muted" style="margin:-4px 0 8px">Alternativen mit ähnlichen Werten. Du kannst sie gegen jedes Abendessen der Woche tauschen.</p><div class="panel">`;
-      p.swaps.forEach((m) => h += `<div class="pmeal"><div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}</div>`);
+      p.swaps.forEach((m, mi) => h += `<div class="pmeal"><div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}${recipeHtml(m, isProposal ? null : "s:" + mi)}</div>`);
       h += `</div>`;
     }
     el.innerHTML = h;
+    el.querySelectorAll("button[data-recipe]").forEach((b) => b.onclick = () => makeRecipe(b));
+  }
+  // ---- recipes: generated on demand, stored on the meal inside the plan document ----
+  const recipeAllowed = () => !!sample;
+  function recipeHtml(m, ref) {
+    const r = m.recipe;
+    if (r && (r.ingredients || []).length) {
+      return `<details class="recipe"><summary>Rezept${r.minutes ? ` · ${fmt(r.minutes)} Min.` : ""}</summary>`
+        + `<div class="small muted">${esc(r.servings || "1 Portion")}</div>`
+        + `<ul>${r.ingredients.map((i) => `<li>${esc(i.amount ? i.amount + " " : "")}${esc(i.item)}</li>`).join("")}</ul>`
+        + `<ol>${(r.steps || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ol>`
+        + (r.tip ? `<div class="small muted">${esc(r.tip)}</div>` : "") + `</details>`;
+    }
+    if (!ref || !recipeAllowed()) return "";
+    return `<div class="recipe"><button class="btn ghost" type="button" data-recipe="${ref}" style="padding:6px 12px;font-size:14px">Rezept erstellen</button><span class="status small" style="margin-left:8px"></span></div>`;
+  }
+  function recipePrompt(m) {
+    return `Schreibe ein einfaches, schnelles Rezept auf Deutsch für dieses Gericht aus einem Abnehm-Wochenplan.
+Gericht: ${m.name}
+${m.detail ? "Mengen und Zutaten laut Plan: " + m.detail + "\n" : ""}Zielwerte für die Portion: ${m.kcal || 0} kcal, ${m.protein || 0} g Eiweiß.
+- Die Zutatenmengen sind für genau diese eine Portion und treffen die Zielwerte. Halte dich an die Mengen aus dem Plan.
+- Wenige Schritte, alltagstauglich, ohne Spezialgeräte.
+${S.estimateHints ? "Hinweise der Person (No-Gos und Vorlieben beachten):\n" + S.estimateHints.slice(0, 600) + "\n" : ""}
+Antworte nur mit JSON in genau dieser Form:
+{"servings":"1 Portion (für 2 Personen Mengen verdoppeln)","minutes":0,"ingredients":[{"amount":"150 g","item":"Hähnchenbrust"}],"steps":["…"],"tip":"ein kurzer Tipp oder leer"}`;
+  }
+  async function makeRecipe(b) {
+    if (!recipeAllowed()) return;
+    const ref = b.dataset.recipe, week = curPlan, plan = plans[week]; if (!plan) return;
+    const st = b.nextElementSibling;
+    const [kind, idx] = ref[0] === "s" ? ["s", +ref.slice(2)] : ["d", ref.slice(1).split(":").map(Number)];
+    const meal = kind === "s" ? (plan.swaps || [])[idx] : ((plan.days || [])[idx[0]] || {}).meals?.[idx[1]];
+    if (!meal) return;
+    b.disabled = true; st.textContent = "Claude schreibt das Rezept …"; st.classList.remove("err");
+    try {
+      const r = await sample.json(recipePrompt(meal), { modelTier: "default" });
+      if (!r || !Array.isArray(r.ingredients) || !r.ingredients.length) throw new Error("empty");
+      const recipe = {
+        servings: String(r.servings || "1 Portion").slice(0, 120), minutes: Math.max(0, Math.round(+r.minutes || 0)),
+        ingredients: r.ingredients.slice(0, 25).map((i) => ({ amount: String(i.amount || "").slice(0, 40), item: String(i.item || "").slice(0, 120) })).filter((i) => i.item),
+        steps: (r.steps || []).slice(0, 15).map((x) => String(x).slice(0, 400)), tip: String(r.tip || "").slice(0, 300)
+      };
+      const next = JSON.parse(JSON.stringify(plan));
+      const target = kind === "s" ? next.swaps[idx] : next.days[idx[0]].meals[idx[1]];
+      target.recipe = recipe; next.updatedAt = new Date().toISOString();
+      await base.collection("plans").doc(week).set(next); plans[week] = next;
+      renderPlan();
+    } catch (e) {
+      b.disabled = false; st.textContent = "Das hat nicht geklappt. Versuch es bitte noch einmal."; st.classList.add("err");
+    }
   }
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   $("prevPlan").onclick = () => { curPlan = addDays(curPlan, -7); renderPlan(); };
@@ -1057,7 +1123,24 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     } finally { $("pSave").disabled = false; }
   });
 
-  function renderAll() { renderTop(); if (hasProfile) { renderDay(); renderWeek(); renderHistory(); renderDaily(); renderPlan(); } }
+  // ---- header sync button: real app syncs with GitHub directly; the claude.ai version asks Claude to run the GitHub sync ----
+  let hdrTimer = null;
+  function hdrMsg(t, err) { const el = $("syncHdrMsg"); el.textContent = t; el.hidden = !t; el.classList.toggle("err", !!err); clearTimeout(hdrTimer); if (t && !err) hdrTimer = setTimeout(() => { el.hidden = true; }, 15000); }
+  let mcpApi = null;
+  function updateSyncBtn() {
+    $("syncHdr").hidden = STANDALONE ? !syncCfg() : !(mcpApi && S.syncTriggerId);
+  }
+  $("syncHdr").onclick = async () => {
+    if (STANDALONE) { syncNow(true); return; }
+    const b = $("syncHdr"); b.disabled = true; hdrMsg("Starte den Abgleich mit GitHub …");
+    try {
+      await mcpApi.callTool("Claude Code Remote", "fire_trigger", { trigger_id: S.syncTriggerId, text: "Chris hat den Abgleich manuell über den Sync-Knopf gestartet." }, { cache: false });
+      hdrMsg("Abgleich gestartet. In etwa 2 bis 3 Minuten erscheinen hier die Einträge aus der Handy-App, und deine Einträge von hier landen dort.");
+    } catch (e) {
+      hdrMsg(e && e.code === "not_granted" ? "Der Sync braucht deine Freigabe für Claude Code Remote. Tippe erneut und erlaube den Zugriff." : "Der Abgleich ließ sich nicht starten. Er läuft trotzdem stündlich automatisch.", true);
+    } finally { setTimeout(() => { b.disabled = false; }, 20000); }
+  };
+  function renderAll() { updateSyncBtn(); renderTop(); if (hasProfile) { renderDay(); renderWeek(); renderHistory(); renderDaily(); renderPlan(); } }
 
   // ---- standalone mode (outside claude.ai, e.g. GitHub Pages): browser storage + own API key ----
   const STANDALONE = !(window.claude && typeof window.claude.use === "function");
@@ -1165,10 +1248,11 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
       ...(body ? { body: JSON.stringify(body) } : {})
     });
   }
-  async function syncNow() {
+  async function syncNow(manual) {
     const cfg = syncCfg(); if (!cfg) return;
     if (syncing) { syncAgain = true; return; }
-    syncing = true; setStatus("syncStatus", "Synchronisiere …");
+    const say = (t, err) => { setStatus("syncStatus", t, err); if (manual === true) hdrMsg(t, err); };
+    syncing = true; say("Synchronisiere …");
     try {
       for (let attempt = 0; attempt < 2; attempt++) {
         let sha = null, remote = {};
@@ -1203,11 +1287,11 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
           if (!w.ok) throw "Hochladen fehlgeschlagen (" + w.status + ").";
         }
         lsSet(LS + "syncLast", new Date().toISOString());
-        setStatus("syncStatus", "Synchronisiert um " + new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + ".");
+        say("Synchronisiert um " + new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + ".");
         break;
       }
     } catch (e) {
-      setStatus("syncStatus", typeof e === "string" ? e : "Keine Verbindung zu GitHub. Deine Einträge sind lokal gespeichert und werden später übertragen.", true);
+      say(typeof e === "string" ? e : "Keine Verbindung zu GitHub. Deine Einträge sind lokal gespeichert und werden später übertragen.", true);
     } finally {
       syncing = false;
       if (syncAgain) { syncAgain = false; setTimeout(syncNow, 500); }
@@ -1223,10 +1307,10 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
       if (!tok && !lsGet(LS + "syncToken")) { setStatus("syncStatus", "Bitte den Zugangsschlüssel eintragen.", true); return; }
       lsSet(LS + "syncRepo", repo); if (tok) lsSet(LS + "syncToken", tok);
       $("syncToken").value = ""; $("syncToken").placeholder = "gespeichert";
-      syncNow();
+      updateSyncBtn(); syncNow(true);
     };
-    $("syncNowBtn").onclick = () => syncNow();
-    $("syncOff").onclick = () => { try { localStorage.removeItem(LS + "syncToken"); localStorage.removeItem(LS + "syncRepo"); } catch (e) {} $("syncRepo").value = ""; $("syncToken").placeholder = "github_pat_…"; setStatus("syncStatus", "Sync getrennt. Deine Daten bleiben auf diesem Gerät."); };
+    $("syncNowBtn").onclick = () => syncNow(true);
+    $("syncOff").onclick = () => { try { localStorage.removeItem(LS + "syncToken"); localStorage.removeItem(LS + "syncRepo"); } catch (e) {} $("syncRepo").value = ""; $("syncToken").placeholder = "github_pat_…"; setStatus("syncStatus", "Sync getrennt. Deine Daten bleiben auf diesem Gerät."); updateSyncBtn(); };
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncNow(); });
     setInterval(syncNow, 5 * 60 * 1000);
     setTimeout(syncNow, 800);
@@ -1237,7 +1321,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
       const k = $("apiKey").value.trim();
       if (!k.startsWith("sk-")) { setStatus("keyStatus", "Das sieht nicht nach einem API-Schlüssel aus (beginnt mit sk-).", true); return; }
       lsSet(LS + "apiKey", k); $("apiKey").value = ""; $("apiKey").placeholder = "gespeichert";
-      setStatus("keyStatus", "Gespeichert. Die Schätzung ist jetzt im Tab Heute verfügbar."); initSample();
+      setStatus("keyStatus", "Gespeichert. Schätzung, Plan anpassen und Rezepte sind jetzt verfügbar."); initSample();
     };
     $("keyClear").onclick = () => {
       try { localStorage.removeItem(LS + "apiKey"); } catch (e) {}
@@ -1300,6 +1384,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     try { const lim = await sample.limits(); if (lim && lim.images) { sampleImages = true; $("photoLabel").hidden = false; } } catch (e) {}
   }
   initSample();
+  if (!STANDALONE) use("mcp").then((m) => { mcpApi = m; updateSyncBtn(); }).catch(() => {});
   // refresh "today" at midnight-ish when the app stays open
   let lastToday = todayStr();
   setInterval(() => { const t = todayStr(); if (t !== lastToday) { if (curDay === lastToday) curDay = t; lastToday = t; renderAll(); } }, 60000);
