@@ -1,4 +1,4 @@
-<title>Kurs 79,5</title>
+<title>Weightplan</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -185,7 +185,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 
 <div class="wrap">
   <header class="top">
-    <div class="brand"><span id="brandName">Kurs</span> <span class="grade" id="gradeBadge">9 %</span></div>
+    <div class="brand"><span id="brandName">Weightplan</span> <span class="grade" id="gradeBadge">9 %</span></div>
     <div class="top-meta" id="topMeta">lädt …</div>
   </header>
 
@@ -478,7 +478,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 
   // ---- render: header ----
   function renderTop() {
-    $("brandName").textContent = S.goalWeight ? "Kurs " + fmt(S.goalWeight, 1) : "Kurs";
+    $("brandName").textContent = "Weightplan";
     $("gradeBadge").textContent = pctTxt();
     $("inclineLabel").textContent = "Schritte bei " + pctTxt();
     if (!hasProfile) { $("topMeta").textContent = profileKnown ? "Profil anlegen" : "lädt …"; return; }
@@ -1154,7 +1154,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
       const out = {};
       try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(LS + "data/")) out[k.slice(LS.length)] = JSON.parse(localStorage.getItem(k)); } } catch (e) {}
       const blob = new Blob([JSON.stringify({ app: "kurs", exportedAt: new Date().toISOString(), docs: out }, null, 1)], { type: "application/json" });
-      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "kurs-sicherung-" + todayStr() + ".json";
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "weightplan-sicherung-" + todayStr() + ".json";
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       setStatus("ioStatus", Object.keys(out).length + " Einträge gesichert.");
     };
@@ -1166,7 +1166,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
         Object.entries(j.docs).forEach(([k, v]) => { if (k.startsWith("data/")) lsSet(LS + k, JSON.stringify(v)); });
         setStatus("ioStatus", Object.keys(j.docs).length + " Einträge geladen.");
         db && db.reloadAll && db.reloadAll();
-      } catch (err) { setStatus("ioStatus", "Die Datei ist keine Kurs-Sicherung.", true); }
+      } catch (err) { setStatus("ioStatus", "Die Datei ist keine Weightplan-Sicherung.", true); }
     };
   }
 

@@ -1,4 +1,4 @@
-# Weight Duell Journey · App „Kurs“
+# Weightplan
 
 Eine schlanke Web-App zum Abnehmen: Essen und Schritte eintragen, kcal schätzen lassen, Tages- und Wochenbilanz, Gewichtsverlauf, Tagesgraphen und ein Mahlzeitenplan pro Woche.
 
@@ -19,7 +19,7 @@ Du brauchst ein Claude-Konto mit Zugang zu **Claude Code im Web** (claude.ai/cod
 1. Öffne [claude.ai/code](https://claude.ai/code) und starte eine neue Sitzung. Ein Repo musst du nicht verbinden.
 2. Schick Claude diese Nachricht:
 
-   > Lade https://raw.githubusercontent.com/chrscho388-eng/weightduelljourney/main/kurs.html und https://raw.githubusercontent.com/chrscho388-eng/weightduelljourney/main/artifact-capabilities.json herunter. Lies kurs.html vollständig und veröffentliche sie unverändert als Artifact mit dem Icon "scale" und genau den Capabilities aus artifact-capabilities.json. Gib mir danach den Link.
+   > Lade https://raw.githubusercontent.com/chrscho388-eng/weightduelljourney/main/kurs.html und https://raw.githubusercontent.com/chrscho388-eng/weightduelljourney/main/artifact-capabilities.json herunter. Lies kurs.html vollständig und veröffentliche sie unverändert als Artifact mit dem Titel "Weightplan" und dem Icon "scale" und genau den Capabilities aus artifact-capabilities.json. Gib mir danach den Link.
 
 3. Öffne den Link, den Claude dir gibt, und leg im Tab **Profil** deine Daten an. Den Link kannst du dir im Browser als Lesezeichen oder auf den Home-Bildschirm legen.
 
