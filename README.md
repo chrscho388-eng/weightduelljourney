@@ -9,8 +9,8 @@ Eine schlanke Web-App zum Abnehmen: Essen und Schritte eintragen, kcal schätzen
 - **Heute:** Aufnahme und Eiweiß gegen das Tagesziel, Verbrauch, Bilanz und Wochenschnitt. Mahlzeiten frei beschreiben oder fotografieren und von Claude schätzen lassen, oder Werte selbst eintragen. Schritte flach und mit Steigung, Gewicht, Tagesart, Event-Tag.
 - **Woche:** Tagesbilanz, Wochensumme, erwartete gegen tatsächliche Gewichtsveränderung (Dienstag zu Dienstag).
 - **Verlauf:** Gewichtskurve mit Zwischenzielen und Erwartung laut Bilanz, Tagesgraphen für Aufnahme und Verbrauch, Energiebilanz und Eiweiß.
-- **Plan:** Mahlzeiten der Woche mit Mengen, kcal und Eiweiß.
-- **Profil:** persönliche Angaben und Ziele, daraus berechnet die App den Verbrauch.
+- **Plan:** Mahlzeiten der Woche mit Mengen, kcal und Eiweiß. Über ein Textfeld passt Claude den Plan an („Heute kein Frühstück, abends auswärts“) oder erstellt einen neuen; der Vorschlag wird erst nach „Übernehmen“ gespeichert und lässt sich rückgängig machen.
+- **Profil:** persönliche Angaben und Ziele, daraus berechnet die App den Verbrauch. Unter „Hinweise für Schätzung und Plan“ stehen Vorlieben und No-Gos, die Claude beim Schätzen und Planen beachtet.
 
 ## In dein eigenes Claude holen
 

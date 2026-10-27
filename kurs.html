@@ -295,6 +295,17 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="dname" id="planName">–</div>
       <button class="iconbtn" id="nextPlan" aria-label="Nächste Woche">›</button>
     </div>
+    <div id="planAsk" class="panel" style="margin-top:14px" hidden>
+      <div class="field"><label class="label" for="planPrompt">Plan anpassen</label>
+        <textarea id="planPrompt" placeholder="z. B. Heute kein Frühstück und ich esse abends auswärts"></textarea></div>
+      <div class="btnrow"><button class="btn" id="planAdjustBtn">Plan anpassen lassen</button><button class="btn ghost" id="planUndo" hidden>Letzte Änderung rückgängig</button></div>
+      <div class="status" id="planStatus"></div>
+      <div id="planProposal" class="preview" hidden>
+        <p class="small" id="planSummary" style="margin:0"></p>
+        <div class="btnrow"><button class="btn" id="planAccept">Übernehmen</button><button class="btn ghost" id="planDiscard">Verwerfen</button></div>
+        <p class="small muted" style="margin:6px 0 0">Unten siehst du den Vorschlag. Gespeichert wird er erst mit „Übernehmen“.</p>
+      </div>
+    </div>
     <div id="planBody"></div>
   </section>
 
@@ -318,7 +329,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <div class="field"><label class="label" for="pSpeed">Tempo (km/h)</label><input id="pSpeed" type="number" inputmode="decimal" step="0.1" min="1" max="8" value="3.5"></div>
       </div>
       <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pRail" style="width:auto"> Hände beim Gehen locker abgestützt (−5 % Verbrauch)</label>
-      <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für die kcal-Schätzung</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal, nie light"></textarea></div>
+      <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für Schätzung und Plan</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal; kein Rind; esse mit Partnerin; schnelle Gerichte"></textarea></div>
       <div class="small muted" id="pCalc" style="margin-top:10px"></div>
       <div class="btnrow"><button class="btn" type="submit" id="pSave">Profil speichern</button></div>
       <div class="status" id="pStatus"></div>
@@ -803,13 +814,97 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
     $("readProt").innerHTML = `${lbl}: <b>${fmt(v.pr)} g</b> von ${fmt(S.proteinTarget)} g`;
   }
 
+  // ---- plan adjust via Claude ----
+  let pendingPlan = null, lastPlan = null;
+  function cleanPlan(raw, mon) {
+    const inWeek = (d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= mon && d <= addDays(mon, 6);
+    const meal = (m) => ({ slot: String(m.slot || "").slice(0, 40), name: String(m.name || "").slice(0, 120), detail: String(m.detail || "").slice(0, 400), kcal: Math.round(Number(m.kcal) || 0), protein: Math.round(Number(m.protein) || 0) });
+    const days = (Array.isArray(raw && raw.days) ? raw.days : []).filter((d) => d && inWeek(d.date))
+      .map((d) => ({ date: d.date, ...(d.type ? { type: String(d.type).slice(0, 20) } : {}), ...(d.info ? { info: String(d.info).slice(0, 300) } : {}), meals: (Array.isArray(d.meals) ? d.meals : []).filter((m) => m && m.name).map(meal) }))
+      .sort((a, b) => a.date < b.date ? -1 : 1);
+    const swaps = (Array.isArray(raw && raw.swaps) ? raw.swaps : []).filter((m) => m && m.name).map(meal);
+    return { ...(raw && raw.note ? { note: String(raw.note).slice(0, 500) } : {}), days, swaps };
+  }
+  function planPrompt(wish, mon, current) {
+    const today = todayStr();
+    const eaten = [];
+    for (let i = 0; i < 7; i++) { const d = addDays(mon, i); if (d > today) break; const doc = days[d]; if (doc && (doc.meals || []).length) eaten.push(`${WDL[weekday(d)]} ${d}: ` + doc.meals.map((m) => `${m.label} (${m.kcal} kcal, ${m.protein} g)`).join("; ") + (doc.event ? " [Event-Tag]" : "")); }
+    return `Du passt den Wochen-Mahlzeitenplan einer Person an, die abnehmen will.
+Heute ist ${WDL[weekday(today)]}, ${today}. Die Woche geht von ${mon} (Montag) bis ${addDays(mon, 6)} (Sonntag).
+Tagesziel: ${S.kcalTarget} kcal und ${S.proteinTarget} g Eiweiß. Event-Tage sind beim Kalorienziel frei.
+${S.estimateHints ? "Hinweise und Vorlieben der Person:\n" + S.estimateHints.slice(0, 1500) + "\n" : ""}${eaten.length ? "Diese Woche schon gegessen (laut Log):\n" + eaten.join("\n") + "\n" : ""}
+Aktueller Plan als JSON:
+${current ? JSON.stringify(current) : "(noch kein Plan, erstelle einen für die ganze Woche)"}
+
+Wunsch der Person: ${wish}
+
+Regeln:
+- Ändere nur, was der Wunsch betrifft, und gleiche danach den Rest so aus, dass die Ziele möglichst gehalten werden. Eiweiß hat Vorrang.
+- Tage vor heute nicht ändern.
+- Jede Mahlzeit mit slot (z. B. Frühstück, Mittag, Abend, Nachtisch), name, detail (Zutaten mit Gramm roh), kcal und protein als je EIN Mittelwert, nie Spannen.
+- Bei auswärts essen: eine realistische Schätzung als Mahlzeit, im detail kurze Tipps für eine gute Wahl.
+- type pro Tag optional (z. B. HO, Büro, WE, Event), info pro Tag optional für einen kurzen Hinweis.
+- Gib immer den kompletten Plan der Woche zurück, auch unveränderte Tage.
+
+Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
+{"summary":"1 bis 3 Sätze auf Deutsch, was du geändert hast und warum","plan":{"note":"…","days":[{"date":"JJJJ-MM-TT","type":"…","info":"…","meals":[{"slot":"…","name":"…","detail":"…","kcal":0,"protein":0}]}],"swaps":[{"name":"…","detail":"…","kcal":0,"protein":0}]}}`;
+  }
+  $("planAdjustBtn").onclick = async () => {
+    const wish = $("planPrompt").value.trim();
+    if (!wish) { setStatus("planStatus", "Beschreib zuerst, was sich ändern soll.", true); return; }
+    if (!sample) return;
+    const mon = curPlan;
+    $("planAdjustBtn").disabled = true; setStatus("planStatus", "Claude passt den Plan an …");
+    try {
+      const res = await sample.json(planPrompt(wish, mon, plans[mon] || null), { modelTier: "default" });
+      const plan = cleanPlan(res && res.plan, mon);
+      if (!plan.days.length) throw { code: "empty" };
+      pendingPlan = { week: mon, plan, wish };
+      $("planSummary").textContent = (res.summary ? String(res.summary).slice(0, 600) : "Vorschlag erstellt.");
+      setStatus("planStatus", ""); curPlan = mon; renderPlan();
+    } catch (e) {
+      const c = e && e.code;
+      setStatus("planStatus", c === "not_granted" ? "Claude-Nutzung wurde nicht erlaubt." : c === "rate_limited" ? "Gerade zu viele Anfragen. Versuch es in einer Minute erneut." : c === "bad_key" ? "Der API-Schlüssel wurde abgelehnt. Prüfe ihn im Tab Profil." : "Das hat nicht geklappt. Formuliere den Wunsch etwas genauer und versuch es noch einmal.", true);
+    } finally { $("planAdjustBtn").disabled = false; }
+  };
+  $("planAccept").onclick = async () => {
+    if (!pendingPlan || !base) return;
+    const { week, plan, wish } = pendingPlan;
+    const prev = plans[week] || null;
+    const doc = { ...plan, updatedAt: new Date().toISOString(), lastWish: wish.slice(0, 300) };
+    $("planAccept").disabled = true;
+    try {
+      await base.collection("plans").doc(week).set(doc);
+      plans[week] = doc; lastPlan = { week, plan: prev };
+      pendingPlan = null; $("planPrompt").value = "";
+      setStatus("planStatus", "Plan gespeichert.");
+    } catch (e) { setStatus("planStatus", "Speichern fehlgeschlagen (" + (e && e.code || "Fehler") + ").", true); }
+    finally { $("planAccept").disabled = false; renderAll(); }
+  };
+  $("planDiscard").onclick = () => { pendingPlan = null; setStatus("planStatus", "Vorschlag verworfen."); renderPlan(); };
+  $("planUndo").onclick = async () => {
+    if (!lastPlan || !base) return;
+    const { week, plan } = lastPlan;
+    try {
+      if (plan) { await base.collection("plans").doc(week).set(plan); plans[week] = plan; }
+      else { await base.collection("plans").doc(week).delete(); delete plans[week]; }
+      lastPlan = null; setStatus("planStatus", "Änderung rückgängig gemacht.");
+    } catch (e) { setStatus("planStatus", "Rückgängig fehlgeschlagen (" + (e && e.code || "Fehler") + ").", true); }
+    renderAll();
+  };
+
   // ---- plan ----
   function renderPlan() {
     const wn = weekNo(curPlan);
     $("planName").textContent = `Plan ${wn >= 1 ? "Woche " + wn : ""} · ${dm(curPlan)}–${dm(addDays(curPlan, 6))}`;
-    const p = plans[curPlan], el = $("planBody");
-    if (!p) { el.innerHTML = `<div class="panel muted" style="margin-top:14px">Für diese Woche gibt es noch keinen Plan.</div>`; return; }
-    let h = p.note ? `<p class="small muted" style="margin-top:12px">${esc(p.note)}</p>` : "";
+    const isProposal = !!(pendingPlan && pendingPlan.week === curPlan);
+    const p = isProposal ? pendingPlan.plan : plans[curPlan], el = $("planBody");
+    $("planProposal").hidden = !isProposal;
+    $("planUndo").hidden = !(lastPlan && lastPlan.week === curPlan) || isProposal;
+    $("planPrompt").placeholder = p ? "z. B. Heute kein Frühstück und ich esse abends auswärts" : "z. B. Erstelle einen Plan für diese Woche, Montag und Dienstag Büro";
+    if (!p) { el.innerHTML = `<div class="panel muted" style="margin-top:14px">Für diese Woche gibt es noch keinen Plan.${sample ? " Beschreib oben, was du brauchst, dann erstellt Claude einen." : ""}</div>`; return; }
+    let h = isProposal ? `<p style="margin-top:12px"><span class="pill warn">Vorschlag</span></p>` : "";
+    h += p.note ? `<p class="small muted" style="margin-top:12px">${esc(p.note)}</p>` : "";
     (p.days || []).forEach((d) => {
       const tk = (d.meals || []).reduce((a, m) => a + (m.kcal || 0), 0), tp = (d.meals || []).reduce((a, m) => a + (m.protein || 0), 0);
       h += `<div class="planday panel${d.date === todayStr() ? " today" : ""}"><h3><span>${WD[weekday(d.date)]} ${dm(d.date)}${d.type ? ` <span class="pill">${esc(d.type)}</span>` : ""}</span><span class="num">${fmt(tk)} kcal · ${fmt(tp)} g</span></h3>`;
@@ -948,7 +1043,7 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
           r = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-            body: JSON.stringify({ model: ESTIMATE_MODEL, max_tokens: 1024, messages: [{ role: "user", content }] })
+            body: JSON.stringify({ model: ESTIMATE_MODEL, max_tokens: 6000, messages: [{ role: "user", content }] })
           });
         } catch (e) { throw { code: "network" }; }
         if (r.status === 401 || r.status === 403) throw { code: "bad_key" };
@@ -1024,7 +1119,7 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
   })();
   async function initSample() {
     sample = await use("sample");
-    $("estimateBtn").hidden = !sample; $("photoLabel").hidden = true;
+    $("estimateBtn").hidden = !sample; $("photoLabel").hidden = true; $("planAsk").hidden = !sample;
     if (!sample) return;
     try { const lim = await sample.limits(); if (lim && lim.images) { sampleImages = true; $("photoLabel").hidden = false; } } catch (e) {}
   }
