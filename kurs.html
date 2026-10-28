@@ -971,7 +971,13 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
   let pendingPlan = null, lastPlan = null;
   function cleanPlan(raw, mon) {
     const inWeek = (d) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= mon && d <= addDays(mon, 6);
-    const meal = (m) => ({ slot: String(m.slot || "").slice(0, 40), name: String(m.name || "").slice(0, 120), detail: String(m.detail || "").slice(0, 400), kcal: Math.round(Number(m.kcal) || 0), protein: Math.round(Number(m.protein) || 0) });
+    // keep recipes of dishes that stay in the plan
+    const known = {}; const prev = plans[mon];
+    if (prev) [...(prev.days || []).flatMap((d) => d.meals || []), ...(prev.swaps || [])].forEach((m) => { if (m.recipe) known[m.name] = m.recipe; });
+    const meal = (m) => {
+      const name = String(m.name || "").slice(0, 120);
+      return { slot: String(m.slot || "").slice(0, 40), name, detail: String(m.detail || "").slice(0, 400), kcal: Math.round(Number(m.kcal) || 0), protein: Math.round(Number(m.protein) || 0), cook: m.cook === true, ...(known[name] ? { recipe: known[name] } : {}) };
+    };
     const days = (Array.isArray(raw && raw.days) ? raw.days : []).filter((d) => d && inWeek(d.date))
       .map((d) => ({ date: d.date, ...(d.type ? { type: String(d.type).slice(0, 20) } : {}), ...(d.info ? { info: String(d.info).slice(0, 300) } : {}), meals: (Array.isArray(d.meals) ? d.meals : []).filter((m) => m && m.name).map(meal) }))
       .sort((a, b) => a.date < b.date ? -1 : 1);
@@ -998,12 +1004,13 @@ Regeln:
 - Ändere nur, was der Wunsch betrifft, und gleiche danach den Rest so aus, dass die Ziele möglichst gehalten werden. Eiweiß hat Vorrang.
 - Tage vor heute nicht ändern.
 - Jede Mahlzeit mit slot (z. B. Frühstück, Mittag, Abend, Nachtisch), name, detail (Zutaten mit Gramm roh), kcal und protein als je EIN Mittelwert, nie Spannen.
+- cook: true nur für Gerichte, die man selbst kocht oder zubereitet und für die ein Rezept sinnvoll ist; false für Fertiges, Kantine, Lieferdienst, auswärts, Shakes, Skyr, Joghurt-Frühstück und Ähnliches.
 - Bei auswärts essen: eine realistische Schätzung als Mahlzeit, im detail kurze Tipps für eine gute Wahl.
 - type pro Tag optional (z. B. HO, Büro, WE, Event), info pro Tag optional für einen kurzen Hinweis.
 - Gib immer den kompletten Plan der Woche zurück, auch unveränderte Tage.
 
 Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
-{"summary":"1 bis 3 Sätze auf Deutsch, was du geändert hast und warum","plan":{"note":"…","days":[{"date":"JJJJ-MM-TT","type":"…","info":"…","meals":[{"slot":"…","name":"…","detail":"…","kcal":0,"protein":0}]}],"swaps":[{"name":"…","detail":"…","kcal":0,"protein":0}]}}`;
+{"summary":"1 bis 3 Sätze auf Deutsch, was du geändert hast und warum","plan":{"note":"…","days":[{"date":"JJJJ-MM-TT","type":"…","info":"…","meals":[{"slot":"…","name":"…","detail":"…","kcal":0,"protein":0,"cook":true}]}],"swaps":[{"name":"…","detail":"…","kcal":0,"protein":0,"cook":true}]}}`;
   }
   $("planAdjustBtn").onclick = async () => {
     const wish = $("planPrompt").value.trim();
@@ -1112,11 +1119,19 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
   // ---- recipes: generated on demand, stored on the meal inside the plan document ----
   const recipeAllowed = () => !!sample || requestMode();
   let openRecipe = null;
+  // Only real dishes get recipes: explicit cook flag from the plan, otherwise a guess from name and ingredients.
+  const NOT_COOKED = /kantine|juit|lieferdienst|restaurant|auswärts|verkostung|grillabend|einladung|shake|skyr|joghurt|quark mit|obst|snack|kaffee|cappuccino/i;
+  function isDish(m) {
+    if (m.cook === true) return true;
+    if (m.cook === false) return false;
+    return !NOT_COOKED.test(m.name || "") && String(m.detail || "").split(",").length >= 3;
+  }
   function mealAttrs(m, ref) {
-    const tap = ref && ((m.recipe && (m.recipe.ingredients || []).length) || recipeAllowed());
+    const tap = ref && isDish(m) && ((m.recipe && (m.recipe.ingredients || []).length) || recipeAllowed());
     return tap ? `class="pmeal tap" data-ref="${ref}" tabindex="0" role="button" aria-label="${esc(m.name)}: Rezept anzeigen"` : `class="pmeal"`;
   }
   function recipeHtml(m, ref) {
+    if (!isDish(m)) return "";
     const r = m.recipe;
     if (r && (r.ingredients || []).length) {
       return `<details class="recipe"${ref && ref === openRecipe ? " open" : ""}><summary>Rezept${r.minutes ? ` · ${fmt(r.minutes)} Min.` : ""}</summary>`
