@@ -54,6 +54,12 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const pl = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
   check(pl.planChange === "Mittwoch Pizza" && (await pg.inputValue("#planPrompt")) === "", "plan change stored and text box cleared");
   check((await pg.textContent("#planBody")).includes("Anpassung angefordert"), "requested change is shown");
+  // standing wishes for all plans
+  await pg.fill("#planRules", "Kein Frühstück"); await pg.check("#rulesApply"); await pg.click("#planRulesSave"); await pg.waitForTimeout(400);
+  const prof = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile")));
+  const pl2 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
+  check(prof.planRules === "Kein Frühstück", "standing wishes saved in profile");
+  check(/Kein Frühstück/.test(pl2.planChange || "") && /Mittwoch Pizza/.test(pl2.planChange || ""), "standing wishes queued for existing plan");
   check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
   await b.close();
   if (fails.length) { console.log(`\n${fails.length} check(s) failed`); process.exit(1); }

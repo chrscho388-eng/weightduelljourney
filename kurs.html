@@ -378,6 +378,14 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="btnrow"><button class="btn ghost" type="button" id="planNotesSave">Hinweise speichern</button></div>
       <div class="status" id="planNotesStatus"></div>
     </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="field"><label class="label" for="planRules">Dauerhafte Wünsche für alle Pläne</label>
+        <textarea id="planRules" placeholder="z. B. Frühstück: Joghurt ohne Beeren. Kein Fisch am Wochenende. Freitags immer etwas Schnelles."></textarea></div>
+      <p class="small muted" style="margin:4px 0 0">Gilt für jeden neuen Wochenplan, jede Anpassung und jedes Rezept, mit Vorrang vor den Standardhinweisen im Profil.</p>
+      <label class="small" id="rulesApplyWrap" style="display:flex;gap:8px;align-items:center;margin-top:8px" hidden><input type="checkbox" id="rulesApply" style="width:auto"> Auch auf schon erstellte Pläne ab heute anwenden</label>
+      <div class="btnrow"><button class="btn ghost" type="button" id="planRulesSave">Wünsche speichern</button></div>
+      <div class="status" id="planRulesStatus"></div>
+    </div>
     <div id="planAsk" class="panel" style="margin-top:14px" hidden>
       <div class="field"><label class="label" for="planPrompt">Plan anpassen</label>
         <textarea id="planPrompt" placeholder="z. B. Heute kein Frühstück und ich esse abends auswärts"></textarea></div>
@@ -1214,7 +1222,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
 ${notes ? "Hinweise der Person für diese Woche (Tagesarten, Termine, Essen auswärts):\n" + String(notes).slice(0, 800) + "\n" : ""}${types.length ? "Tagesarten laut Log (HO = Home Office, WE = Wochenende):\n" + types.join("\n") : ""}
 Heute ist ${WDL[weekday(today)]}, ${today}. Die Woche geht von ${mon} (Montag) bis ${addDays(mon, 6)} (Sonntag).
 Tagesziel: ${S.kcalTarget} kcal und ${S.proteinTarget} g Eiweiß. Event-Tage sind beim Kalorienziel frei.
-${S.estimateHints ? "Hinweise und Vorlieben der Person:\n" + S.estimateHints.slice(0, 1500) + "\n" : ""}${eaten.length ? "Diese Woche schon gegessen (laut Log):\n" + eaten.join("\n") + "\n" : ""}
+${S.estimateHints ? "Hinweise und Vorlieben der Person:\n" + S.estimateHints.slice(0, 1500) + "\n" : ""}${S.planRules ? "DAUERHAFTE WÜNSCHE der Person (haben Vorrang vor allen Hinweisen oben):\n" + String(S.planRules).slice(0, 1500) + "\n" : ""}${eaten.length ? "Diese Woche schon gegessen (laut Log):\n" + eaten.join("\n") + "\n" : ""}
 Aktueller Plan als JSON:
 ${current ? JSON.stringify(current) : "(noch kein Plan, erstelle einen für die ganze Woche)"}
 
@@ -1252,6 +1260,29 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     } finally { $("planAdjustBtn").disabled = false; }
   };
   // without a key: store the wish on the plan, Claude rewrites the plan at the next sync
+  // standing wishes for every plan (profile.planRules); optionally queue a rewrite of plans from this week on
+  $("planRulesSave").onclick = async () => {
+    if (!base) { setStatus("planRulesStatus", "Speicher nicht erreichbar.", true); return; }
+    const txt = $("planRules").value.trim().slice(0, 1500), changed = txt !== (S.planRules || "");
+    $("planRulesSave").disabled = true;
+    try {
+      if (changed && !(await saveProfile({ planRules: txt }))) throw new Error("save");
+      let n = 0;
+      if (txt && $("rulesApply").checked && requestMode()) {
+        const mon = mondayOf(todayStr());
+        for (const [week, p] of Object.entries(plans)) {
+          if (week < mon || p.deleted || !((p.days || []).length)) continue;
+          const wish = "Dauerhafte Wünsche ab heute umsetzen (vergangene Tage nicht ändern): " + txt;
+          const next = { ...JSON.parse(JSON.stringify(p)), planChange: (p.planChange ? p.planChange + " | " : "") + wish, updatedAt: new Date().toISOString() };
+          await base.collection("plans").doc(week).set(next); plans[week] = next; n++;
+        }
+        $("rulesApply").checked = false;
+      }
+      setStatus("planRulesStatus", (txt ? "Gespeichert. Gilt ab dem nächsten Plan." : "Wünsche gelöscht.") + (n ? ` ${n === 1 ? "Ein bestehender Plan wird" : n + " bestehende Pläne werden"} beim nächsten Abgleich angepasst.` : ""));
+      renderPlan();
+    } catch (e) { setStatus("planRulesStatus", "Speichern fehlgeschlagen.", true); }
+    finally { $("planRulesSave").disabled = false; }
+  };
   $("planLaterBtn").onclick = async () => {
     const wish = $("planPrompt").value.trim();
     if (!wish) { setStatus("planStatus", "Beschreib zuerst, was sich ändern soll.", true); return; }
@@ -1315,6 +1346,8 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
   };
   function renderPlan() {
     renderPlanNotes();
+    if (document.activeElement !== $("planRules")) $("planRules").value = S.planRules || "";
+    $("rulesApplyWrap").hidden = !requestMode();
     const wn = weekNo(curPlan);
     $("planName").textContent = `Plan ${wn >= 1 ? "Woche " + wn : ""} · ${dm(curPlan)}–${dm(addDays(curPlan, 6))}`;
     const isProposal = !!(pendingPlan && pendingPlan.week === curPlan);
@@ -1408,7 +1441,7 @@ Gericht: ${m.name}
 ${m.detail ? "Mengen und Zutaten laut Plan: " + m.detail + "\n" : ""}Zielwerte für die Portion: ${m.kcal || 0} kcal, ${m.protein || 0} g Eiweiß.
 - Die Zutatenmengen sind für genau diese eine Portion und treffen die Zielwerte. Halte dich an die Mengen aus dem Plan.
 - Wenige Schritte, alltagstauglich, ohne Spezialgeräte.
-${S.estimateHints ? "Hinweise der Person (No-Gos und Vorlieben beachten):\n" + S.estimateHints.slice(0, 600) + "\n" : ""}
+${S.estimateHints ? "Hinweise der Person (No-Gos und Vorlieben beachten):\n" + S.estimateHints.slice(0, 600) + "\n" : ""}${S.planRules ? "Dauerhafte Wünsche der Person (Vorrang):\n" + String(S.planRules).slice(0, 800) + "\n" : ""}
 Antworte nur mit JSON in genau dieser Form:
 {"servings":"1 Portion (für 2 Personen Mengen verdoppeln)","minutes":0,"ingredients":[{"amount":"150 g","item":"Hähnchenbrust"}],"steps":["…"],"tip":"ein kurzer Tipp oder leer"}`;
   }
