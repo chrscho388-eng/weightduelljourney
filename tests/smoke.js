@@ -28,6 +28,8 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
     await pg.click(`nav.tabs a[data-tab=${t}]`); await pg.waitForTimeout(150);
     check(await pg.$eval("#view-" + t, (e) => !e.hidden), "tab " + t + " opens");
   }
+  const today0 = await pg.$$eval("#mealList .mname", (e) => e.map((x) => x.textContent));
+  check(today0.includes("Frühstück vorhanden") && today0.includes("Cappuccino"), "auto coffee keeps existing meals");
   // manual entry
   await pg.fill("#mealText", "Testessen"); await pg.fill("#manKcal", "300"); await pg.fill("#manProt", "20");
   await pg.click("#manAdd"); await pg.waitForTimeout(200);

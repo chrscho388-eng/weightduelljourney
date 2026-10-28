@@ -647,10 +647,12 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     const w = weekday(s); return w >= 5 ? "WE" : "HO";
   }
   // ---- coffee: fixed daily entry by day type (cappuccinos, calories only) ----
+  let daysLoaded = false;
   const COFFEE_DEFAULT = { since: "2026-10-28", kcal: 95, protein: 5, perType: { HO: 1, "Büro": 3, WE: 1, Frei: 1 } };
   function ensureCoffee(date) {
     const c = S.coffee || COFFEE_DEFAULT;
-    if (!c || !base || date < (c.since || "9999") || date > todayStr()) return;
+    // only once the stored days are loaded, otherwise this would overwrite the day with just the coffee
+    if (!c || !base || !daysLoaded || date < (c.since || "9999") || date > todayStr()) return;
     const d = days[date] || {};
     if (d.coffeeOff) return;
     const n = (c.perType || {})[d.dayType || defaultType(date)] || 0;
@@ -1928,6 +1930,7 @@ Antworte nur mit JSON in genau dieser Form:
       fillForm(); renderAll(); route();
     }, () => { $("dbNotice").hidden = false; });
     base.collection("days").onSnapshot((snap) => {
+      daysLoaded = true;
       snap.docChanges().forEach((ch) => { if (ch.type === "removed") delete days[ch.doc.id]; else days[ch.doc.id] = JSON.parse(JSON.stringify(ch.doc.data())); });
       renderAll();
     }, () => { $("dbNotice").hidden = false; });
