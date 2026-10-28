@@ -240,7 +240,10 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="btnrow">
         <button class="btn" id="estimateBtn" hidden>kcal schätzen lassen</button>
         <label class="btn ghost" id="photoLabel" hidden>Foto schätzen<input type="file" id="photoInput" accept="image/*" hidden></label>
+        <button class="btn" id="askBtn" type="button" hidden>An Claude schicken</button>
+        <label class="btn ghost" id="askPhotoLabel" hidden>Foto an Claude<input type="file" id="askPhotoInput" accept="image/*" hidden></label>
       </div>
+      <p class="small muted" id="askHint" hidden style="margin:6px 0 0">Claude schätzt das beim nächsten Abgleich (stündlich 6 bis 23 Uhr), ohne API-Kosten. Ein Text zum Foto hilft, z. B. die Menge.</p>
       <div class="status" id="estStatus"></div>
       <div id="estPreview" class="preview" hidden>
         <div class="estbody" id="estSeenBox" hidden><img class="mphoto" id="estPhoto" alt="Dein Foto"><p class="seen small" id="estSeen"></p></div>
@@ -553,7 +556,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       const nm = document.createElement("div"); nm.className = "mname";
       const b = document.createElement("button"); b.textContent = m.label; b.title = "Bearbeiten"; b.onclick = () => startEdit(m);
       nm.append(b);
-      const v = document.createElement("div"); v.className = "mv"; v.textContent = `${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß`;
+      const v = document.createElement("div"); v.className = "mv"; v.textContent = m.pending ? "wartet auf\nClaude" : `${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß`;
       const x = document.createElement("button"); x.className = "x"; x.setAttribute("aria-label", "Löschen: " + m.label); x.textContent = "×";
       x.onclick = () => saveDay(curDay, (doc) => { doc.meals = doc.meals.filter((y) => y.id !== m.id); if (m.id === "coffee") doc.coffeeOff = true; });
       li.append(nm, v, x);
@@ -645,6 +648,22 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   }
   const cleanParts = (arr) => (Array.isArray(arr) ? arr : []).filter((x) => x && x.name).slice(0, 15)
     .map((x) => ({ name: String(x.name).slice(0, 80), grams: Math.round(Number(x.grams) || 0), kcal: Math.round(Number(x.kcal) || 0), protein: Math.round(Number(x.protein) || 0) }));
+  // ---- requests Claude answers at the next sync (no API key needed) ----
+  const requestMode = () => !sample && STANDALONE && !!syncCfg();
+  async function queueEstimate(image) {
+    const text = $("mealText").value.trim();
+    if (!text && !image) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast, oder wähle ein Foto.", true); return; }
+    const photo = image ? await thumb(image) : null;
+    saveDay(curDay, (doc) => {
+      doc.meals = doc.meals || [];
+      doc.meals.push({ id: uid(), label: text ? text.slice(0, 200) : "Foto", kcal: 0, protein: 0, pending: true, request: text.slice(0, 600), ...(photo ? { photo } : {}) });
+      if (!doc.dayType) doc.dayType = defaultType(curDay);
+    });
+    $("mealText").value = "";
+    setStatus("estStatus", "An Claude geschickt. Die Werte erscheinen nach dem nächsten Abgleich.");
+  }
+  $("askBtn").onclick = () => queueEstimate(null);
+  $("askPhotoInput").onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) queueEstimate(f); e.target.value = ""; };
   function addMeals(items) {
     saveDay(curDay, (doc) => {
       doc.meals = doc.meals || [];
@@ -1089,7 +1108,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     });
   }
   // ---- recipes: generated on demand, stored on the meal inside the plan document ----
-  const recipeAllowed = () => !!sample;
+  const recipeAllowed = () => !!sample || requestMode();
   let openRecipe = null;
   function mealAttrs(m, ref) {
     const tap = ref && ((m.recipe && (m.recipe.ingredients || []).length) || recipeAllowed());
@@ -1105,6 +1124,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
         + (r.tip ? `<div class="small muted">${esc(r.tip)}</div>` : "") + `</details>`;
     }
     if (!ref || !recipeAllowed()) return "";
+    if (m.recipeRequested) return `<div class="recipe small muted">Rezept angefordert, es kommt beim nächsten Abgleich.</div>`;
     return `<div class="recipe small"><span class="rhint">Tippen für Rezept ›</span><span class="status small"></span></div>`;
   }
   function recipePrompt(m) {
@@ -1124,6 +1144,15 @@ Antworte nur mit JSON in genau dieser Form:
     const [kind, idx] = ref[0] === "s" ? ["s", +ref.slice(2)] : ["d", ref.slice(1).split(":").map(Number)];
     const meal = kind === "s" ? (plan.swaps || [])[idx] : ((plan.days || [])[idx[0]] || {}).meals?.[idx[1]];
     if (!meal) return;
+    if (!sample) {
+      if (meal.recipeRequested) return;
+      const next = JSON.parse(JSON.stringify(plan));
+      const target = kind === "s" ? next.swaps[idx] : next.days[idx[0]].meals[idx[1]];
+      target.recipeRequested = true; next.updatedAt = new Date().toISOString();
+      try { await base.collection("plans").doc(week).set(next); plans[week] = next; renderPlan(); }
+      catch (e) { st.textContent = "Speichern fehlgeschlagen."; st.classList.add("err"); }
+      return;
+    }
     row.dataset.busy = "1"; if (hint) hint.hidden = true; st.textContent = "Claude schreibt das Rezept …"; st.classList.remove("err");
     try {
       const r = await sample.json(recipePrompt(meal), { modelTier: "default" });
@@ -1452,6 +1481,7 @@ Antworte nur mit JSON in genau dieser Form:
   async function initSample() {
     sample = await use("sample");
     $("estimateBtn").hidden = !sample; $("photoLabel").hidden = true; $("planAsk").hidden = !sample;
+    const rq = requestMode(); $("askBtn").hidden = !rq; $("askPhotoLabel").hidden = !rq; $("askHint").hidden = !rq;
     if (!sample) return;
     try { const lim = await sample.limits(); if (lim && lim.images) { sampleImages = true; $("photoLabel").hidden = false; } } catch (e) {}
   }
