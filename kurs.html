@@ -1103,6 +1103,16 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
       h += `</div>`;
     }
     el.innerHTML = h;
+    el.querySelectorAll(".pmeal.tap [data-rc]").forEach((b) => b.onclick = (e) => {
+      e.stopPropagation();
+      const row = b.closest(".pmeal"), box = row.querySelector(".redit");
+      if (b.dataset.rc === "open") { box.hidden = !box.hidden; if (!box.hidden) box.querySelector("textarea").focus(); return; }
+      const wish = box.querySelector("textarea").value.trim();
+      const st = box.querySelector(".status");
+      if (!wish) { st.textContent = "Beschreibe kurz, was sich ändern soll."; st.classList.add("err"); return; }
+      changeRecipe(row, wish, b.dataset.rc === "later");
+    });
+    el.querySelectorAll(".pmeal .rwish").forEach((t) => t.onclick = (e) => e.stopPropagation());
     el.querySelectorAll(".pmeal.tap").forEach((row) => {
       const act = (e) => {
         if (e && e.target.closest("details.recipe > :not(summary)")) return; // reading or selecting recipe text
@@ -1138,15 +1148,23 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
         + `<div class="small muted">${esc(r.servings || "1 Portion")}</div>`
         + `<ul>${r.ingredients.map((i) => `<li>${esc(i.amount ? i.amount + " " : "")}${esc(i.item)}</li>`).join("")}</ul>`
         + `<ol>${(r.steps || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ol>`
-        + (r.tip ? `<div class="small muted">${esc(r.tip)}</div>` : "") + `</details>`;
+        + (r.tip ? `<div class="small muted">${esc(r.tip)}</div>` : "")
+        + (!ref || !recipeAllowed() ? "" : m.recipeChange
+          ? `<div class="small muted" style="margin-top:6px">Änderung angefordert („${esc(m.recipeChange)}“), sie kommt beim nächsten Abgleich.</div>`
+          : `<div class="rchange" style="margin-top:8px"><button class="btn ghost" type="button" data-rc="open" style="padding:4px 10px;font-size:13px">Rezept ändern</button>`
+            + `<div class="redit" hidden><textarea class="rwish" placeholder="z. B. ohne Paprika, im Airfryer, vegetarisch, mit Zucchini statt Brokkoli"></textarea>`
+            + `<div class="btnrow">${sample ? `<button class="btn" type="button" data-rc="now" style="padding:4px 10px;font-size:13px">Jetzt ändern</button>` : ""}${requestMode() ? `<button class="btn ghost" type="button" data-rc="later" style="padding:4px 10px;font-size:13px">An Claude senden (später)</button>` : ""}</div>`
+            + `<span class="status small"></span></div></div>`)
+        + `</details>`;
     }
     if (!ref || !recipeAllowed()) return "";
     if (m.recipeRequested) return `<div class="recipe small muted">Rezept angefordert, es kommt beim nächsten Abgleich.</div>`;
     if (sample && requestMode()) return `<div class="recipe small"><span class="rhint">Rezept: </span><button class="btn ghost" type="button" data-act="now" style="padding:4px 10px;font-size:13px">Jetzt erstellen</button> <button class="btn ghost" type="button" data-act="later" style="padding:4px 10px;font-size:13px">An Claude senden (später)</button><span class="status small"></span></div>`;
     return `<div class="recipe small"><span class="rhint">Tippen für Rezept ›</span><span class="status small"></span></div>`;
   }
-  function recipePrompt(m) {
-    return `Schreibe ein einfaches, schnelles Rezept auf Deutsch für dieses Gericht aus einem Abnehm-Wochenplan.
+  function recipePrompt(m, wish) {
+    const cur = wish && m.recipe ? `Bisheriges Rezept (JSON): ${JSON.stringify(m.recipe).slice(0, 2500)}\nÄnderungswunsch der Person: ${wish}\nPasse das Rezept an diesen Wunsch an. Halte kcal und Eiweiß möglichst gleich; passe Mengen an, wenn sich Zutaten ändern.\n` : "";
+    return `${cur}Schreibe ein einfaches, schnelles Rezept auf Deutsch für dieses Gericht aus einem Abnehm-Wochenplan.
 Gericht: ${m.name}
 ${m.detail ? "Mengen und Zutaten laut Plan: " + m.detail + "\n" : ""}Zielwerte für die Portion: ${m.kcal || 0} kcal, ${m.protein || 0} g Eiweiß.
 - Die Zutatenmengen sind für genau diese eine Portion und treffen die Zielwerte. Halte dich an die Mengen aus dem Plan.
@@ -1154,6 +1172,38 @@ ${m.detail ? "Mengen und Zutaten laut Plan: " + m.detail + "\n" : ""}Zielwerte f
 ${S.estimateHints ? "Hinweise der Person (No-Gos und Vorlieben beachten):\n" + S.estimateHints.slice(0, 600) + "\n" : ""}
 Antworte nur mit JSON in genau dieser Form:
 {"servings":"1 Portion (für 2 Personen Mengen verdoppeln)","minutes":0,"ingredients":[{"amount":"150 g","item":"Hähnchenbrust"}],"steps":["…"],"tip":"ein kurzer Tipp oder leer"}`;
+  }
+  function locateMeal(plan, ref) {
+    const [kind, idx] = ref[0] === "s" ? ["s", +ref.slice(2)] : ["d", ref.slice(1).split(":").map(Number)];
+    const pick = (p) => kind === "s" ? (p.swaps || [])[idx] : ((p.days || [])[idx[0]] || {}).meals?.[idx[1]];
+    return pick;
+  }
+  const cleanRecipe = (r) => ({
+    servings: String(r.servings || "1 Portion").slice(0, 120), minutes: Math.max(0, Math.round(+r.minutes || 0)),
+    ingredients: r.ingredients.slice(0, 25).map((i) => ({ amount: String(i.amount || "").slice(0, 40), item: String(i.item || "").slice(0, 120) })).filter((i) => i.item),
+    steps: (r.steps || []).slice(0, 15).map((x) => String(x).slice(0, 400)), tip: String(r.tip || "").slice(0, 300)
+  });
+  async function changeRecipe(row, wish, later) {
+    if (row.dataset.busy) return;
+    const ref = row.dataset.ref, week = curPlan, plan = plans[week]; if (!plan) return;
+    const pick = locateMeal(plan, ref), meal = pick(plan); if (!meal) return;
+    const st = row.querySelector(".redit .status");
+    const next = JSON.parse(JSON.stringify(plan)), target = pick(next);
+    row.dataset.busy = "1"; st.classList.remove("err");
+    try {
+      if (later || !sample) target.recipeChange = wish.slice(0, 300);
+      else {
+        st.textContent = "Claude passt das Rezept an …";
+        const r = await sample.json(recipePrompt(meal, wish), { modelTier: "default" });
+        if (!r || !Array.isArray(r.ingredients) || !r.ingredients.length) throw new Error("empty");
+        target.recipe = cleanRecipe(r);
+      }
+      next.updatedAt = new Date().toISOString();
+      await base.collection("plans").doc(week).set(next); plans[week] = next;
+      openRecipe = ref; renderPlan();
+    } catch (e) {
+      delete row.dataset.busy; st.textContent = "Das hat nicht geklappt. Versuch es noch einmal."; st.classList.add("err");
+    }
   }
   async function makeRecipe(row, later) {
     if (!recipeAllowed() || row.dataset.busy) return;
