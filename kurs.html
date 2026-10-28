@@ -211,6 +211,10 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 .shop li input { width: auto; }
 .shop li .amt { font-family: var(--font-data); font-size: 14px; white-space: nowrap; }
 .shop li.done .nm, .shop li.done .amt { text-decoration: line-through; color: var(--muted); }
+.rules { list-style: none; margin: 6px 0 0; padding: 0; }
+.rules li { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 15px; }
+.rules li.none { display: block; color: var(--muted); font-size: 14px; }
+.rules .x { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 2px 6px; }
 .notice { margin-top: 16px; padding: 12px; border: 1px solid var(--warn); border-radius: 10px; font-size: 14px; }
 @media (prefers-reduced-motion: no-preference) { .bar > i { transition: width .3s ease; } }
 </style>
@@ -379,11 +383,13 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="status" id="planNotesStatus"></div>
     </div>
     <div class="panel" style="margin-top:14px">
-      <div class="field"><label class="label" for="planRules">Dauerhafte Wünsche für alle Pläne</label>
-        <textarea id="planRules" placeholder="z. B. Frühstück: Joghurt ohne Beeren. Kein Fisch am Wochenende. Freitags immer etwas Schnelles."></textarea></div>
+      <div class="label">Dauerhafte Wünsche für alle Pläne</div>
+      <ul class="rules" id="rulesList"></ul>
+      <div class="field" style="margin-top:8px"><label class="label" for="planRuleNew" style="position:absolute;left:-9999px">Neuer Wunsch</label>
+        <input id="planRuleNew" type="text" maxlength="300" placeholder="z. B. Frühstück: Joghurt ohne Beeren"></div>
       <p class="small muted" style="margin:4px 0 0">Gilt für jeden neuen Wochenplan, jede Anpassung und jedes Rezept, mit Vorrang vor den Standardhinweisen im Profil.</p>
       <label class="small" id="rulesApplyWrap" style="display:flex;gap:8px;align-items:center;margin-top:8px" hidden><input type="checkbox" id="rulesApply" style="width:auto"> Auch auf schon erstellte Pläne ab heute anwenden</label>
-      <div class="btnrow"><button class="btn ghost" type="button" id="planRulesSave">Wünsche speichern</button></div>
+      <div class="btnrow"><button class="btn ghost" type="button" id="planRulesSave">Hinzufügen</button></div>
       <div class="status" id="planRulesStatus"></div>
     </div>
     <div id="planAsk" class="panel" style="margin-top:14px" hidden>
@@ -1260,29 +1266,45 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     } finally { $("planAdjustBtn").disabled = false; }
   };
   // without a key: store the wish on the plan, Claude rewrites the plan at the next sync
-  // standing wishes for every plan (profile.planRules); optionally queue a rewrite of plans from this week on
-  $("planRulesSave").onclick = async () => {
-    if (!base) { setStatus("planRulesStatus", "Speicher nicht erreichbar.", true); return; }
-    const txt = $("planRules").value.trim().slice(0, 1500), changed = txt !== (S.planRules || "");
+  // standing wishes for every plan (profile.planRules, one per line); optionally queue a rewrite of plans from this week on
+  const ruleList = () => String(S.planRules || "").split("\n").map((x) => x.trim()).filter(Boolean);
+  function renderRules() {
+    const ul = $("rulesList"), rules = ruleList(); ul.innerHTML = "";
+    if (!rules.length) { ul.innerHTML = `<li class="none">Noch keine. Es gilt das Standardmuster aus dem Profil.</li>`; return; }
+    rules.forEach((r, i) => {
+      const li = document.createElement("li"), t = document.createElement("span"), x = document.createElement("button");
+      t.textContent = r; x.className = "x"; x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", "Wunsch entfernen: " + r);
+      x.onclick = () => changeRules(rules.filter((_, j) => j !== i), "Diesen dauerhaften Wunsch nicht mehr anwenden: " + r);
+      li.append(t, x); ul.append(li);
+    });
+  }
+  async function changeRules(list, wish) {
+    if (!base) { setStatus("planRulesStatus", "Speicher nicht erreichbar.", true); return false; }
     $("planRulesSave").disabled = true;
     try {
-      if (changed && !(await saveProfile({ planRules: txt }))) throw new Error("save");
+      if (!(await saveProfile({ planRules: list.join("\n").slice(0, 1500) }))) throw new Error("save");
       let n = 0;
-      if (txt && $("rulesApply").checked && requestMode()) {
+      if ($("rulesApply").checked && requestMode()) {
         const mon = mondayOf(todayStr());
         for (const [week, p] of Object.entries(plans)) {
           if (week < mon || p.deleted || !((p.days || []).length)) continue;
-          const wish = "Dauerhafte Wünsche ab heute umsetzen (vergangene Tage nicht ändern): " + txt;
-          const next = { ...JSON.parse(JSON.stringify(p)), planChange: (p.planChange ? p.planChange + " | " : "") + wish, updatedAt: new Date().toISOString() };
+          const w = wish + " (ab heute, vergangene Tage nicht ändern)";
+          const next = { ...JSON.parse(JSON.stringify(p)), planChange: (p.planChange ? p.planChange + " | " : "") + w, updatedAt: new Date().toISOString() };
           await base.collection("plans").doc(week).set(next); plans[week] = next; n++;
         }
         $("rulesApply").checked = false;
       }
-      setStatus("planRulesStatus", (txt ? "Gespeichert. Gilt ab dem nächsten Plan." : "Wünsche gelöscht.") + (n ? ` ${n === 1 ? "Ein bestehender Plan wird" : n + " bestehende Pläne werden"} beim nächsten Abgleich angepasst.` : ""));
-      renderPlan();
-    } catch (e) { setStatus("planRulesStatus", "Speichern fehlgeschlagen.", true); }
+      setStatus("planRulesStatus", "Gespeichert. Gilt ab dem nächsten Plan." + (n ? ` ${n === 1 ? "Ein bestehender Plan wird" : n + " bestehende Pläne werden"} beim nächsten Abgleich angepasst.` : ""));
+      renderPlan(); return true;
+    } catch (e) { setStatus("planRulesStatus", "Speichern fehlgeschlagen.", true); return false; }
     finally { $("planRulesSave").disabled = false; }
+  }
+  $("planRulesSave").onclick = async () => {
+    const r = $("planRuleNew").value.trim();
+    if (!r) { setStatus("planRulesStatus", "Schreib zuerst einen Wunsch ins Feld.", true); return; }
+    if (await changeRules([...ruleList(), r], "Neuer dauerhafter Wunsch: " + r)) $("planRuleNew").value = "";
   };
+  $("planRuleNew").onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); $("planRulesSave").click(); } };
   $("planLaterBtn").onclick = async () => {
     const wish = $("planPrompt").value.trim();
     if (!wish) { setStatus("planStatus", "Beschreib zuerst, was sich ändern soll.", true); return; }
@@ -1346,7 +1368,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
   };
   function renderPlan() {
     renderPlanNotes();
-    if (document.activeElement !== $("planRules")) $("planRules").value = S.planRules || "";
+    renderRules();
     $("rulesApplyWrap").hidden = !requestMode();
     const wn = weekNo(curPlan);
     $("planName").textContent = `Plan ${wn >= 1 ? "Woche " + wn : ""} · ${dm(curPlan)}–${dm(addDays(curPlan, 6))}`;

@@ -55,7 +55,11 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(pl.planChange === "Mittwoch Pizza" && (await pg.inputValue("#planPrompt")) === "", "plan change stored and text box cleared");
   check((await pg.textContent("#planBody")).includes("Anpassung angefordert"), "requested change is shown");
   // standing wishes for all plans
-  await pg.fill("#planRules", "Kein Frühstück"); await pg.check("#rulesApply"); await pg.click("#planRulesSave"); await pg.waitForTimeout(400);
+  await pg.fill("#planRuleNew", "Kein Frühstück"); await pg.check("#rulesApply"); await pg.click("#planRulesSave"); await pg.waitForTimeout(400);
+  await pg.fill("#planRuleNew", "Kein Fisch"); await pg.press("#planRuleNew", "Enter"); await pg.waitForTimeout(400);
+  check((await pg.$$("#rulesList li:not(.none)")).length === 2, "standing wishes listed");
+  await pg.click("#rulesList li:nth-child(2) .x"); await pg.waitForTimeout(400);
+  check((await pg.$$eval("#rulesList li", (e) => e.map((x) => x.textContent))).join("|").startsWith("Kein Frühstück") && (await pg.$$("#rulesList li")).length === 1, "standing wish removed");
   const prof = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile")));
   const pl2 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
   check(prof.planRules === "Kein Frühstück", "standing wishes saved in profile");
