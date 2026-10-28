@@ -1,21 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A rising grade line (the 9 % incline) over a scale base, in the 108dp adaptive canvas. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M34,66 L54,50 L62,56 L76,42" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="6"
-        android:strokeLineCap="round"
-        android:pathData="M32,76 L76,76" />
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M30,60 A24,24 0 0,1 78,60" android:strokeColor="#FFFFFF" android:strokeWidth="6.5" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M36.5,47 L40.2,49.6" android:strokeColor="#FFFFFF" android:strokeWidth="3.5" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M54,36 L54,40.5" android:strokeColor="#FFFFFF" android:strokeWidth="3.5" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M71.5,47 L67.8,49.6" android:strokeColor="#FFFFFF" android:strokeWidth="3.5" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M54,60 L66.5,46.5" android:strokeColor="#A8F0C8" android:strokeWidth="5.5" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M54,55 a5,5 0 1,0 0.001,0 Z" android:fillColor="#FFFFFF" />
+    <path android:pathData="M33,80 L75,72" android:strokeColor="#FFFFFF" android:strokeWidth="6.5" android:strokeLineCap="round" android:fillColor="#00000000" />
 </vector>
