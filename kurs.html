@@ -335,6 +335,13 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="dname" id="planName">–</div>
       <button class="iconbtn" id="nextPlan" aria-label="Nächste Woche">›</button>
     </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="field"><label class="label" for="planNotes">Hinweise für diese Woche</label>
+        <textarea id="planNotes" placeholder="z. B. Mo und Do Büro, Rest Home Office. Mi abends Essen auswärts, Fr Abend verplant."></textarea></div>
+      <p class="small muted" style="margin:4px 0 0">Claude berücksichtigt das beim Erstellen des Wochenplans (montags eine Woche im Voraus) und bei „Plan anpassen“.</p>
+      <div class="btnrow"><button class="btn ghost" type="button" id="planNotesSave">Hinweise speichern</button></div>
+      <div class="status" id="planNotesStatus"></div>
+    </div>
     <div id="planAsk" class="panel" style="margin-top:14px" hidden>
       <div class="field"><label class="label" for="planPrompt">Plan anpassen</label>
         <textarea id="planPrompt" placeholder="z. B. Heute kein Frühstück und ich esse abends auswärts"></textarea></div>
@@ -933,8 +940,9 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
     const eaten = [];
     for (let i = 0; i < 7; i++) { const d = addDays(mon, i); if (d > today) break; const doc = days[d]; if (doc && (doc.meals || []).length) eaten.push(`${WDL[weekday(d)]} ${d}: ` + doc.meals.map((m) => `${m.label} (${m.kcal} kcal, ${m.protein} g)`).join("; ") + (doc.event ? " [Event-Tag]" : "")); }
     const types = []; for (let i = 0; i < 7; i++) { const d = addDays(mon, i), doc = days[d]; if (doc && (doc.dayType || doc.event)) types.push(`${WDL[weekday(d)]} ${d}: ${[doc.dayType, doc.event ? "Event-Tag" : ""].filter(Boolean).join(", ")}`); }
+    const notes = (S.planNotes || {})[mon];
     return `Du passt den Wochen-Mahlzeitenplan einer Person an, die abnehmen will.
-${types.length ? "Tagesarten laut Log (HO = Home Office, WE = Wochenende):\n" + types.join("\n") : ""}
+${notes ? "Hinweise der Person für diese Woche (Tagesarten, Termine, Essen auswärts):\n" + String(notes).slice(0, 800) + "\n" : ""}${types.length ? "Tagesarten laut Log (HO = Home Office, WE = Wochenende):\n" + types.join("\n") : ""}
 Heute ist ${WDL[weekday(today)]}, ${today}. Die Woche geht von ${mon} (Montag) bis ${addDays(mon, 6)} (Sonntag).
 Tagesziel: ${S.kcalTarget} kcal und ${S.proteinTarget} g Eiweiß. Event-Tage sind beim Kalorienziel frei.
 ${S.estimateHints ? "Hinweise und Vorlieben der Person:\n" + S.estimateHints.slice(0, 1500) + "\n" : ""}${eaten.length ? "Diese Woche schon gegessen (laut Log):\n" + eaten.join("\n") + "\n" : ""}
@@ -1000,7 +1008,28 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
   };
 
   // ---- plan ----
+  let notesWeek = null;
+  function renderPlanNotes() {
+    const el = $("planNotes");
+    // keep what the person is typing; refresh when the week changes or the field is not focused
+    if (notesWeek !== curPlan || document.activeElement !== el) el.value = (S.planNotes || {})[curPlan] || "";
+    notesWeek = curPlan;
+  }
+  $("planNotesSave").onclick = async () => {
+    if (!base) { setStatus("planNotesStatus", "Speicher nicht erreichbar.", true); return; }
+    const txt = $("planNotes").value.trim().slice(0, 1500), week = curPlan;
+    const notes = { ...(S.planNotes || {}) };
+    if (txt) notes[week] = txt; else delete notes[week];
+    // drop notes for weeks that are long over
+    Object.keys(notes).forEach((k) => { if (k < addDays(mondayOf(todayStr()), -28)) delete notes[k]; });
+    const next = { ...S, planNotes: notes, updatedAt: new Date().toISOString() };
+    $("planNotesSave").disabled = true;
+    try { await base.set(next); S = next; setStatus("planNotesStatus", txt ? "Gespeichert. Fließt in den Plan für diese Woche ein." : "Hinweise gelöscht."); }
+    catch (e) { setStatus("planNotesStatus", "Speichern fehlgeschlagen.", true); }
+    finally { $("planNotesSave").disabled = false; }
+  };
   function renderPlan() {
+    renderPlanNotes();
     const wn = weekNo(curPlan);
     $("planName").textContent = `Plan ${wn >= 1 ? "Woche " + wn : ""} · ${dm(curPlan)}–${dm(addDays(curPlan, 6))}`;
     const isProposal = !!(pendingPlan && pendingPlan.week === curPlan);
