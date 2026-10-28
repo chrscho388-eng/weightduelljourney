@@ -521,6 +521,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 
   // ---- render: today ----
   function renderDay() {
+    if (hasProfile) setTimeout(() => ensureCoffee(curDay), 0);
     const d = dayDoc(curDay);
     const wn = weekNo(mondayOf(curDay));
     $("dayName").textContent = `${WDL[weekday(curDay)]}, ${dm(curDay)}${curDay === todayStr() ? " · heute" : ""}`;
@@ -553,7 +554,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       nm.append(b);
       const v = document.createElement("div"); v.className = "mv"; v.textContent = `${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß`;
       const x = document.createElement("button"); x.className = "x"; x.setAttribute("aria-label", "Löschen: " + m.label); x.textContent = "×";
-      x.onclick = () => saveDay(curDay, (doc) => { doc.meals = doc.meals.filter((y) => y.id !== m.id); });
+      x.onclick = () => saveDay(curDay, (doc) => { doc.meals = doc.meals.filter((y) => y.id !== m.id); if (m.id === "coffee") doc.coffeeOff = true; });
       li.append(nm, v, x);
       const det = mealDetails(m); if (det) li.append(det);
       ul.append(li);
@@ -582,7 +583,29 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     if (document.activeElement !== $("dayType")) $("dayType").value = d.dayType || defaultType(curDay);
     $("eventDay").checked = !!d.event;
   }
-  function defaultType(s) { const w = weekday(s); return w >= 5 ? "WE" : "HO"; }
+  function defaultType(s) {
+    const pd = ((plans[mondayOf(s)] || {}).days || []).find((x) => x.date === s);
+    if (pd && ["HO", "Büro", "WE", "Frei"].includes(pd.type)) return pd.type;
+    const w = weekday(s); return w >= 5 ? "WE" : "HO";
+  }
+  // ---- coffee: fixed daily entry by day type (cappuccinos, calories only) ----
+  const COFFEE_DEFAULT = { since: "2026-10-28", kcal: 95, perType: { HO: 1, "Büro": 3, WE: 1, Frei: 1 } };
+  function ensureCoffee(date) {
+    const c = S.coffee || COFFEE_DEFAULT;
+    if (!c || !base || date < (c.since || "9999") || date > todayStr()) return;
+    const d = days[date] || {};
+    if (d.coffeeOff) return;
+    const n = (c.perType || {})[d.dayType || defaultType(date)] || 0;
+    const cur = (d.meals || []).find((m) => m.id === "coffee");
+    const want = n ? { id: "coffee", label: n === 1 ? "Cappuccino" : n + "× Cappuccino", kcal: n * (c.kcal || 95), protein: 0, auto: true } : null;
+    if (!want && !cur) return;
+    if (want && cur && cur.kcal === want.kcal && cur.label === want.label) return;
+    saveDay(date, (doc) => {
+      doc.meals = (doc.meals || []).filter((m) => m.id !== "coffee");
+      if (want) doc.meals.unshift(want);
+      if (!doc.dayType) doc.dayType = defaultType(date);
+    });
+  }
 
   const uid = () => Math.random().toString(36).slice(2, 10);
   function partsTable(parts) {
