@@ -68,6 +68,25 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const pl2 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
   check(prof.planRules === "Kein Frühstück", "standing wishes saved in profile");
   check(/Kein Frühstück/.test(pl2.planChange || "") && /Mittwoch Pizza/.test(pl2.planChange || ""), "standing wishes queued for existing plan");
+  // canteen menu: photo is stored on the plan and queued for Claude
+  check(await pg.isVisible("#canteenLabel"), "canteen upload visible in request mode");
+  await pg.fill("#canteenHabits", "Suppe, kleiner Salat, Dessert");
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await pg.setInputFiles("#canteenInput", { name: "menu.png", mimeType: "image/png", buffer: png }); await pg.waitForTimeout(800);
+  const pl3 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
+  const prof3 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile")));
+  check(/^data:image\/jpeg/.test(pl3.canteenMenu || "") && /Kantinen-Menü/.test(pl3.planChange || "") && /Mittwoch Pizza/.test(pl3.planChange || ""), "canteen menu stored and queued");
+  check(prof3.canteenHabits === "Suppe, kleiner Salat, Dessert" && /Suppe/.test(pl3.planChange), "canteen habits saved and sent along");
+  check(await pg.isVisible("#canteenMenuBox"), "menu of the week can be viewed");
+  // with an API key Claude reads the menu right away and proposes the office-day lunches
+  await pg.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ summary: "Kantine eingeplant", plan: { note: "Kantine", days: [{ date: "2026-11-05", type: "Büro", meals: [{ slot: "Mittag (Kantine)", name: "Frittatensuppe, Kartoffelsalat, Topfencreme", detail: "", kcal: 750, protein: 30, cook: false }] }], swaps: [] } }) }] }) }));
+  await pg.evaluate(() => localStorage.setItem("kurs:apiKey", "sk-test")); await pg.reload(); await pg.waitForTimeout(800);
+  await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
+  await pg.setInputFiles("#canteenInput", { name: "menu.png", mimeType: "image/png", buffer: png }); await pg.waitForTimeout(1000);
+  check(await pg.isVisible("#planProposal") && (await pg.textContent("#planBody")).includes("Frittatensuppe"), "canteen proposal shown with API key");
+  await pg.click("#planAccept"); await pg.waitForTimeout(400);
+  const pl4 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
+  check(pl4.days[0].meals[0].name.startsWith("Frittatensuppe") && /^data:image/.test(pl4.canteenMenu || ""), "accepted plan keeps the menu photo");
   check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
   await b.close();
   if (fails.length) { console.log(`\n${fails.length} check(s) failed`); process.exit(1); }

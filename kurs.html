@@ -100,6 +100,7 @@ input[type=number] { font-family: var(--font-data); }
 .btn { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 14px; border: 1px solid var(--accent); background: var(--accent); color: var(--bg); cursor: pointer; }
 .btn.ghost { background: transparent; color: var(--accent); }
 .btn:disabled { opacity: .5; cursor: default; }
+.btn.disabled { opacity: .5; pointer-events: none; }
 .btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
 /* meals */
@@ -387,6 +388,14 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <p class="small muted" style="margin:4px 0 0">Claude berücksichtigt das beim Erstellen des Wochenplans (montags eine Woche im Voraus) und bei „Plan anpassen“.</p>
       <div class="btnrow"><button class="btn ghost" type="button" id="planNotesSave">Hinweise speichern</button></div>
       <div class="status" id="planNotesStatus"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="field"><label class="label" for="canteenHabits">Kantine: was du dort meistens isst</label>
+        <textarea id="canteenHabits" placeholder="z. B. Suppe mit Einlage, kleine Salatschüssel, Dessert im kleinen Glas"></textarea></div>
+      <p class="small muted" style="margin:4px 0 0" id="canteenHint">Lade das Wochenmenü als Foto oder Screenshot hoch, sobald es da ist. Claude wählt dann für jeden Bürotag die beste Kombination und gleicht den Rest des Tages aus.</p>
+      <div class="btnrow"><label class="btn" id="canteenLabel" hidden>Menü-Foto hochladen<input type="file" id="canteenInput" accept="image/*" hidden></label><button class="btn ghost" type="button" id="canteenHabitsSave">Gewohnheiten speichern</button></div>
+      <details id="canteenMenuBox" style="margin-top:10px" hidden><summary class="small">Menü dieser Woche</summary><img class="mphoto" id="canteenImg" alt="Kantinen-Menü dieser Woche" style="margin-top:8px"></details>
+      <div class="status" id="canteenStatus"></div>
     </div>
     <div class="panel" style="margin-top:14px">
       <div class="label">Dauerhafte Wünsche für alle Pläne</div>
@@ -695,14 +704,14 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     det.append(body);
     return det;
   }
-  function thumb(file) {
+  function thumb(file, max = 400, q = 0.55) {
     return new Promise((res) => {
       const img = new Image(), url = URL.createObjectURL(file);
       img.onload = () => {
-        const sc = Math.min(1, 400 / Math.max(img.width, img.height));
+        const sc = Math.min(1, max / Math.max(img.width, img.height));
         const c = document.createElement("canvas"); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
-        res(c.toDataURL("image/jpeg", 0.55));
+        res(c.toDataURL("image/jpeg", q));
       };
       img.onerror = () => { URL.revokeObjectURL(url); res(null); };
       img.src = url;
@@ -1256,7 +1265,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
 ${notes ? "Hinweise der Person für diese Woche (Tagesarten, Termine, Essen auswärts):\n" + String(notes).slice(0, 800) + "\n" : ""}${types.length ? "Tagesarten laut Log (HO = Home Office, WE = Wochenende):\n" + types.join("\n") : ""}
 Heute ist ${WDL[weekday(today)]}, ${today}. Die Woche geht von ${mon} (Montag) bis ${addDays(mon, 6)} (Sonntag).
 Tagesziel: ${S.kcalTarget} kcal und ${S.proteinTarget} g Eiweiß. Event-Tage sind beim Kalorienziel frei.
-${S.estimateHints ? "Hinweise und Vorlieben der Person:\n" + S.estimateHints.slice(0, 1500) + "\n" : ""}${S.planRules ? "DAUERHAFTE WÜNSCHE der Person (haben Vorrang vor allen Hinweisen oben):\n" + String(S.planRules).slice(0, 1500) + "\n" : ""}${eaten.length ? "Diese Woche schon gegessen (laut Log):\n" + eaten.join("\n") + "\n" : ""}
+${S.estimateHints ? "Hinweise und Vorlieben der Person:\n" + S.estimateHints.slice(0, 1500) + "\n" : ""}${S.planRules ? "DAUERHAFTE WÜNSCHE der Person (haben Vorrang vor allen Hinweisen oben):\n" + String(S.planRules).slice(0, 1500) + "\n" : ""}${S.canteenHabits ? "Was die Person in der Kantine (Bürotage, mittags) meistens isst:\n" + String(S.canteenHabits).slice(0, 1000) + "\n" : ""}${eaten.length ? "Diese Woche schon gegessen (laut Log):\n" + eaten.join("\n") + "\n" : ""}
 Aktueller Plan als JSON:
 ${current ? JSON.stringify(current) : "(noch kein Plan, erstelle einen für die ganze Woche)"}
 
@@ -1346,11 +1355,53 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     } catch (e) { setStatus("planStatus", "Speichern fehlgeschlagen.", true); }
     finally { $("planLaterBtn").disabled = false; }
   };
+  // ---- canteen: weekly menu photo -> best choice on office days ----
+  const canteenWish = (habits) => `Das Kantinen-Menü dieser Woche ist da (Bild). Plane für jeden Bürotag ab heute das Mittagessen in der Kantine: wähle aus dem Menü die beste Kombination nach den Kantinen-Gewohnheiten, mit möglichst viel Eiweiß und passenden kcal. Mahlzeit mit slot "Mittag (Kantine)", name = die gewählten Gerichte vom Menü, detail = Portionen und eine gute Alternative vom Menü, kcal und protein als Mittelwerte, cook false. Gleiche den Rest des Tages so aus, dass die Tagesziele möglichst halten. Bürotage laut Hinweisen und Plan (type Büro); Tage ohne Kantine nicht ändern.${habits ? " Kantinen-Gewohnheiten: " + habits : ""}`;
+  $("canteenHabitsSave").onclick = async () => {
+    const txt = $("canteenHabits").value.trim().slice(0, 1000);
+    setStatus("canteenStatus", (await saveProfile({ canteenHabits: txt })) ? "Gespeichert." : "Speichern fehlgeschlagen.", false);
+  };
+  async function sendCanteen(file) {
+    if (!base) { setStatus("canteenStatus", "Speicher nicht erreichbar.", true); return; }
+    const direct = !!(sample && sampleImages), later = requestMode();
+    if (!direct && !later) { setStatus("canteenStatus", "Dafür braucht die App Claude: einen API-Schlüssel oder den Abgleich mit GitHub.", true); return; }
+    const week = curPlan, habits = $("canteenHabits").value.trim().slice(0, 1000);
+    $("canteenLabel").classList.add("disabled"); setStatus("canteenStatus", "Menü wird gespeichert …");
+    try {
+      if (habits !== (S.canteenHabits || "")) await saveProfile({ canteenHabits: habits });
+      const cur = plans[week] && !plans[week].deleted ? plans[week] : { days: [], swaps: [] };
+      const wish = canteenWish(habits);
+      const next = { ...JSON.parse(JSON.stringify(cur)), canteenAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      if (!direct) next.planChange = (cur.planChange ? cur.planChange + " | " : "") + wish;
+      // keep the menu readable but small enough for the database; retry smaller if the save is refused
+      let saved = false;
+      for (const [max, q] of [[1100, 0.6], [800, 0.5]]) {
+        const img = await thumb(file, max, q);
+        if (img) next.canteenMenu = img;
+        try { await base.collection("plans").doc(week).set(next); saved = true; break; } catch (e) {}
+      }
+      if (!saved) throw new Error("save");
+      plans[week] = next;
+      if (!direct) { setStatus("canteenStatus", "An Claude geschickt. Der Plan mit Kantinen-Essen kommt beim nächsten Abgleich."); renderPlan(); return; }
+      setStatus("canteenStatus", "Claude liest das Menü und plant die Bürotage …");
+      const res = await sample.json(planPrompt(wish, week, cur.days && cur.days.length ? cur : null), { modelTier: "default", images: [file] });
+      const plan = cleanPlan(res && res.plan, week);
+      if (!plan.days.length) throw { code: "empty" };
+      pendingPlan = { week, plan, wish: "Kantinen-Menü eingeplant" };
+      $("planSummary").textContent = res.summary ? String(res.summary).slice(0, 600) : "Vorschlag erstellt.";
+      setStatus("canteenStatus", "Vorschlag unten prüfen und übernehmen."); renderPlan();
+    } catch (e) {
+      const c = e && e.code;
+      setStatus("canteenStatus", c === "not_granted" ? "Claude-Nutzung wurde nicht erlaubt." : c === "rate_limited" ? "Gerade zu viele Anfragen. Versuch es in einer Minute erneut." : c === "bad_key" ? "Der API-Schlüssel wurde abgelehnt. Prüfe ihn im Tab Profil." : c ? "Das Menü konnte nicht ausgewertet werden. Versuch ein schärferes Foto." : "Speichern fehlgeschlagen.", true);
+    } finally { $("canteenLabel").classList.remove("disabled"); }
+  }
+  $("canteenInput").onchange = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) sendCanteen(f); };
   $("planAccept").onclick = async () => {
     if (!pendingPlan || !base) return;
     const { week, plan, wish } = pendingPlan;
     const prev = plans[week] || null;
-    const doc = { ...plan, updatedAt: new Date().toISOString(), lastWish: wish.slice(0, 300) };
+    const keep = prev && prev.canteenMenu ? { canteenMenu: prev.canteenMenu, canteenAt: prev.canteenAt } : {};
+    const doc = { ...plan, ...keep, updatedAt: new Date().toISOString(), lastWish: wish.slice(0, 300) };
     $("planAccept").disabled = true;
     try {
       await base.collection("plans").doc(week).set(doc);
@@ -1398,6 +1449,10 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     renderPlanNotes();
     renderRules();
     $("rulesApplyWrap").hidden = !requestMode();
+    if (document.activeElement !== $("canteenHabits")) $("canteenHabits").value = S.canteenHabits || "";
+    $("canteenLabel").hidden = !((sample && sampleImages) || requestMode());
+    const menu = plans[curPlan] && plans[curPlan].canteenMenu;
+    $("canteenMenuBox").hidden = !menu; if (menu && $("canteenImg").src !== menu) $("canteenImg").src = menu;
     const wn = weekNo(curPlan);
     $("planName").textContent = `Plan ${wn >= 1 ? "Woche " + wn : ""} · ${dm(curPlan)}–${dm(addDays(curPlan, 6))}`;
     const isProposal = !!(pendingPlan && pendingPlan.week === curPlan);
@@ -1775,7 +1830,7 @@ Antworte nur mit JSON in genau dieser Form:
     return new Promise((res) => {
       const img = new Image(), url = URL.createObjectURL(file);
       img.onload = () => {
-        const sc = Math.min(1, 1200 / Math.max(img.width, img.height));
+        const sc = Math.min(1, 1568 / Math.max(img.width, img.height));
         const c = document.createElement("canvas"); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
         res(c.toDataURL("image/jpeg", 0.85).split(",")[1]);
