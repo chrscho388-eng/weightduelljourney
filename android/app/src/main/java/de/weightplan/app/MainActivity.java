@@ -161,6 +161,16 @@ public class MainActivity extends Activity {
 
     /** Called from the page as window.WeightplanAndroid. */
     private class Bridge {
+        /** Version name of the installed app, e.g. "3.12". */
+        @JavascriptInterface
+        public String getVersion() {
+            try {
+                return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
         /** Saves a text file into Downloads and returns where it went, or "" on failure. */
         @JavascriptInterface
         public String saveFile(String name, String content) {

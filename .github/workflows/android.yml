@@ -64,6 +64,8 @@ jobs:
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk Weightplan.apk
           cp android-web/app/build/outputs/apk/release/app-release.apk Weightplan-Web.apk
+          cp Weightplan.apk "Weightplan-3.${GITHUB_RUN_NUMBER}.apk"
+          cp Weightplan-Web.apk "Weightplan-Web-2.${GITHUB_RUN_NUMBER}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -77,6 +79,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest Weightplan.apk Weightplan-Web.apk \
-            --title "Weightplan (aktuelle APKs)" \
+          gh release create latest Weightplan.apk Weightplan-Web.apk "Weightplan-3.${GITHUB_RUN_NUMBER}.apk" "Weightplan-Web-2.${GITHUB_RUN_NUMBER}.apk" \
+            --title "Weightplan 3.${GITHUB_RUN_NUMBER} (Web 2.${GITHUB_RUN_NUMBER})" \
             --notes "Automatisch gebaut aus ${GITHUB_SHA::7}. Weightplan.apk ist die eigenständige App, Weightplan-Web.apk öffnet die claude.ai-Version. Anleitung in der README."

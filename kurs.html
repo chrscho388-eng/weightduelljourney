@@ -383,6 +383,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     </form>
     <div id="localBox" hidden>
       <h2>Diese Version</h2>
+      <p class="small muted" id="appVersion" hidden></p>
       <div class="panel">
         <p class="small" style="margin:0 0 10px">Deine Daten liegen nur auf diesem Gerät. Sichere sie ab und zu als Datei, besonders bevor du Browserdaten löschst oder das Gerät wechselst.</p>
         <div class="btnrow" style="margin-top:0"><button class="btn ghost" type="button" id="exportBtn">Daten sichern</button><label class="btn ghost">Daten laden<input type="file" id="importInput" accept="application/json,.json" hidden></label></div>
@@ -1385,6 +1386,7 @@ Antworte nur mit JSON in genau dieser Form:
     setInterval(syncNow, 5 * 60 * 1000);
     setTimeout(syncNow, 800);
     $("localBox").hidden = false;
+    try { const v = window.WeightplanAndroid && window.WeightplanAndroid.getVersion ? window.WeightplanAndroid.getVersion() : ""; if (v) { $("appVersion").textContent = "App-Version " + v; $("appVersion").hidden = false; } } catch (e) {}
     $("profilIntro").textContent = "Deine Angaben und Einträge bleiben auf diesem Gerät. Niemand sonst sieht sie.";
     if (lsGet(LS + "apiKey")) $("apiKey").placeholder = "gespeichert";
     $("keySave").onclick = () => {
