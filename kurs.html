@@ -779,6 +779,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
       const photo = image ? await thumb(image) : null;
       if (photo || seen) { items[0].photo = photo; items[0].seen = seen; }
       pendingEst = items;
+      if ($("mealText").value.trim() === text) $("mealText").value = ""; // sent: clear for the next entry
       $("estSeenBox").hidden = !(photo || seen);
       $("estPhoto").hidden = !photo; if (photo) $("estPhoto").src = photo;
       $("estSeen").textContent = seen ? "Das sehe ich: " + seen : "";
@@ -1241,6 +1242,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
       const plan = cleanPlan(res && res.plan, mon);
       if (!plan.days.length) throw { code: "empty" };
       pendingPlan = { week: mon, plan, wish };
+      if ($("planPrompt").value.trim() === wish) $("planPrompt").value = "";
       $("planSummary").textContent = (res.summary ? String(res.summary).slice(0, 600) : "Vorschlag erstellt.");
       setStatus("planStatus", ""); curPlan = mon; renderPlan();
     } catch (e) {
@@ -1870,7 +1872,4 @@ Antworte nur mit JSON in genau dieser Form:
   initSample();
   if (!STANDALONE) use("mcp").then((m) => { mcpApi = m; updateSyncBtn(); }).catch(() => {});
   // refresh "today" at midnight-ish when the app stays open
-  let lastToday = todayStr();
-  setInterval(() => { const t = todayStr(); if (t !== lastToday) { if (curDay === lastToday) curDay = t; lastToday = t; renderAll(); } }, 60000);
-})();
-</script>
+  let la
