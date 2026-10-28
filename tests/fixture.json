@@ -28,7 +28,8 @@
   "stepGoals": [
    {
     "from": "2026-10-26",
-    "steps": 13000
+    "steps": 18000,
+    "min": 13000
    }
   ],
   "updatedAt": "2026-10-27T08:00:00.000Z",
@@ -78,7 +79,9 @@
     "protein": 45
    }
   ],
-  "updatedAt": "2026-11-03T20:00:00.000Z"
+  "updatedAt": "2026-11-03T20:00:00.000Z",
+  "flatSteps": 6500,
+  "inclineSteps": 7000
  },
  "profile/plans/2026-11-02": {
   "note": "Testplan",

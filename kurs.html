@@ -360,6 +360,12 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <svg class="chart" id="chProt" viewBox="0 0 600 230" role="img" aria-label="Tägliche Eiweißaufnahme"></svg>
         <div class="legend"><span><i style="background:var(--s1);height:10px;width:10px"></i>Eiweiß</span><span><i style="background:var(--chart-goal)"></i>Ziel</span></div>
       </div>
+      <div class="panel dchart">
+        <div class="ctitle"><h3>Schritte</h3></div>
+        <div class="cread" id="readSteps"></div>
+        <svg class="chart" id="chSteps" viewBox="0 0 600 230" role="img" aria-label="Tägliche Schritte mit und ohne Steigung und Schrittziel"></svg>
+        <div class="legend"><span><i style="background:var(--s1);height:10px;width:10px"></i>mit Steigung</span><span><i style="background:var(--s2);height:10px;width:10px"></i>flach</span><span><i style="background:var(--chart-goal)"></i>Ziel</span><span><i style="background:var(--chart-goal);opacity:.55"></i>Mindestziel</span></div>
+      </div>
     </div>
 
     <h2>Alle Wochen</h2>
@@ -1131,7 +1137,9 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     const rows = [];
     for (let d = start; d <= end; d = addDays(d, 1)) {
       const doc = dayDoc(d), has = !!hasData(doc);
-      rows.push(has ? { date: d, has, kin: intake(doc), out: burn(doc), bal: intake(doc) - burn(doc), pr: protein(doc), ev: !!doc.event } : { date: d, has });
+      const g = stepGoalFor(d);
+      const goals = { goal: g ? g.full : null, goalMin: g && g.min < g.full ? g.min : null };
+      rows.push(has ? { date: d, has, kin: intake(doc), out: burn(doc), bal: intake(doc) - burn(doc), pr: protein(doc), ev: !!doc.event, inc: Number(doc.inclineSteps) || 0, flat: Number(doc.flatSteps) || 0, ...goals } : { date: d, has, ...goals });
     }
     rows.forEach((r, i) => { // rolling 7-day mean of recorded days
       const win = rows.slice(Math.max(0, i - 6), i + 1).filter((x) => x.has);
@@ -1147,10 +1155,11 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     return `M${x},${y0}V${y1 - r}Q${x},${y1} ${x + r},${y1}H${x + w - r}Q${x + w},${y1} ${x + w},${y1 - r}V${y0}Z`;
   }
   function drawDaily(svgId, rows, o) {
-    const W = 600, H = 230, L = 62, R = 10, T = 12, B = 30;
+    const W = 600, H = 230, L = o.left || 62, R = 10, T = 12, B = 30;
     const vals = [];
-    rows.forEach((r) => { if (r.has) { vals.push(o.bar(r)); if (o.line) { const v = o.line(r); if (v != null) vals.push(v); } } });
+    rows.forEach((r) => { if (r.has) { vals.push(o.bar(r) + (o.bar2 ? o.bar2(r) : 0)); if (o.line) { const v = o.line(r); if (v != null) vals.push(v); } } });
     if (o.ref != null) vals.push(o.ref);
+    if (vals.length) (o.refs || []).forEach((f) => rows.forEach((r) => { const v = f.at(r); if (v != null) vals.push(v); }));
     if (!vals.length) { $(svgId).innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">Noch keine Einträge in diesem Zeitraum</text>`; return; }
     let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
     const step = niceStep(hi - lo || 100);
@@ -1164,7 +1173,14 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     const every = Math.ceil(n / 7);
     rows.forEach((r, i) => { if ((n - 1 - i) % every === 0) g += `<text x="${XC(i)}" y="${H - 6}" text-anchor="middle">${dm(r.date).slice(0, 6)}</text>`; });
     let marks = "";
-    rows.forEach((r, i) => { if (r.has) marks += `<path d="${barPath(X(i), bw, Y(0), Y(o.bar(r)))}" fill="${o.barColor(r)}"/>`; });
+    rows.forEach((r, i) => {
+      if (!r.has) return;
+      const a = o.bar(r), b = o.bar2 ? o.bar2(r) : 0;
+      if (b > 0) { marks += `<rect x="${X(i)}" y="${Y(a)}" width="${bw}" height="${Y(0) - Y(a)}" fill="${o.barColor(r)}"/><path d="${barPath(X(i), bw, Y(a), Y(a + b))}" fill="${o.bar2Color}"/>`; }
+      else marks += `<path d="${barPath(X(i), bw, Y(0), Y(a))}" fill="${o.barColor(r)}"/>`;
+    });
+    // goals that can change from day to day: a dashed segment across each day's band
+    (o.refs || []).forEach((f) => rows.forEach((r, i) => { const v = f.at(r); if (v != null) marks += `<line x1="${L + i * band}" x2="${L + (i + 1) * band}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--chart-goal)" stroke-width="2" stroke-dasharray="${f.dash}"${f.faint ? ' stroke-opacity=".55"' : ""}/>`; }));
     if (lo < 0) marks += `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1"/>`;
     if (o.ref != null) marks += `<line x1="${L}" x2="${W - R}" y1="${Y(o.ref)}" y2="${Y(o.ref)}" stroke="var(--chart-goal)" stroke-width="2" stroke-dasharray="6 4"/>`;
     if (o.line) {
@@ -1191,16 +1207,26 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     drawDaily("chEnergy", rows, { bar: (r) => r.kin, barColor: () => "var(--s1)", line: (r) => r.out, lineColor: "var(--s2)", ref: S.kcalTarget });
     drawDaily("chBal", rows, { bar: (r) => r.bal, barColor: (r) => r.bal > 0 ? "var(--bad)" : "var(--good)", line: (r) => r.avg7, lineColor: "var(--fg)" });
     drawDaily("chProt", rows, { bar: (r) => r.pr, barColor: () => "var(--s1)", ref: S.proteinTarget });
+    drawDaily("chSteps", rows, { bar: (r) => r.inc, barColor: () => "var(--s1)", bar2: (r) => r.flat, bar2Color: "var(--s2)", left: 84, refs: [{ at: (r) => r.goal, dash: "6 4" }, { at: (r) => r.goalMin, dash: "2 4", faint: true }] });
     const rec = rows.filter((r) => r.has);
     const avg = (f) => rec.length ? rec.reduce((a, r) => a + f(r), 0) / rec.length : null;
     const sel = selDate && rows.find((r) => r.date === selDate);
     const lbl = sel ? `${WD[weekday(sel.date)]} ${dm(sel.date)}` : `Schnitt ${rec.length} Tage`;
-    if (sel && !sel.has) { ["readEnergy", "readBal", "readProt"].forEach((id) => $(id).innerHTML = `${lbl}: keine Einträge`); return; }
-    if (!rec.length) { ["readEnergy", "readBal", "readProt"].forEach((id) => $(id).textContent = ""); return; }
+    if (sel && !sel.has) { ["readEnergy", "readBal", "readProt", "readSteps"].forEach((id) => $(id).innerHTML = `${lbl}: keine Einträge`); return; }
+    if (!rec.length) { ["readEnergy", "readBal", "readProt", "readSteps"].forEach((id) => $(id).textContent = ""); return; }
     const v = sel ? { kin: sel.kin, out: sel.out, bal: sel.bal, pr: sel.pr } : { kin: avg((r) => r.kin), out: avg((r) => r.out), bal: avg((r) => r.bal), pr: avg((r) => r.pr) };
     $("readEnergy").innerHTML = `${lbl}: Aufnahme <b>${fmt(r5(v.kin))}</b> · Verbrauch <b>${fmt(r5(v.out))}</b> kcal${sel && sel.ev ? " · Event-Tag" : ""}`;
     $("readBal").innerHTML = `${lbl}: <b>${signed(r5(v.bal))}</b> kcal${sel && sel.avg7 != null ? ` · Schnitt 7 Tage <b>${signed(r5(sel.avg7))}</b>` : ` · entspricht <b>${signedKg(v.bal * 7 / S.kcalPerKg)}</b> pro Woche`}`;
     $("readProt").innerHTML = `${lbl}: <b>${fmt(v.pr)} g</b> von ${fmt(S.proteinTarget)} g`;
+    // days without any steps entered (only meals logged) do not count for steps
+    const sr = rec.filter((r) => r.inc + r.flat > 0), savg = (f) => sr.reduce((a, r) => a + f(r), 0) / sr.length;
+    if (!sel && !sr.length) $("readSteps").textContent = "Noch keine Schritte in diesem Zeitraum.";
+    const st = sel ? { inc: sel.inc, flat: sel.flat } : sr.length ? { inc: savg((r) => r.inc), flat: savg((r) => r.flat) } : null;
+    const r100 = (x) => Math.round(x / 100) * 100;
+    let goalTxt = "";
+    if (sel && sel.goal) goalTxt = sel.inc + sel.flat >= sel.goal ? " · Ziel erreicht" : sel.goalMin && sel.inc + sel.flat >= sel.goalMin ? ` · Mindestziel erreicht, ${fmt(r100(sel.goal - sel.inc - sel.flat))} bis zum vollen Ziel` : ` · ${fmt(r100((sel.goalMin || sel.goal) - sel.inc - sel.flat))} unter dem ${sel.goalMin ? "Mindestziel" : "Ziel"}`;
+    else if (!sel) { const gs = sr.filter((r) => r.goal); if (gs.length) goalTxt = ` · Ziel erreicht an ${fmt(gs.filter((r) => r.inc + r.flat >= (r.goalMin || r.goal)).length)} von ${fmt(gs.length)} Tagen`; }
+    if (st) $("readSteps").innerHTML = `${sel ? lbl : "Schnitt " + tage(sr.length)}: <b>${fmt(r100(st.inc + st.flat))}</b> Schritte, davon <b>${fmt(r100(st.inc))}</b> mit Steigung${goalTxt}`;
   }
 
   // ---- plan adjust via Claude ----

@@ -39,6 +39,8 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("nav.tabs a[data-tab=verlauf]"); await pg.waitForTimeout(150);
   check((await pg.textContent("#insight")).includes("Prognose"), "overview shows the forecast");
   check((await pg.$$("#chart polyline")).length > 0, "weight chart is drawn");
+  check((await pg.$$("#chSteps path")).length >= 2 && (await pg.$$("#chSteps line[stroke-dasharray='2 4']")).length > 0, "steps chart draws bars and goals");
+  check(/Schritte, davon/.test(await pg.textContent("#readSteps")), "steps readout shown");
   // plan + shopping list
   await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
   check((await pg.textContent("#planBody")).includes("Reispfanne"), "plan shows meals");
