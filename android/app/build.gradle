@@ -10,8 +10,10 @@ android {
         applicationId "de.weightplan.app"
         minSdk 26
         targetSdk 34
-        versionCode 3
-        versionName "3.0"
+        // Every CI build gets a higher version so Android accepts it as an update.
+        def build = (System.getenv("GITHUB_RUN_NUMBER") ?: "0").toInteger()
+        versionCode 100 + build
+        versionName "3." + build
     }
 
     signingConfigs {
