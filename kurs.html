@@ -149,6 +149,10 @@ tr.sum td { font-weight: 600; background: var(--accent-soft); }
 .pmeal .slot { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
 .pmeal .detail { grid-column: 1 / -1; font-size: 14px; color: var(--muted); }
 .pmeal .recipe { grid-column: 1 / -1; font-size: 14px; }
+.pmeal.tap { cursor: pointer; border-radius: 6px; }
+.pmeal.tap:hover { background: var(--accent-soft); }
+.pmeal.tap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pmeal .rhint { color: var(--accent); font-weight: 600; }
 .pmeal .recipe summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 4px 0; }
 .pmeal .recipe ul, .pmeal .recipe ol { margin: 6px 0; padding-left: 20px; }
 .pmeal .recipe li { margin: 2px 0; }
@@ -1011,30 +1015,44 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
       const tk = (d.meals || []).reduce((a, m) => a + (m.kcal || 0), 0), tp = (d.meals || []).reduce((a, m) => a + (m.protein || 0), 0);
       h += `<div class="planday panel${d.date === todayStr() ? " today" : ""}"><h3><span>${WD[weekday(d.date)]} ${dm(d.date)}${d.type ? ` <span class="pill">${esc(d.type)}</span>` : ""}</span><span class="num">${fmt(tk)} kcal · ${fmt(tp)} g Eiweiß</span></h3>`;
       if (d.info) h += `<div class="small muted">${esc(d.info)}</div>`;
-      (d.meals || []).forEach((m, mi) => h += `<div class="pmeal"><div><div class="slot">${esc(m.slot || "")}</div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}${recipeHtml(m, isProposal ? null : "d" + di + ":" + mi)}</div>`);
+      (d.meals || []).forEach((m, mi) => h += `<div ${mealAttrs(m, isProposal ? null : "d" + di + ":" + mi)}><div><div class="slot">${esc(m.slot || "")}</div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}${recipeHtml(m, isProposal ? null : "d" + di + ":" + mi)}</div>`);
       h += `</div>`;
     });
     if ((p.swaps || []).length) {
       h += `<h3>Tauschgerichte</h3><p class="small muted" style="margin:-4px 0 8px">Alternativen mit ähnlichen Werten. Du kannst sie gegen jedes Abendessen der Woche tauschen.</p><div class="panel">`;
-      p.swaps.forEach((m, mi) => h += `<div class="pmeal"><div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}${recipeHtml(m, isProposal ? null : "s:" + mi)}</div>`);
+      p.swaps.forEach((m, mi) => h += `<div ${mealAttrs(m, isProposal ? null : "s:" + mi)}><div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}${recipeHtml(m, isProposal ? null : "s:" + mi)}</div>`);
       h += `</div>`;
     }
     el.innerHTML = h;
-    el.querySelectorAll("button[data-recipe]").forEach((b) => b.onclick = () => makeRecipe(b));
+    el.querySelectorAll(".pmeal.tap").forEach((row) => {
+      const act = (e) => {
+        if (e && e.target.closest("details.recipe > :not(summary)")) return; // reading or selecting recipe text
+        const det = row.querySelector("details.recipe");
+        if (det) { if (!e || !e.target.closest("summary")) det.open = !det.open; return; }
+        makeRecipe(row);
+      };
+      row.onclick = act;
+      row.onkeydown = (e) => { if (e.target === row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); act(); } };
+    });
   }
   // ---- recipes: generated on demand, stored on the meal inside the plan document ----
   const recipeAllowed = () => !!sample;
+  let openRecipe = null;
+  function mealAttrs(m, ref) {
+    const tap = ref && ((m.recipe && (m.recipe.ingredients || []).length) || recipeAllowed());
+    return tap ? `class="pmeal tap" data-ref="${ref}" tabindex="0" role="button" aria-label="${esc(m.name)}: Rezept anzeigen"` : `class="pmeal"`;
+  }
   function recipeHtml(m, ref) {
     const r = m.recipe;
     if (r && (r.ingredients || []).length) {
-      return `<details class="recipe"><summary>Rezept${r.minutes ? ` · ${fmt(r.minutes)} Min.` : ""}</summary>`
+      return `<details class="recipe"${ref && ref === openRecipe ? " open" : ""}><summary>Rezept${r.minutes ? ` · ${fmt(r.minutes)} Min.` : ""}</summary>`
         + `<div class="small muted">${esc(r.servings || "1 Portion")}</div>`
         + `<ul>${r.ingredients.map((i) => `<li>${esc(i.amount ? i.amount + " " : "")}${esc(i.item)}</li>`).join("")}</ul>`
         + `<ol>${(r.steps || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ol>`
         + (r.tip ? `<div class="small muted">${esc(r.tip)}</div>` : "") + `</details>`;
     }
     if (!ref || !recipeAllowed()) return "";
-    return `<div class="recipe"><button class="btn ghost" type="button" data-recipe="${ref}" style="padding:6px 12px;font-size:14px">Rezept erstellen</button><span class="status small" style="margin-left:8px"></span></div>`;
+    return `<div class="recipe small"><span class="rhint">Tippen für Rezept ›</span><span class="status small"></span></div>`;
   }
   function recipePrompt(m) {
     return `Schreibe ein einfaches, schnelles Rezept auf Deutsch für dieses Gericht aus einem Abnehm-Wochenplan.
@@ -1046,14 +1064,14 @@ ${S.estimateHints ? "Hinweise der Person (No-Gos und Vorlieben beachten):\n" + S
 Antworte nur mit JSON in genau dieser Form:
 {"servings":"1 Portion (für 2 Personen Mengen verdoppeln)","minutes":0,"ingredients":[{"amount":"150 g","item":"Hähnchenbrust"}],"steps":["…"],"tip":"ein kurzer Tipp oder leer"}`;
   }
-  async function makeRecipe(b) {
-    if (!recipeAllowed()) return;
-    const ref = b.dataset.recipe, week = curPlan, plan = plans[week]; if (!plan) return;
-    const st = b.nextElementSibling;
+  async function makeRecipe(row) {
+    if (!recipeAllowed() || row.dataset.busy) return;
+    const ref = row.dataset.ref, week = curPlan, plan = plans[week]; if (!plan) return;
+    const st = row.querySelector(".recipe .status"), hint = row.querySelector(".rhint");
     const [kind, idx] = ref[0] === "s" ? ["s", +ref.slice(2)] : ["d", ref.slice(1).split(":").map(Number)];
     const meal = kind === "s" ? (plan.swaps || [])[idx] : ((plan.days || [])[idx[0]] || {}).meals?.[idx[1]];
     if (!meal) return;
-    b.disabled = true; st.textContent = "Claude schreibt das Rezept …"; st.classList.remove("err");
+    row.dataset.busy = "1"; if (hint) hint.hidden = true; st.textContent = "Claude schreibt das Rezept …"; st.classList.remove("err");
     try {
       const r = await sample.json(recipePrompt(meal), { modelTier: "default" });
       if (!r || !Array.isArray(r.ingredients) || !r.ingredients.length) throw new Error("empty");
@@ -1066,14 +1084,14 @@ Antworte nur mit JSON in genau dieser Form:
       const target = kind === "s" ? next.swaps[idx] : next.days[idx[0]].meals[idx[1]];
       target.recipe = recipe; next.updatedAt = new Date().toISOString();
       await base.collection("plans").doc(week).set(next); plans[week] = next;
-      renderPlan();
+      openRecipe = ref; renderPlan();
     } catch (e) {
-      b.disabled = false; st.textContent = "Das hat nicht geklappt. Versuch es bitte noch einmal."; st.classList.add("err");
+      delete row.dataset.busy; st.textContent = "Das hat nicht geklappt. Tippe noch einmal."; st.classList.add("err");
     }
   }
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  $("prevPlan").onclick = () => { curPlan = addDays(curPlan, -7); renderPlan(); };
-  $("nextPlan").onclick = () => { curPlan = addDays(curPlan, 7); renderPlan(); };
+  $("prevPlan").onclick = () => { curPlan = addDays(curPlan, -7); openRecipe = null; renderPlan(); };
+  $("nextPlan").onclick = () => { curPlan = addDays(curPlan, 7); openRecipe = null; renderPlan(); };
 
   // ---- profile ----
   const PF = { pName: "name", pSex: "sex", pAge: "age", pHeight: "heightCm", pStartW: "startWeight", pStartD: "startWeightDate", pGoalW: "goalWeight", pGoalD: "goalDate", pKcal: "kcalTarget", pProt: "proteinTarget", pIncline: "inclinePct", pSpeed: "speedKmh", pHints: "estimateHints" };
