@@ -1872,4 +1872,7 @@ Antworte nur mit JSON in genau dieser Form:
   initSample();
   if (!STANDALONE) use("mcp").then((m) => { mcpApi = m; updateSyncBtn(); }).catch(() => {});
   // refresh "today" at midnight-ish when the app stays open
-  let la
+  let lastToday = todayStr();
+  setInterval(() => { const t = todayStr(); if (t !== lastToday) { if (curDay === lastToday) curDay = t; lastToday = t; renderAll(); } }, 60000);
+})();
+</script>

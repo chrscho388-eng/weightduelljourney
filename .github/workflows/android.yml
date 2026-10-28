@@ -7,6 +7,7 @@ on:
       - "android/**"
       - "android-web/**"
       - "kurs.html"
+      - "tests/**"
       - ".github/workflows/android.yml"
   workflow_dispatch:
 
@@ -39,6 +40,16 @@ jobs:
             cat kurs.html
             printf '</body></html>'
           } > android/app/src/main/assets/index.html
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Seite testen (bricht den Build bei Fehlern ab)
+        run: |
+          npm install --no-save --no-package-lock playwright@1.48.2
+          npx playwright install --with-deps chromium
+          node tests/smoke.js android/app/src/main/assets/index.html
 
       - name: Signaturschlüssel bereitstellen
         env:
