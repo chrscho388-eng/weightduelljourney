@@ -33,7 +33,7 @@ Beim ersten „kcal schätzen lassen“ fragt die App einmal um Erlaubnis. Die S
 
 Die APK ist eine eigenständige App: `kurs.html` ist eingebaut und läuft ohne claude.ai. Daten liegen auf dem Handy und können über ein privates GitHub-Repo synchronisiert werden. Fotos lassen sich direkt mit der Kamera aufnehmen.
 
-1. Auf dem Handy [Releases → latest](https://github.com/chrscho388-eng/weightduelljourney/releases/tag/latest) öffnen und `Weightplan.apk` herunterladen.
+1. Auf dem Handy [Releases → latest](https://github.com/chrscho388-eng/weightduelljourney/releases/tag/latest) öffnen und die neueste `Weightplan-3.<Nummer>.apk` herunterladen (die Web-Variante heißt `Weightplan-Web-2.<Nummer>.apk`).
 2. Die Datei antippen und die Installation aus dieser Quelle erlauben („Einstellungen“ → „Aus dieser Quelle zulassen“ → zurück → „Installieren“).
 3. Warnt Google Play Protect („Unbekannte App“): „Trotzdem installieren“. Der Quellcode liegt in `android/`.
 
