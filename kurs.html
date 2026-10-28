@@ -194,6 +194,21 @@ nav.tabs {
 }
 nav.tabs a { text-align: center; padding: 12px 2px 14px; color: var(--muted); text-decoration: none; font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: .02em; border-top: 3px solid transparent; }
 nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--accent); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
+.tile { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); min-width: 0; }
+.big { font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1.15; }
+.big.num { font-family: var(--font-data); font-weight: 500; font-size: 22px; }
+.chip.fav { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip.freq { border-style: dashed; }
+.meals li { grid-template-columns: 1fr auto auto auto; }
+.meals .star { color: var(--accent); }
+.shop > summary { cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 18px; }
+.shop h4 { margin: 14px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.shop ul { list-style: none; margin: 0; padding: 0; }
+.shop li label { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px dashed var(--line); cursor: pointer; }
+.shop li input { width: auto; }
+.shop li .amt { font-family: var(--font-data); font-size: 14px; white-space: nowrap; }
+.shop li.done .nm, .shop li.done .amt { text-decoration: line-through; color: var(--muted); }
 .notice { margin-top: 16px; padding: 12px; border: 1px solid var(--warn); border-radius: 10px; font-size: 14px; }
 @media (prefers-reduced-motion: no-preference) { .bar > i { transition: width .3s ease; } }
 </style>
@@ -220,10 +235,17 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="gauge"><div class="label">Eiweiß</div><div class="val" id="gProt">0 g</div><div class="of" id="gProtOf">von 180 g</div><div class="bar" id="gProtBar"><i style="width:0"></i></div></div>
     </div>
     <div class="balance-row" id="balanceRow"></div>
+    <div class="small muted" id="streakLine" style="margin-top:8px"></div>
 
     <h2>Essen</h2>
     <div class="panel">
       <ul class="meals" id="mealList"></ul>
+    </div>
+
+    <div id="favWrap" hidden>
+      <div class="ctitle" style="margin-top:18px"><h3 style="margin:0 0 8px">Schnell eintragen</h3><button class="chip" type="button" id="favEdit" hidden>Bearbeiten</button></div>
+      <div class="chips" id="favChips"></div>
+      <p class="small muted" id="favHint" style="margin:6px 0 0"></p>
     </div>
 
     <div id="planChipsWrap" hidden>
@@ -290,14 +312,23 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 
   <!-- VERLAUF -->
   <section id="view-verlauf" data-view hidden>
+    <h2>Überblick</h2>
+    <div class="panel" id="insight"></div>
     <h2>Gewicht</h2>
     <div class="panel">
       <svg class="chart" id="chart" viewBox="0 0 600 300" role="img" aria-label="Gewichtsverlauf mit Spätestens-Zielen"></svg>
       <div class="legend">
         <span><i style="background:var(--accent)"></i>gewogen</span>
+        <span><i style="background:var(--s2)"></i>Trend (Schnitt 14 Tage)</span>
         <span><i style="background:var(--warn)"></i>erwartet laut Bilanz</span>
         <span><i style="background:var(--chart-goal)"></i>Spätestens-Ziele</span>
       </div>
+    </div>
+    <div class="panel dchart" style="margin-top:12px">
+      <div class="ctitle"><h3>Erwartet vs. gewogen</h3></div>
+      <div class="cread" id="readExp"></div>
+      <svg class="chart" id="chExp" viewBox="0 0 600 230" role="img" aria-label="Abnahme seit Start: erwartet laut Bilanz und gewogen"></svg>
+      <div class="legend"><span><i style="background:var(--warn)"></i>erwartet laut Bilanz</span><span><i style="background:var(--accent)"></i>gewogen</span></div>
     </div>
     <div class="ctitle" style="margin-top:24px"><h2 style="margin:0">Tageswerte</h2>
       <div class="chips" id="rangeChips" role="group" aria-label="Zeitraum">
@@ -356,6 +387,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <p class="small muted" style="margin:6px 0 0">Unten siehst du den Vorschlag. Gespeichert wird er erst mit „Übernehmen“.</p>
       </div>
     </div>
+    <div id="shopBox" style="margin-top:14px"></div>
     <div id="planBody"></div>
   </section>
 
@@ -559,10 +591,17 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       const v = document.createElement("div"); v.className = "mv"; v.textContent = m.pending ? "wartet auf\nClaude" : `${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß`;
       const x = document.createElement("button"); x.className = "x"; x.setAttribute("aria-label", "Löschen: " + m.label); x.textContent = "×";
       x.onclick = () => saveDay(curDay, (doc) => { doc.meals = doc.meals.filter((y) => y.id !== m.id); if (m.id === "coffee") doc.coffeeOff = true; });
-      li.append(nm, v, x);
+      const st = document.createElement("button"); st.className = "x star"; const fav = isFav(m);
+      st.textContent = fav ? "★" : "☆"; st.setAttribute("aria-label", (fav ? "Aus Favoriten entfernen: " : "Als Favorit merken: ") + m.label); st.title = fav ? "Favorit entfernen" : "Als Favorit merken";
+      st.onclick = () => toggleFav(m);
+      if (m.auto || m.pending) st.style.visibility = "hidden";
+      li.append(nm, v, st, x);
       const det = mealDetails(m); if (det) li.append(det);
       ul.append(li);
     });
+
+    renderFavs();
+    $("streakLine").innerHTML = streakLine();
 
     // plan chips
     const plan = plans[mon];
@@ -764,6 +803,167 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
   $("prevDay").onclick = () => { curDay = addDays(curDay, -1); endEdit(); renderDay(); };
   $("nextDay").onclick = () => { curDay = addDays(curDay, 1); endEdit(); renderDay(); };
 
+  // ---- favourites: pinned meals (profile.favorites) plus meals logged often in the last 30 days ----
+  let favEditing = false;
+  const favKey = (l) => String(l || "").trim().toLowerCase();
+  async function saveProfile(patch) {
+    if (!base) return false;
+    const next = { ...S, ...patch, updatedAt: new Date().toISOString() };
+    try { await base.set(next); S = next; renderAll(); return true; } catch (e) { return false; }
+  }
+  const isFav = (m) => (S.favorites || []).some((f) => favKey(f.label) === favKey(m.label));
+  function toggleFav(m) {
+    const favs = (S.favorites || []).slice();
+    const i = favs.findIndex((f) => favKey(f.label) === favKey(m.label));
+    if (i >= 0) favs.splice(i, 1);
+    else favs.push({ label: String(m.label).slice(0, 200), kcal: Math.round(+m.kcal || 0), protein: Math.round(+m.protein || 0) });
+    saveProfile({ favorites: favs.slice(0, 20) });
+  }
+  function frequentMeals() {
+    const cnt = {}, from = addDays(todayStr(), -30);
+    Object.values(days).forEach((d) => {
+      if (d.date < from) return;
+      (d.meals || []).forEach((m) => {
+        if (m.auto || m.pending || m.fromPlan || !m.label) return;
+        const k = favKey(m.label); cnt[k] = { m, n: (cnt[k] ? cnt[k].n : 0) + 1 };
+      });
+    });
+    return Object.values(cnt).filter((x) => x.n >= 2 && !isFav(x.m)).sort((a, b) => b.n - a.n).slice(0, 6).map((x) => x.m);
+  }
+  function renderFavs() {
+    const favs = S.favorites || [], freq = favEditing ? [] : frequentMeals();
+    if (!favs.length) favEditing = false;
+    $("favWrap").hidden = !favs.length && !freq.length;
+    const fc = $("favChips"); fc.innerHTML = "";
+    const chip = (m, cls, add) => {
+      const c = document.createElement("button"); c.type = "button"; c.className = "chip fav" + cls;
+      c.textContent = (favEditing ? "× " : "") + `${m.label} · ${fmt(m.kcal)}`;
+      c.title = favEditing ? "Aus Favoriten entfernen" : `${m.label}: ${fmt(m.kcal)} kcal, ${fmt(m.protein)} g Eiweiß eintragen`;
+      c.onclick = () => { if (favEditing) toggleFav(m); else if (add) addMeals([{ label: m.label, kcal: m.kcal, protein: m.protein, ...(m.parts && m.parts.length ? { parts: m.parts } : {}) }]); };
+      fc.append(c);
+    };
+    favs.forEach((f) => chip(f, "", true));
+    freq.forEach((m) => chip(m, " freq", true));
+    $("favEdit").hidden = !favs.length; $("favEdit").textContent = favEditing ? "Fertig" : "Bearbeiten";
+    $("favHint").textContent = favEditing ? "Tipp auf einen Favoriten, um ihn zu entfernen." : favs.length ? (freq.length ? "Gestrichelt: oft gegessen. Mit ☆ bei einer Mahlzeit heftest du sie an." : "") : "Oft gegessen. Mit ☆ bei einer Mahlzeit heftest du sie dauerhaft an.";
+  }
+  $("favEdit").onclick = () => { favEditing = !favEditing; renderFavs(); };
+
+  // ---- streaks: days in a row meeting a goal; today counts once met and never breaks the run ----
+  function stepGoalFor(date) {
+    const g = (S.stepGoals || []).filter((x) => x.from <= date).sort((a, b) => a.from < b.from ? -1 : 1).pop();
+    return g ? { full: g.steps, min: g.min || g.steps } : null;
+  }
+  const stepsOf = (d) => (Number(d.flatSteps) || 0) + (Number(d.inclineSteps) || 0);
+  const logged = (d) => (d.meals || []).some((m) => !m.auto && !m.pending);
+  const STREAKS = [
+    { key: "prot", label: "Eiweißziel", short: "Eiweiß", ok: (d) => protein(d) >= S.proteinTarget },
+    { key: "kcal", label: "Im kcal-Ziel", short: "kcal", today: false, ok: (d) => logged(d) && (d.event || intake(d) <= S.kcalTarget) },
+    { key: "steps", label: "Schrittziel", short: "Schritte", ok: (d, date) => { const g = stepGoalFor(date); return !!g && stepsOf(d) >= g.min; }, show: () => (S.stepGoals || []).length > 0 }
+  ];
+  function streak(st) {
+    const today = todayStr();
+    const okOn = (date) => { const d = days[date]; return !!(d && hasData(d) && st.ok(d, date)); };
+    let cur = 0, dt = today;
+    if (st.today === false || !okOn(dt)) dt = addDays(dt, -1);
+    while (okOn(dt)) { cur++; dt = addDays(dt, -1); }
+    let best = 0, run = 0;
+    const first = Object.keys(days).sort()[0];
+    if (first) for (let x = first; x < today; x = addDays(x, 1)) { if (okOn(x)) { run++; if (run > best) best = run; } else run = 0; }
+    return { cur, best: Math.max(best, cur) };
+  }
+  const tage = (n) => n === 1 ? "1 Tag" : fmt(n) + " Tage";
+  function streakLine() {
+    const parts = STREAKS.filter((s) => !s.show || s.show()).map((s) => { const r = streak(s); return r.cur ? `${s.short} <b class="num">${tage(r.cur)}</b>` : ""; }).filter(Boolean);
+    return parts.length ? "Serien: " + parts.join(" · ") : "";
+  }
+
+  // ---- forecast and expected-vs-weighed ----
+  const avgOf = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const weighIns = () => Object.values(days).filter((d) => d.weight).sort((a, b) => a.date < b.date ? -1 : 1);
+  // trend = mean of all weigh-ins in the 14 days up to each weigh-in
+  const trendAt = (ws, i) => avgOf(ws.filter((x, j) => j <= i && x.date >= addDays(ws[i].date, -13)).map((x) => x.weight));
+  function forecast() {
+    const ws = weighIns(), today = todayStr();
+    const last = ws.length ? ws[ws.length - 1] : { date: S.startWeightDate, weight: S.startWeight };
+    let rate = null, basis = "";
+    // pace: least squares over the weigh-ins of the last 5 weeks, otherwise the logged balance of the last 14 days
+    const rec = ws.filter((w) => w.date >= addDays(today, -35));
+    if (rec.length >= 2 && toUTC(rec[rec.length - 1].date) - toUTC(rec[0].date) >= 7 * 864e5) {
+      const xs = rec.map((w) => (toUTC(w.date) - toUTC(rec[0].date)) / 864e5), ys = rec.map((w) => w.weight);
+      const mx = avgOf(xs), my = avgOf(ys);
+      rate = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0) / xs.reduce((a, x) => a + (x - mx) ** 2, 0);
+      basis = `${rec.length} Wiegungen seit ${dm(rec[0].date)}`;
+    }
+    const bal = [];
+    for (let d = addDays(today, -1); d >= addDays(today, -14); d = addDays(d, -1)) { const doc = days[d]; if (doc && logged(doc)) bal.push(intake(doc) - burn(doc)); }
+    const balRate = bal.length >= 3 ? avgOf(bal) / S.kcalPerKg : null;
+    if (rate == null && balRate != null) { rate = balRate; basis = `Bilanz der letzten ${bal.length} erfassten Tage`; }
+    let eta = null;
+    if (rate != null && rate < -0.005 && last.weight > S.goalWeight) eta = addDays(last.date, Math.ceil((last.weight - S.goalWeight) / -rate));
+    return { rate, basis, balRate, fromWeights: !!basis && !basis.startsWith("Bilanz"), eta, last, reached: ws.some((w) => w.weight <= S.goalWeight) };
+  }
+  const dmy = (s) => `${WD[weekday(s)]} ${dm(s)}${s.slice(0, 4)}`;
+  function renderInsights() {
+    if (!S.goalWeight || !S.goalDate) { $("insight").innerHTML = ""; return; }
+    const f = forecast();
+    let h = `<div class="label">Prognose Zielgewicht ${fmt(S.goalWeight, 1)} kg</div>`;
+    if (f.reached) h += `<div class="big">Erreicht</div>`;
+    else if (!f.eta) h += `<div class="big">Noch offen</div><div class="small muted">${f.rate == null ? "Sobald ein paar Tage erfasst sind oder die zweite Wiegung da ist, steht hier das voraussichtliche Datum." : "Beim aktuellen Tempo nimmst du gerade nicht ab."}</div>`;
+    else {
+      const wk = Math.round((toUTC(S.goalDate) - toUTC(f.eta)) / (7 * 864e5));
+      const wtxt = (n) => n === 1 ? "1 Woche" : n + " Wochen";
+      h += `<div class="big num">${dmy(f.eta)}</div><div class="small muted">bei ${fmt(-f.rate * 7, 1)} kg pro Woche (${f.basis}), wenn das Tempo so bleibt. ${wk > 0 ? wtxt(wk) + " vor" : wk < 0 ? wtxt(-wk) + " nach" : "Genau zur"} Deadline ${dm(S.goalDate)}${S.goalDate.slice(0, 4)}.</div>`;
+      if (f.fromWeights && f.balRate != null) h += `<div class="small muted">Laut Bilanz der letzten zwei Wochen wären es ${fmt(-f.balRate * 7, 1)} kg pro Woche.</div>`;
+    }
+    h += `<div class="tiles">` + STREAKS.filter((s) => !s.show || s.show()).map((s) => {
+      const r = streak(s);
+      let extra = "";
+      if (s.key === "steps") {
+        const g = stepGoalFor(todayStr());
+        if (g && g.full > g.min) { const mon = mondayOf(todayStr()); let n = 0; for (let i = 0; i < 7; i++) { const d = days[addDays(mon, i)]; if (d && stepsOf(d) >= g.full) n++; } extra = `<div class="small muted">Diese Woche ${n} von 5 Tagen mit ${fmt(g.full)}</div>`; }
+        else if (g) extra = `<div class="small muted">Ziel ${fmt(g.min)} Schritte</div>`;
+      }
+      return `<div class="tile"><div class="label">${s.label}</div><div class="big num">${tage(r.cur)}</div><div class="small muted">in Folge · Rekord ${tage(r.best)}</div>${extra}</div>`;
+    }).join("") + `</div>`;
+    $("insight").innerHTML = h;
+  }
+  function renderExpChart() {
+    const start = S.startWeightDate, svg = $("chExp");
+    if (!start || !S.startWeight) { svg.innerHTML = ""; $("readExp").textContent = ""; return; }
+    const today = todayStr();
+    // expected loss: summed balance of the days before each date (weigh-ins are in the morning)
+    const exp = [[start, 0]]; let cum = 0;
+    for (let d = start; d < today; d = addDays(d, 1)) { const doc = days[d]; if (doc && hasData(doc)) cum += intake(doc) - burn(doc); exp.push([addDays(d, 1), cum / S.kcalPerKg]); }
+    const act = weighIns().filter((w) => w.date >= start).map((w) => [w.date, w.weight - S.startWeight]);
+    if (!act.length || act[0][0] !== start) act.unshift([start, 0]);
+    const W = 600, H = 230, L = 52, R = 14, T = 12, B = 30;
+    const endD = [exp[exp.length - 1][0], act[act.length - 1][0], addDays(start, 21)].sort().pop();
+    const vals = exp.map((p) => p[1]).concat(act.map((p) => p[1]), [0]);
+    let lo = Math.floor(Math.min(...vals) * 2 - 0.5) / 2, hi = Math.max(0.5, Math.ceil(Math.max(...vals) * 2) / 2);
+    const span = hi - lo, step = span > 8 ? 2 : span > 4 ? 1 : 0.5;
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    const x0 = toUTC(start), x1 = toUTC(endD);
+    const X = (s) => L + (toUTC(s) - x0) / (x1 - x0) * (W - L - R), Y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
+    let g = "";
+    for (let v = lo; v <= hi + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${Y(v) + 5}" text-anchor="end">${v > 0 ? "+" : v < 0 ? "−" : ""}${fmt(Math.abs(v), step < 1 ? 1 : 0)}</text>`;
+    const nd = Math.round((x1 - x0) / 864e5), every = Math.max(7, Math.ceil(nd / 6 / 7) * 7);
+    for (let i = 0; i <= nd; i += every) { const d = addDays(start, i); g += `<text x="${X(d)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : "middle"}">${dm(d).slice(0, 6)}</text>`; }
+    g += `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1"/>`;
+    g += `<polyline fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 4" points="${exp.map(([d, v]) => X(d) + "," + Y(v)).join(" ")}"/>`;
+    if (act.length > 1) g += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${act.map(([d, v]) => X(d) + "," + Y(v)).join(" ")}"/>`;
+    act.forEach(([d, v]) => g += `<circle cx="${X(d)}" cy="${Y(v)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`);
+    svg.innerHTML = g;
+    const la = act[act.length - 1], ePt = exp.find((p) => p[0] === la[0]);
+    if (act.length < 2 || !ePt) { $("readExp").innerHTML = `Erwartet bisher <b>${signedKg(cum / S.kcalPerKg)}</b>. Der Vergleich erscheint nach der nächsten Wiegung.`; return; }
+    const diff = la[1] - ePt[1], weeks = (toUTC(la[0]) - x0) / (7 * 864e5);
+    let hint = "Passt gut zusammen.";
+    if (diff < -0.5 && weeks < 3) hint = "Mehr als erwartet ist am Anfang normal (Wasser und Glykogen).";
+    else if (diff < -0.7) hint = "Du nimmst mehr ab als die Bilanz sagt. Der Verbrauch ist vermutlich etwas zu niedrig geschätzt.";
+    else if (diff > 0.7) hint = "Weniger als erwartet. Häufige Gründe: Aufnahme unterschätzt oder Wasser eingelagert.";
+    $("readExp").innerHTML = `Bis ${WD[weekday(la[0])]} ${dm(la[0])}: erwartet <b>${signedKg(ePt[1])}</b>, gewogen <b>${signedKg(la[1])}</b>. ${hint}`;
+  }
+
   // ---- week ----
   function weekStats(mon) {
     let sum = 0, n = 0, kin = 0, out = 0, pr = 0;
@@ -875,6 +1075,7 @@ Mahlzeit: ${text || "(siehe Bild)"}`;
     if (weights.length) {
       svg += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${weights.map((w) => X(w.date) + "," + Y(w.weight)).join(" ")}"/>`;
       weights.forEach((w, i) => svg += `<circle cx="${X(w.date)}" cy="${Y(w.weight)}" r="${i === weights.length - 1 ? 5 : 3.5}" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`);
+      if (weights.length > 1) svg += `<polyline fill="none" stroke="var(--s2)" stroke-width="2" stroke-linejoin="round" points="${weights.map((w, i) => X(w.date) + "," + Y(trendAt(weights, i))).join(" ")}"/>`;
       const lw = weights[weights.length - 1];
       svg += `<text x="${Math.min(X(lw.date) + 10, W - R - 60)}" y="${Y(lw.weight) - 8}" style="fill:var(--fg)">${fmt(lw.weight, 1)}</text>`;
     }
@@ -1087,6 +1288,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     $("planProposal").hidden = !isProposal;
     $("planUndo").hidden = !(lastPlan && lastPlan.week === curPlan) || isProposal;
     $("planPrompt").placeholder = p ? "z. B. Heute kein Frühstück und ich esse abends auswärts" : "z. B. Erstelle einen Plan für diese Woche, Montag und Dienstag Büro";
+    renderShop(isProposal ? null : p);
     if (!p) { el.innerHTML = `<div class="panel muted" style="margin-top:14px">Für diese Woche gibt es noch keinen Plan.${sample ? " Beschreib oben, was du brauchst, dann erstellt Claude einen." : ""}</div>`; return; }
     let h = isProposal ? `<p style="margin-top:12px"><span class="pill warn">Vorschlag</span></p>` : "";
     h += p.note ? `<p class="small muted" style="margin-top:12px">${esc(p.note)}</p>` : "";
@@ -1239,6 +1441,100 @@ Antworte nur mit JSON in genau dieser Form:
       delete row.dataset.busy; st.textContent = "Das hat nicht geklappt. Tippe noch einmal."; st.classList.add("err");
     }
   }
+  // ---- shopping list from the week's plan: recipe ingredients where present, else the meal's ingredient line ----
+  const PANTRY = /(?<![\p{L}-])(salz|pfeffer|öl|olivenöl|rapsöl|sesamöl|sonnenblumenöl|paprikapulver|kreuzkümmel|currypulver|chiliflocken|chilipulver|cayennepfeffer|zimt|oregano|thymian|majoran|getrocknete kräuter|kräuter der provence|italienische kräuter|gewürze?|muskat|lorbeer|essig|balsamico|sojaso(?:ß|ss)e|sojasauce|fischso(?:ß|ss)e|chili|senf|honig|brühe|gemüsebrühe|hühnerbrühe|zucker|mehl|speisestärke|backpulver|wasser|süßstoff|sirup|knoblauch|knoblauchpulver|knoblauchzehen?)(?![\p{L}-])/iu;
+  const NOT_SHOPPED = /kantine|juit|lieferdienst|restaurant|auswärts|verkostung|einladung|grillabend|imbiss|essen gehen/i;
+  const SHOP_CATS = [
+    ["Vorrat und Konserven", /passata|gehackte tomaten|tomatenmark|kokosmilch|aroy|kidney|kichererbsen|linsen|mais|thunfisch|currypaste|sweet.?chili|soße|sauce|nudeln|pasta|spaghetti|reis|couscous|bulgur|wraps?|tortilla|brot|brötchen|haferflocken|whey|protein|nüsse|mandeln/i],
+    ["Fleisch und Fisch", /hähnchen|huhn|pute|puten|lachs|fisch|garnele|shrimp|schwein|hack|wurst|schinken|speck|filet|steak/i],
+    ["Kühlregal", /joghurt|skyr|quark|käse|feta|parmesan|gouda|mozzarella|halloumi|milch|sahne|eier|eiklar|ei$|butter|tofu|hüttenkäse|frischkäse/i],
+    ["Obst und Gemüse", /paprika|zucchini|brokkoli|karotte|möhre|tomate|kartoffel|hokkaido|kürbis|beere|zitrone|limette|spinat|lauch|frühlingszwiebel|aubergine|blumenkohl|ingwer|avocado|salat|kräuter|petersilie|koriander|dill|schnittlauch|basilikum|apfel|banane|gemüse|pilz|erbsen|bohnen|rucola|zwiebel|sellerie|fenchel|mango|ananas|kohl/i]
+  ];
+  const shopCat = (n) => (SHOP_CATS.find(([, re]) => re.test(n)) || ["Sonstiges"])[0];
+  const cleanItem = (x) => String(x).replace(/\(.*?\)/g, "").replace(/,.*$/, "").replace(/\s+(?:mit|in)\s+.*$/i, "").replace(/(?<!\p{L})(roh|abgetropft|optional|frisch|gewürfelt)(?!\p{L})/giu, "").replace(/\s+/g, " ").trim();
+  function parseQty(a) {
+    a = String(a || "").replace(",", ".");
+    let m = a.match(/\((\d+(?:\.\d+)?)\s*(g|ml)\)/i); if (m) return { q: +m[1], u: m[2].toLowerCase() };
+    m = a.match(/^\s*(\d+(?:\.\d+)?)\s*(kg|g|ml|l)(?!\p{L})/iu);
+    if (m) { const u = m[2].toLowerCase(); return u === "kg" ? { q: m[1] * 1000, u: "g" } : u === "l" ? { q: m[1] * 1000, u: "ml" } : { q: +m[1], u }; }
+    m = a.match(/^\s*(\d+(?:\.\d+)?)\s*(\p{L}*\.?)/u);
+    return m ? { q: +m[1], u: m[2] || "Stk." } : null;
+  }
+  // "250 g griech. Joghurt 10 %, 60 g Whey" -> [{amount, item}]
+  function parseDetail(detail) {
+    return String(detail || "").split(/[,;+]/).map((part) => {
+      const m = part.match(/(\d+(?:[.,]\d+)?\s*(?:kg|g|ml|l)?)\s+([^\d\s/].*)$/i);
+      return m ? { amount: m[1], item: m[2] } : null;
+    }).filter(Boolean);
+  }
+  let shopOpen = false;
+  const shopPref = (k, def) => { const v = lsGet(LS + "shop:" + k); return v == null ? def : v === "1"; };
+  function shopList(p, forTwo, fromToday) {
+    const items = {}, pantry = {}, skipped = [], today = todayStr();
+    const add = (name, qty, mult) => {
+      let note = ""; const sub = String(name).match(/^([^:]+):\s*(.+)$/); if (sub) { name = sub[1]; note = sub[2]; }
+      const n = cleanItem(name); if (!n) return;
+      const key = n.toLowerCase();
+      if (PANTRY.test(n)) { pantry[key] = pantry[key] || n; return; }
+      const it = items[key] = items[key] || { name: n.charAt(0).toUpperCase() + n.slice(1), units: {} };
+      if (qty) it.units[qty.u] = (it.units[qty.u] || 0) + qty.q * mult;
+      if (note && !it.note) it.note = note;
+    };
+    (p.days || []).forEach((d) => {
+      if (fromToday && d.date < today) return;
+      (d.meals || []).forEach((m) => {
+        if (NOT_SHOPPED.test(m.name || "") || /^geschätzt/i.test(m.detail || "")) { skipped.push(`${m.name} (${WD[weekday(d.date)]})`); return; }
+        const pot = /topf/i.test([m.name, m.detail, m.recipe && m.recipe.servings].join(" "));
+        const mult = forTwo && isDish(m) && !pot ? 2 : 1;
+        const ings = m.recipe && (m.recipe.ingredients || []).length ? m.recipe.ingredients : parseDetail(m.detail);
+        if (!ings.length) { skipped.push(`${m.name} (${WD[weekday(d.date)]})`); return; }
+        ings.forEach((i) => {
+          const qty = parseQty(i.amount);
+          if (qty && qty.u !== "Prise" && !/^etwas/i.test(i.amount)) add(i.item, qty, mult);
+          else String(i.item).split(/,|\sund\s|\soder\s/).forEach((x) => add(x, null, mult));
+        });
+      });
+    });
+    return { items: Object.entries(items), pantry: Object.values(pantry), skipped };
+  }
+  const amtTxt = (units) => Object.entries(units).map(([u, q]) => u === "g" || u === "ml" ? (q >= 1000 ? fmt(q / 1000, 1) + (u === "g" ? " kg" : " l") : fmt(Math.round(q / 5) * 5) + " " + u) : fmt(q, q % 1 ? 1 : 0) + " " + u).join(" + ");
+  function renderShop(p) {
+    const box = $("shopBox");
+    if (!p) { box.innerHTML = ""; return; }
+    const week = curPlan, isNow = week === mondayOf(todayStr());
+    const forTwo = shopPref("two", true), fromToday = isNow && shopPref("today", false);
+    const L = shopList(p, forTwo, fromToday);
+    let ticks = {}; try { ticks = JSON.parse(lsGet(LS + "shop:ticks:" + week) || "{}"); } catch (e) {}
+    const groups = {};
+    L.items.forEach(([k, it]) => (groups[shopCat(it.name)] = groups[shopCat(it.name)] || []).push([k, it]));
+    const order = SHOP_CATS.map((c) => c[0]).concat("Sonstiges");
+    let h = `<details class="panel shop"${shopOpen ? " open" : ""}><summary>Einkaufsliste · ${L.items.length} Artikel</summary>`
+      + `<div class="chips" style="margin-top:10px"><button type="button" class="chip${forTwo ? " on" : ""}" data-sp="two">Gekochtes für 2</button>${isNow ? `<button type="button" class="chip${fromToday ? " on" : ""}" data-sp="today">Nur ab heute</button>` : ""}<button type="button" class="chip" data-sp="copy">Liste kopieren</button></div>`;
+    order.filter((c) => groups[c]).forEach((c) => {
+      h += `<h4>${c}</h4><ul>` + groups[c].sort((a, b) => a[1].name.localeCompare(b[1].name, "de")).map(([k, it]) =>
+        `<li class="${ticks[k] ? "done" : ""}"><label><input type="checkbox" data-k="${esc(k)}"${ticks[k] ? " checked" : ""}><span class="nm">${esc(it.name)}${it.note ? ` <span class="small muted">(${esc(it.note)})</span>` : ""}</span><span class="amt">${esc(amtTxt(it.units))}</span></label></li>`).join("") + `</ul>`;
+    });
+    if (!L.items.length) h += `<p class="small muted">Im Plan stehen keine Zutaten mit Mengen.</p>`;
+    if (L.pantry.length) h += `<h4>Wahrscheinlich schon im Haushalt</h4><p class="small muted" style="margin:0">${esc(L.pantry.sort((a, b) => a.localeCompare(b, "de")).join(", "))}</p>`;
+    if (L.skipped.length) h += `<p class="small muted" style="margin:10px 0 0">Nicht enthalten (auswärts oder geschätzt): ${esc(L.skipped.join(", "))}</p>`;
+    h += `<p class="small muted" style="margin:6px 0 0">Mengen roh laut Plan und Rezepten. ${forTwo ? "Gekochte Gerichte doppelt, Frühstück und Snacks einfach." : "Alles für eine Person."}</p><span class="status small" id="shopStatus"></span></details>`;
+    box.innerHTML = h;
+    const det = box.querySelector("details"); det.ontoggle = () => { shopOpen = det.open; };
+    box.querySelectorAll("input[data-k]").forEach((cb) => cb.onchange = () => {
+      if (cb.checked) ticks[cb.dataset.k] = 1; else delete ticks[cb.dataset.k];
+      lsSet(LS + "shop:ticks:" + week, JSON.stringify(ticks)); cb.closest("li").classList.toggle("done", cb.checked);
+    });
+    box.querySelectorAll("[data-sp]").forEach((b) => b.onclick = async () => {
+      const k = b.dataset.sp;
+      if (k === "copy") {
+        const txt = order.filter((c) => groups[c]).map((c) => c + ":\n" + groups[c].filter(([key]) => !ticks[key]).map(([, it]) => `- ${it.name}${it.note ? " (" + it.note + ")" : ""} ${amtTxt(it.units)}`.trim()).join("\n")).join("\n\n");
+        try { await navigator.clipboard.writeText(txt); $("shopStatus").textContent = "Kopiert."; }
+        catch (e) { $("shopStatus").textContent = "Kopieren ging hier nicht. Halte den Text gedrückt, um ihn zu markieren."; }
+        return;
+      }
+      lsSet(LS + "shop:" + k, shopPref(k, k === "two") ? "0" : "1"); renderShop(p);
+    });
+  }
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   $("prevPlan").onclick = () => { curPlan = addDays(curPlan, -7); openRecipe = null; renderPlan(); };
   $("nextPlan").onclick = () => { curPlan = addDays(curPlan, 7); openRecipe = null; renderPlan(); };
@@ -1309,7 +1605,7 @@ Antworte nur mit JSON in genau dieser Form:
       hdrMsg(e && e.code === "not_granted" ? "Der Sync braucht deine Freigabe für Claude Code Remote. Tippe erneut und erlaube den Zugriff." : "Der Abgleich ließ sich nicht starten. Er läuft trotzdem stündlich automatisch.", true);
     } finally { setTimeout(() => { b.disabled = false; }, 20000); }
   };
-  function renderAll() { updateSyncBtn(); renderTop(); if (hasProfile) { renderDay(); renderWeek(); renderHistory(); renderDaily(); renderPlan(); } }
+  function renderAll() { updateSyncBtn(); renderTop(); if (hasProfile) { renderDay(); renderWeek(); renderHistory(); renderInsights(); renderExpChart(); renderDaily(); renderPlan(); } }
 
   // ---- standalone mode (outside claude.ai, e.g. GitHub Pages): browser storage + own API key ----
   const STANDALONE = !(window.claude && typeof window.claude.use === "function");
