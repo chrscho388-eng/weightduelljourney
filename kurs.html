@@ -49,7 +49,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 header.top {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
   background: var(--bg); padding-block: 14px 10px; border-bottom: 1px solid var(--line);
-  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
 .brand { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: .01em; display: flex; align-items: baseline; gap: 8px; }
 .grade { font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .08em; border: 1.5px solid var(--fg); border-radius: 3px; padding: 0 5px; transform: translateY(-2px); }
@@ -58,7 +58,9 @@ header.top {
 .syncbtn:disabled { opacity: .6; cursor: default; }
 .syncmsg { font-size: 13px; color: var(--muted); padding: 8px 0 0; }
 .syncmsg.err { color: var(--bad); }
-.top-meta { font-size: 13px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.top-meta { text-align: right; font-variant-numeric: tabular-nums; line-height: 1.25; white-space: nowrap; }
+.top-meta .tm1 { font-family: var(--font-data); font-size: 17px; font-weight: 500; color: var(--fg); }
+.top-meta .tm2 { font-size: 12px; color: var(--muted); }
 h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 24px 0 10px; text-wrap: balance; }
 h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin: 18px 0 8px; }
 .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
@@ -215,8 +217,8 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 
 <div class="wrap">
   <header class="top">
-    <div class="brand"><span id="brandName">Weightplan</span> <span class="grade" id="gradeBadge">9 %</span></div>
-    <div class="topright"><div class="top-meta" id="topMeta">lädt …</div><button class="syncbtn" type="button" id="syncHdr" hidden>⟳ Sync</button></div>
+    <div class="brand"><span id="brandName">Weightplan</span></div>
+    <div class="topright"><div class="top-meta" id="topMeta"><div class="tm2">lädt …</div></div><button class="syncbtn" type="button" id="syncHdr" hidden>⟳ Sync</button></div>
   </header>
   <div class="syncmsg" id="syncHdrMsg" hidden></div>
 
@@ -379,7 +381,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     <div id="planAsk" class="panel" style="margin-top:14px" hidden>
       <div class="field"><label class="label" for="planPrompt">Plan anpassen</label>
         <textarea id="planPrompt" placeholder="z. B. Heute kein Frühstück und ich esse abends auswärts"></textarea></div>
-      <div class="btnrow"><button class="btn" id="planAdjustBtn">Plan anpassen lassen</button><button class="btn ghost" id="planUndo" hidden>Letzte Änderung rückgängig</button></div>
+      <div class="btnrow"><button class="btn" id="planAdjustBtn" hidden>Plan anpassen lassen</button><button class="btn ghost" type="button" id="planLaterBtn" hidden>An Claude senden (später)</button><button class="btn ghost" id="planUndo" hidden>Letzte Änderung rückgängig</button></div>
       <div class="status" id="planStatus"></div>
       <div id="planProposal" class="preview" hidden>
         <p class="small" id="planSummary" style="margin:0"></p>
@@ -546,13 +548,12 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   // ---- render: header ----
   function renderTop() {
     $("brandName").textContent = "Weightplan";
-    $("gradeBadge").textContent = pctTxt();
     $("inclineLabel").textContent = "Schritte bei " + pctTxt();
-    if (!hasProfile) { $("topMeta").textContent = profileKnown ? "Profil anlegen" : "lädt …"; return; }
+    if (!hasProfile) { $("topMeta").innerHTML = `<div class="tm2">${profileKnown ? "Profil anlegen" : "lädt …"}</div>`; return; }
     const weights = Object.values(days).filter((d) => d.weight).sort((a, b) => a.date < b.date ? -1 : 1);
     const last = weights.length ? weights[weights.length - 1] : { weight: S.startWeight, date: S.startWeightDate };
     const toGo = last.weight - S.goalWeight;
-    $("topMeta").innerHTML = `<span class="num">${fmt(last.weight, 1)} kg</span> · noch <span class="num">${fmt(toGo, 1)} kg</span><br>Woche ${Math.max(0, weekNo(mondayOf(todayStr())))}`;
+    $("topMeta").innerHTML = `<div class="tm1">${fmt(last.weight, 1)} kg</div><div class="tm2">noch ${fmt(toGo, 1)} kg · Woche ${Math.max(0, weekNo(mondayOf(todayStr())))}</div>`;
   }
 
   // ---- render: today ----
@@ -1250,6 +1251,20 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
       setStatus("planStatus", c === "not_granted" ? "Claude-Nutzung wurde nicht erlaubt." : c === "rate_limited" ? "Gerade zu viele Anfragen. Versuch es in einer Minute erneut." : c === "bad_key" ? "Der API-Schlüssel wurde abgelehnt. Prüfe ihn im Tab Profil." : "Das hat nicht geklappt. Formuliere den Wunsch etwas genauer und versuch es noch einmal.", true);
     } finally { $("planAdjustBtn").disabled = false; }
   };
+  // without a key: store the wish on the plan, Claude rewrites the plan at the next sync
+  $("planLaterBtn").onclick = async () => {
+    const wish = $("planPrompt").value.trim();
+    if (!wish) { setStatus("planStatus", "Beschreib zuerst, was sich ändern soll.", true); return; }
+    if (!base) { setStatus("planStatus", "Speicher nicht erreichbar.", true); return; }
+    const week = curPlan, cur = plans[week] && !plans[week].deleted ? plans[week] : { days: [], swaps: [] };
+    const next = { ...JSON.parse(JSON.stringify(cur)), planChange: wish.slice(0, 800), updatedAt: new Date().toISOString() };
+    $("planLaterBtn").disabled = true;
+    try {
+      await base.collection("plans").doc(week).set(next); plans[week] = next;
+      $("planPrompt").value = ""; setStatus("planStatus", "An Claude geschickt. Der angepasste Plan kommt beim nächsten Abgleich."); renderPlan();
+    } catch (e) { setStatus("planStatus", "Speichern fehlgeschlagen.", true); }
+    finally { $("planLaterBtn").disabled = false; }
+  };
   $("planAccept").onclick = async () => {
     if (!pendingPlan || !base) return;
     const { week, plan, wish } = pendingPlan;
@@ -1308,8 +1323,11 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     $("planUndo").hidden = !(lastPlan && lastPlan.week === curPlan) || isProposal;
     $("planPrompt").placeholder = p ? "z. B. Heute kein Frühstück und ich esse abends auswärts" : "z. B. Erstelle einen Plan für diese Woche, Montag und Dienstag Büro";
     renderShop(isProposal ? null : p);
+    const asked = plans[curPlan] && plans[curPlan].planChange;
+    const askedHtml = asked && !isProposal ? `<p class="small" style="margin-top:12px"><span class="pill warn">Anpassung angefordert</span> „${esc(asked)}“ kommt beim nächsten Abgleich.</p>` : "";
+    if (p && !(p.days || []).length && !(p.swaps || []).length && asked) { el.innerHTML = askedHtml; return; }
     if (!p) { el.innerHTML = `<div class="panel muted" style="margin-top:14px">Für diese Woche gibt es noch keinen Plan.${sample ? " Beschreib oben, was du brauchst, dann erstellt Claude einen." : ""}</div>`; return; }
-    let h = isProposal ? `<p style="margin-top:12px"><span class="pill warn">Vorschlag</span></p>` : "";
+    let h = (isProposal ? `<p style="margin-top:12px"><span class="pill warn">Vorschlag</span></p>` : "") + askedHtml;
     h += p.note ? `<p class="small muted" style="margin-top:12px">${esc(p.note)}</p>` : "";
     (p.days || []).forEach((d, di) => {
       const tk = (d.meals || []).reduce((a, m) => a + (m.kcal || 0), 0), tp = (d.meals || []).reduce((a, m) => a + (m.protein || 0), 0);
@@ -1612,7 +1630,8 @@ Antworte nur mit JSON in genau dieser Form:
   let mcpApi = null;
   function updateSyncBtn() {
     $("syncHdr").hidden = STANDALONE ? !syncCfg() : !(mcpApi && S.syncTriggerId);
-    const rq = requestMode(); $("askBtn").hidden = !rq; $("askPhotoLabel").hidden = !rq; $("askHint").hidden = !rq;
+    const rq = requestMode(); $("planAsk").hidden = !(sample || rq); $("planAdjustBtn").hidden = !sample; $("planLaterBtn").hidden = !rq;
+    $("askBtn").hidden = !rq; $("askPhotoLabel").hidden = !rq; $("askHint").hidden = !rq;
   }
   $("syncHdr").onclick = async () => {
     if (STANDALONE) { syncNow(true); return; }
@@ -1864,7 +1883,7 @@ Antworte nur mit JSON in genau dieser Form:
   })();
   async function initSample() {
     sample = await use("sample");
-    $("estimateBtn").hidden = !sample; $("photoLabel").hidden = true; $("planAsk").hidden = !sample;
+    $("estimateBtn").hidden = !sample; $("photoLabel").hidden = true;
     updateSyncBtn();
     if (!sample) return;
     try { const lim = await sample.limits(); if (lim && lim.images) { sampleImages = true; $("photoLabel").hidden = false; } } catch (e) {}

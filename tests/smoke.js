@@ -44,6 +44,16 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const shop = await pg.textContent("#shopBox");
   check(/Hähnchenbrust/.test(shop) && /500 g/.test(shop), "shopping list doubles cooked dish");
   check(/Wahrscheinlich schon im Haushalt/.test(shop) && /Salz/.test(shop), "pantry items listed separately");
+  check(!(await pg.textContent("header.top")).includes("%"), "header without incline badge");
+  // request mode (GitHub sync, no API key): plan change goes to Claude for later
+  await pg.evaluate(() => { localStorage.setItem("kurs:syncRepo", "a/b"); localStorage.setItem("kurs:syncToken", "x"); });
+  await pg.reload(); await pg.waitForTimeout(800);
+  await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
+  check(await pg.isVisible("#planLaterBtn"), "plan change 'later' button visible without API key");
+  await pg.fill("#planPrompt", "Mittwoch Pizza"); await pg.click("#planLaterBtn"); await pg.waitForTimeout(300);
+  const pl = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
+  check(pl.planChange === "Mittwoch Pizza" && (await pg.inputValue("#planPrompt")) === "", "plan change stored and text box cleared");
+  check((await pg.textContent("#planBody")).includes("Anpassung angefordert"), "requested change is shown");
   check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
   await b.close();
   if (fails.length) { console.log(`\n${fails.length} check(s) failed`); process.exit(1); }
