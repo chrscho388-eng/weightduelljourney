@@ -238,12 +238,12 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <textarea id="mealText" placeholder="z. B. 250 g griechischer Joghurt mit 60 g Whey und 100 g Beeren"></textarea>
       </div>
       <div class="btnrow">
-        <button class="btn" id="estimateBtn" hidden>kcal schätzen lassen</button>
-        <label class="btn ghost" id="photoLabel" hidden>Foto schätzen<input type="file" id="photoInput" accept="image/*" hidden></label>
-        <button class="btn" id="askBtn" type="button" hidden>An Claude schicken</button>
-        <label class="btn ghost" id="askPhotoLabel" hidden>Foto an Claude<input type="file" id="askPhotoInput" accept="image/*" hidden></label>
+        <button class="btn" id="estimateBtn" hidden>Jetzt schätzen</button>
+        <label class="btn ghost" id="photoLabel" hidden>Foto jetzt schätzen<input type="file" id="photoInput" accept="image/*" hidden></label>
+        <button class="btn ghost" id="askBtn" type="button" hidden>An Claude senden (später)</button>
+        <label class="btn ghost" id="askPhotoLabel" hidden>Foto an Claude senden (später)<input type="file" id="askPhotoInput" accept="image/*" hidden></label>
       </div>
-      <p class="small muted" id="askHint" hidden style="margin:6px 0 0">Claude schätzt das beim nächsten Abgleich (stündlich 6 bis 23 Uhr), ohne API-Kosten. Ein Text zum Foto hilft, z. B. die Menge.</p>
+      <p class="small muted" id="askHint" hidden style="margin:6px 0 0">„Später“ geht nicht sofort: Claude schätzt beim nächsten Abgleich (stündlich 6 bis 23 Uhr, in der Web-App sofort per ⟳ Sync), dafür ohne API-Kosten. Ein Text zum Foto hilft, z. B. die Menge.</p>
       <div class="status" id="estStatus"></div>
       <div id="estPreview" class="preview" hidden>
         <div class="estbody" id="estSeenBox" hidden><img class="mphoto" id="estPhoto" alt="Dein Foto"><p class="seen small" id="estSeen"></p></div>
@@ -649,7 +649,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   const cleanParts = (arr) => (Array.isArray(arr) ? arr : []).filter((x) => x && x.name).slice(0, 15)
     .map((x) => ({ name: String(x.name).slice(0, 80), grams: Math.round(Number(x.grams) || 0), kcal: Math.round(Number(x.kcal) || 0), protein: Math.round(Number(x.protein) || 0) }));
   // ---- requests Claude answers at the next sync (no API key needed) ----
-  const requestMode = () => !sample && STANDALONE && !!syncCfg();
+  const requestMode = () => STANDALONE ? !!syncCfg() : !!(S.syncTriggerId);
   async function queueEstimate(image) {
     const text = $("mealText").value.trim();
     if (!text && !image) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast, oder wähle ein Foto.", true); return; }
@@ -1101,7 +1101,9 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
         if (e && e.target.closest("details.recipe > :not(summary)")) return; // reading or selecting recipe text
         const det = row.querySelector("details.recipe");
         if (det) { if (!e || !e.target.closest("summary")) det.open = !det.open; return; }
-        makeRecipe(row);
+        const btn = e && e.target.closest("button[data-act]");
+        if (row.querySelector("button[data-act]")) { if (btn) makeRecipe(row, btn.dataset.act === "later"); return; }
+        makeRecipe(row, !sample);
       };
       row.onclick = act;
       row.onkeydown = (e) => { if (e.target === row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); act(); } };
@@ -1125,6 +1127,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     }
     if (!ref || !recipeAllowed()) return "";
     if (m.recipeRequested) return `<div class="recipe small muted">Rezept angefordert, es kommt beim nächsten Abgleich.</div>`;
+    if (sample && requestMode()) return `<div class="recipe small"><span class="rhint">Rezept: </span><button class="btn ghost" type="button" data-act="now" style="padding:4px 10px;font-size:13px">Jetzt erstellen</button> <button class="btn ghost" type="button" data-act="later" style="padding:4px 10px;font-size:13px">An Claude senden (später)</button><span class="status small"></span></div>`;
     return `<div class="recipe small"><span class="rhint">Tippen für Rezept ›</span><span class="status small"></span></div>`;
   }
   function recipePrompt(m) {
@@ -1137,14 +1140,14 @@ ${S.estimateHints ? "Hinweise der Person (No-Gos und Vorlieben beachten):\n" + S
 Antworte nur mit JSON in genau dieser Form:
 {"servings":"1 Portion (für 2 Personen Mengen verdoppeln)","minutes":0,"ingredients":[{"amount":"150 g","item":"Hähnchenbrust"}],"steps":["…"],"tip":"ein kurzer Tipp oder leer"}`;
   }
-  async function makeRecipe(row) {
+  async function makeRecipe(row, later) {
     if (!recipeAllowed() || row.dataset.busy) return;
     const ref = row.dataset.ref, week = curPlan, plan = plans[week]; if (!plan) return;
     const st = row.querySelector(".recipe .status"), hint = row.querySelector(".rhint");
     const [kind, idx] = ref[0] === "s" ? ["s", +ref.slice(2)] : ["d", ref.slice(1).split(":").map(Number)];
     const meal = kind === "s" ? (plan.swaps || [])[idx] : ((plan.days || [])[idx[0]] || {}).meals?.[idx[1]];
     if (!meal) return;
-    if (!sample) {
+    if (later || !sample) {
       if (meal.recipeRequested) return;
       const next = JSON.parse(JSON.stringify(plan));
       const target = kind === "s" ? next.swaps[idx] : next.days[idx[0]].meals[idx[1]];
@@ -1229,6 +1232,7 @@ Antworte nur mit JSON in genau dieser Form:
   let mcpApi = null;
   function updateSyncBtn() {
     $("syncHdr").hidden = STANDALONE ? !syncCfg() : !(mcpApi && S.syncTriggerId);
+    const rq = requestMode(); $("askBtn").hidden = !rq; $("askPhotoLabel").hidden = !rq; $("askHint").hidden = !rq;
   }
   $("syncHdr").onclick = async () => {
     if (STANDALONE) { syncNow(true); return; }
@@ -1481,7 +1485,7 @@ Antworte nur mit JSON in genau dieser Form:
   async function initSample() {
     sample = await use("sample");
     $("estimateBtn").hidden = !sample; $("photoLabel").hidden = true; $("planAsk").hidden = !sample;
-    const rq = requestMode(); $("askBtn").hidden = !rq; $("askPhotoLabel").hidden = !rq; $("askHint").hidden = !rq;
+    updateSyncBtn();
     if (!sample) return;
     try { const lim = await sample.limits(); if (lim && lim.images) { sampleImages = true; $("photoLabel").hidden = false; } } catch (e) {}
   }
