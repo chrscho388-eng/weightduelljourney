@@ -79,6 +79,8 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const shop = await pg.textContent("#shopBox");
   check(/Hähnchenbrust/.test(shop) && /500 g/.test(shop), "shopping list doubles cooked dish");
   check(/Wahrscheinlich schon im Haushalt/.test(shop) && /Salz/.test(shop), "pantry items listed separately");
+  check(!/Schöpfer|Buffetsalat|\)/.test(shop.split("Wahrscheinlich")[0]) && /Eiklar/.test(shop) && /Whey/.test(shop), "shopping list skips canteen and parses brackets");
+  check(!/Skyr\)/.test(shop) && (shop.match(/Skyr/g) || []).length === 1, "shopping list merges bracketed items");
   check(!/Berglinsen/.test(shop) && !(await pg.$('#shopBox [data-sp="today"]')), "shopping list skips past days");
   check(!(await pg.textContent("header.top")).includes("%"), "header without incline badge");
   // request mode (GitHub sync, no API key): plan change goes to Claude for later

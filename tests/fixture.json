@@ -190,6 +190,29 @@
       "cook": false
      }
     ]
+   },
+   {
+    "date": "2026-11-05",
+    "type": "Büro",
+    "info": "",
+    "meals": [
+     {
+      "slot": "Mittag (Kantine)",
+      "name": "Gemüsesuppe, Buffetsalat",
+      "detail": "1 Schöpfer Gemüsesuppe (ca. 250 ml), 1 kleine Schüssel Buffetsalat (Kartoffel- oder Bohnensalat)",
+      "kcal": 600,
+      "protein": 25,
+      "cook": false
+     },
+     {
+      "slot": "Abend",
+      "name": "Omelett",
+      "detail": "1 Ei, 250 g Eiklar; dazu Skyr (250 g Skyr); dazu Whey-Shake (30 g Whey in Wasser)",
+      "kcal": 500,
+      "protein": 80,
+      "cook": false
+     }
+    ]
    }
   ]
  },
