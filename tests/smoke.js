@@ -137,6 +137,14 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const pl4 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
   check(pl4.days[0].meals[0].name.startsWith("Frittatensuppe") && /^data:image/.test(pl4.canteenMenu || ""), "accepted plan keeps the menu photo");
   await pg.click("nav.tabs a[data-tab=profil]"); await pg.waitForTimeout(150);
+  await pg.click('#themeChips [data-theme-set="dark"]'); await pg.waitForTimeout(100);
+  const bgDark = await pg.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  check(bgDark === "rgb(19, 24, 21)", "dark mode can be switched on (" + bgDark + ")");
+  await pg.reload(); await pg.waitForTimeout(800);
+  check(await pg.evaluate(() => document.documentElement.dataset.theme) === "dark", "dark mode is remembered");
+  await pg.click("nav.tabs a[data-tab=profil]"); await pg.waitForTimeout(150);
+  await pg.click('#themeChips [data-theme-set="light"]'); await pg.waitForTimeout(100);
+  check(await pg.evaluate(() => getComputedStyle(document.body).backgroundColor) === "rgb(243, 244, 239)", "light mode can be switched on");
   await pg.click("#changelogBox > summary");
   check(await pg.isVisible("#changelog .ver") && (await pg.$$("#changelog .ver")).length > 20 && /^3\.\d+/.test(await pg.textContent("#changelog .ver b")), "changelog lists the versions");
   check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
