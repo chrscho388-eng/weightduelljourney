@@ -105,9 +105,12 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check((pl5.planChange.match(/Kantinen-Menü/g) || []).length === 2, "pasted screenshot is used as canteen menu");
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   check(await pg.isVisible("#pasteHint"), "paste hint shown on Heute");
-  await pasteImg("#mealText"); await pg.waitForTimeout(800);
-  const d5 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
-  check(d5.meals.some((m) => m.pending && /^data:image/.test(m.photo || "")), "pasted screenshot queued as meal photo");
+  await pasteImg("#mealText"); await pg.waitForTimeout(400);
+  const dayNow = () => pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
+  check(await pg.isVisible("#attachBox") && !(await dayNow()).meals.some((m) => m.pending && m.photo), "pasted photo is attached, not sent yet");
+  await pg.fill("#mealText", "nur halbe Portion Pommes"); await pg.click("#askBtn"); await pg.waitForTimeout(800);
+  const d5 = await dayNow();
+  check(d5.meals.some((m) => m.pending && /^data:image/.test(m.photo || "") && m.request === "nur halbe Portion Pommes") && !(await pg.isVisible("#attachBox")), "photo sent together with the edited text");
   // with an API key Claude reads the menu right away and proposes the office-day lunches
   await pg.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ summary: "Kantine eingeplant", plan: { note: "Kantine", days: [{ date: "2026-11-05", type: "Büro", meals: [{ slot: "Mittag (Kantine)", name: "Frittatensuppe, Kartoffelsalat, Topfencreme", detail: "", kcal: 750, protein: 30, cook: false }] }], swaps: [] } }) }] }) }));
   await pg.evaluate(() => localStorage.setItem("kurs:apiKey", "sk-test")); await pg.reload(); await pg.waitForTimeout(800);

@@ -100,6 +100,11 @@ input[type=number] { font-family: var(--font-data); }
 .btn { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 14px; border: 1px solid var(--accent); background: var(--accent); color: var(--bg); cursor: pointer; }
 .btn.ghost { background: transparent; color: var(--accent); }
 .btn:disabled { opacity: .5; cursor: default; }
+.attach { display: flex; gap: 10px; align-items: center; margin-top: 10px; padding: 8px; border: 1px dashed var(--line); border-radius: 8px; }
+.attach[hidden] { display: none; }
+.attach img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; }
+.attach span { flex: 1; }
+.attach .x { border: 0; background: none; color: var(--muted); font-size: 20px; cursor: pointer; }
 .btn.disabled { opacity: .5; pointer-events: none; }
 .btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
@@ -276,8 +281,9 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <button class="btn" id="estimateBtn" hidden>Jetzt schätzen</button>
         <label class="btn ghost" id="photoLabel" hidden>Foto jetzt schätzen<input type="file" id="photoInput" accept="image/*" hidden></label>
         <button class="btn ghost" id="askBtn" type="button" hidden>An Claude senden (später)</button>
-        <label class="btn ghost" id="askPhotoLabel" hidden>Foto an Claude senden (später)<input type="file" id="askPhotoInput" accept="image/*" hidden></label>
+        <label class="btn ghost" id="askPhotoLabel" hidden>Foto anhängen<input type="file" id="askPhotoInput" accept="image/*" hidden></label>
       </div>
+      <div id="attachBox" class="attach" hidden><img id="attachImg" alt="Angehängtes Foto"><span class="small">Foto angehängt. Text ergänzen, dann „An Claude senden (später)“.</span><button class="x" type="button" id="attachDel" aria-label="Foto entfernen">×</button></div>
       <p class="small muted" id="pasteHint" hidden style="margin:6px 0 0">Screenshot in der Zwischenablage? Einfach mit Strg+V einfügen.</p>
       <p class="small muted" id="askHint" hidden style="margin:6px 0 0">„Später“ geht nicht sofort: Claude schätzt beim nächsten Abgleich (stündlich 6 bis 23 Uhr, in der Web-App sofort per ⟳ Sync), dafür ohne API-Kosten. Ein Text zum Foto hilft, z. B. die Menge.</p>
       <div class="status" id="estStatus"></div>
@@ -738,7 +744,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   const requestMode = () => STANDALONE ? !!syncCfg() : !!(S.syncTriggerId);
   async function queueEstimate(image) {
     const text = $("mealText").value.trim();
-    if (!text && !image) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast, oder wähle ein Foto.", true); return; }
+    if (!text && !image) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast, oder wähle ein Foto.", true); return false; }
     const photo = image ? await thumb(image) : null;
     saveDay(curDay, (doc) => {
       doc.meals = doc.meals || [];
@@ -747,9 +753,17 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     });
     $("mealText").value = "";
     setStatus("estStatus", "An Claude geschickt. Die Werte erscheinen nach dem nächsten Abgleich.");
+    return true;
   }
-  $("askBtn").onclick = () => queueEstimate(null);
-  $("askPhotoInput").onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) queueEstimate(f); e.target.value = ""; };
+  // a photo for "later" is only attached; it is sent together with the text on "An Claude senden (später)"
+  let attached = null;
+  function attachPhoto(f) {
+    attached = f; $("attachBox").hidden = !f;
+    if (f) { const u = URL.createObjectURL(f); $("attachImg").onload = () => URL.revokeObjectURL(u); $("attachImg").src = u; setStatus("estStatus", ""); $("mealText").focus(); }
+  }
+  $("askBtn").onclick = async () => { if (await queueEstimate(attached)) attachPhoto(null); };
+  $("askPhotoInput").onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) attachPhoto(f); e.target.value = ""; };
+  $("attachDel").onclick = () => attachPhoto(null);
   function addMeals(items) {
     saveDay(curDay, (doc) => {
       doc.meals = doc.meals || [];
@@ -1419,7 +1433,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     const view = (document.querySelector("[data-view]:not([hidden])") || {}).id;
     if (view === "view-plan" && !$("canteenLabel").hidden) { e.preventDefault(); sendCanteen(f); }
     else if (view === "view-heute" && !$("photoLabel").hidden) { e.preventDefault(); runEstimate(f); }
-    else if (view === "view-heute" && !$("askPhotoLabel").hidden) { e.preventDefault(); queueEstimate(f); }
+    else if (view === "view-heute" && !$("askPhotoLabel").hidden) { e.preventDefault(); attachPhoto(f); }
   });
   function pasteHintUpd() { $("pasteHint").hidden = $("photoLabel").hidden && $("askPhotoLabel").hidden; }
   $("planAccept").onclick = async () => {
