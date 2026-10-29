@@ -89,6 +89,20 @@
   "swaps": [],
   "days": [
    {
+    "date": "2026-11-03",
+    "type": "HO",
+    "meals": [
+     {
+      "slot": "Nachtisch",
+      "name": "Skyr",
+      "detail": "250 g Skyr",
+      "kcal": 160,
+      "protein": 27,
+      "cook": false
+     }
+    ]
+   },
+   {
     "date": "2026-11-04",
     "type": "HO",
     "meals": [

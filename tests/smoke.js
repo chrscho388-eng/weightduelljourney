@@ -44,6 +44,13 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   // plan + shopping list
   await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
   check((await pg.textContent("#planBody")).includes("Reispfanne"), "plan shows meals");
+  // plan days collapse: past days closed, today open, choice remembered
+  const openDays = await pg.$$eval("details.planday", (e) => e.map((x) => [x.dataset.date, x.open]));
+  check(openDays.some(([d, o]) => d < "2026-11-04" && !o) && openDays.some(([d, o]) => d === "2026-11-04" && o), "past plan days collapsed, today open");
+  await pg.click('details.planday[data-date="2026-11-04"] > summary'); await pg.waitForTimeout(100);
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
+  check(!(await pg.$eval('details.planday[data-date="2026-11-04"]', (x) => x.open)), "collapsed day stays collapsed");
+  await pg.click('details.planday[data-date="2026-11-04"] > summary'); await pg.waitForTimeout(100);
   await pg.click("#shopBox summary"); await pg.waitForTimeout(150);
   const shop = await pg.textContent("#shopBox");
   check(/Hähnchenbrust/.test(shop) && /500 g/.test(shop), "shopping list doubles cooked dish");
