@@ -36,6 +36,15 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const cof = d3.meals.find((m) => m.id === "coffee");
   check(cof && cof.kcal === 143 && cof.protein === 8 && cof.label === "3× Cappuccino (Firma)", "office coffee uses its own size");
   await pg.click("#nextDay"); await pg.waitForTimeout(200);
+  // weight field only on the weigh day (Tuesday) or on request
+  const hid = (sel) => pg.$eval(sel, (e) => e.hidden);
+  await pg.click("#prevDay"); await pg.waitForTimeout(200);
+  check(!(await hid("#weightField")) && await hid("#weightShow"), "weight field shown on Tuesday");
+  await pg.click("#nextDay"); await pg.waitForTimeout(200);
+  check(await hid("#weightField") && !(await hid("#weightShow")), "weight field hidden on other days");
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  await pg.click("#weightShow"); await pg.waitForTimeout(100);
+  check(!(await hid("#weightField")), "weight field can be opened on other days");
   // manual entry
   await pg.fill("#mealText", "Testessen"); await pg.fill("#manKcal", "300"); await pg.fill("#manProt", "20");
   await pg.click("#manAdd"); await pg.waitForTimeout(200);

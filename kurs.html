@@ -153,6 +153,8 @@ tr.sum td { font-weight: 600; background: var(--accent-soft); }
 .planday > summary { list-style: none; cursor: pointer; display: flex; gap: 8px; align-items: baseline; }
 .planday > summary::-webkit-details-marker { display: none; }
 .planday > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+.field[hidden], .linkbtn[hidden] { display: none; }
+.linkbtn { background: none; border: 0; padding: 0; margin-top: 10px; color: var(--accent, inherit); text-decoration: underline; cursor: pointer; font: inherit; }
 .changelog > summary { cursor: pointer; font-weight: 600; }
 .changelog .ver { margin-top: 10px; }
 .changelog .ver b { font-variant-numeric: tabular-nums; }
@@ -305,16 +307,17 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="btnrow"><button class="btn ghost" id="manAdd">Eintragen</button><button class="btn ghost" id="editCancel" hidden>Bearbeiten abbrechen</button></div>
     </div>
 
-    <h2>Bewegung und Gewicht</h2>
+    <h2 id="moveHead">Bewegung und Gewicht</h2>
     <div class="panel">
       <div class="fields">
         <div class="field"><label class="label" for="inclineSteps" id="inclineLabel">Schritte mit Steigung</label><input id="inclineSteps" type="number" inputmode="numeric" min="0" step="500"></div>
         <div class="field"><label class="label" for="flatSteps">Schritte flach</label><input id="flatSteps" type="number" inputmode="numeric" min="0" step="500"></div>
-        <div class="field"><label class="label" for="weight">Gewicht (kg)</label><input id="weight" type="number" inputmode="decimal" min="40" step="0.1" placeholder="dienstags"></div>
+        <div class="field" id="weightField"><label class="label" for="weight">Gewicht (kg)</label><input id="weight" type="number" inputmode="decimal" min="40" step="0.1" placeholder="nüchtern"></div>
         <div class="field"><label class="label" for="dayType">Tagesart</label>
           <select id="dayType"><option value="HO">Home Office</option><option value="Büro">Büro</option><option value="WE">Wochenende</option><option value="Frei">Feiertag / frei</option></select></div>
       </div>
       <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="eventDay" style="width:auto"> Event-Tag (z. B. Essen auswärts, Feier)</label>
+      <button class="linkbtn small" type="button" id="weightShow" hidden>Heute außerplanmäßig wiegen</button>
       <p class="small muted" style="margin:6px 0 0">Die Tagesart erscheint in der Wochenübersicht, und Claude berücksichtigt sie beim Anpassen des Plans. An Event-Tagen gilt statt des normalen Kalorienziels ein freier Rahmen. Die Bilanz zählt trotzdem voll.</p>
       <div class="status" id="saveStatus"></div>
     </div>
@@ -501,7 +504,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
-  const CHANGELOG = [{"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
+  const CHANGELOG = [{"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
   function renderChangelog() {
     const el = $("changelog"); if (!el) return;
     el.innerHTML = CHANGELOG.map((c) => '<div class="ver"><b>' + esc(c.v) + '</b> <span class="muted">' + esc(c.d) + '</span><ul>' + c.items.map((i) => "<li>" + esc(i) + "</li>").join("") + "</ul></div>").join("");
@@ -609,6 +612,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   }
 
   // ---- render: today ----
+  let weightExtra = null;
   function renderDay() {
     if (hasProfile) setTimeout(() => ensureCoffee(curDay), 0);
     const d = dayDoc(curDay);
@@ -684,6 +688,10 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     setIf("inclineSteps", d.inclineSteps || "");
     setIf("flatSteps", d.flatSteps || "");
     setIf("weight", d.weight || "");
+    // weight only on the weigh day (Tuesday), on days that already have one, or on request
+    const weighNow = weekday(curDay) === (S.weighDay ?? 1) || !!d.weight || weightExtra === curDay;
+    $("weightField").hidden = !weighNow; $("weightShow").hidden = weighNow;
+    $("moveHead").textContent = weighNow ? "Bewegung und Gewicht" : "Bewegung";
     if (document.activeElement !== $("dayType")) $("dayType").value = d.dayType || defaultType(curDay);
     $("eventDay").checked = !!d.event;
   }
@@ -888,6 +896,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
   const numOrNull = (v) => v === "" ? null : Number(v);
   $("inclineSteps").onchange = (e) => saveDay(curDay, (d) => { d.inclineSteps = numOrNull(e.target.value); if (!d.dayType) d.dayType = defaultType(curDay); });
   $("flatSteps").onchange = (e) => saveDay(curDay, (d) => { d.flatSteps = numOrNull(e.target.value); if (!d.dayType) d.dayType = defaultType(curDay); });
+  $("weightShow").onclick = () => { weightExtra = curDay; $("weightField").hidden = false; $("weightShow").hidden = true; $("moveHead").textContent = "Bewegung und Gewicht"; $("weight").focus(); };
   $("weight").onchange = (e) => saveDay(curDay, (d) => { const w = numOrNull(e.target.value); if (w) d.weight = Math.round(w * 10) / 10; else delete d.weight; });
   $("dayType").onchange = (e) => saveDay(curDay, (d) => { d.dayType = e.target.value; });
   $("eventDay").onchange = (e) => saveDay(curDay, (d) => { d.event = e.target.checked; });
