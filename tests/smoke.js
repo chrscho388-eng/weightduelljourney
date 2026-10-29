@@ -85,6 +85,20 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(/^data:image\/jpeg/.test(pl3.canteenMenu || "") && /Kantinen-Menü/.test(pl3.planChange || "") && /Mittwoch Pizza/.test(pl3.planChange || ""), "canteen menu stored and queued");
   check(prof3.canteenHabits === "Suppe, kleiner Salat, Dessert" && /Suppe/.test(pl3.planChange), "canteen habits saved and sent along");
   check(await pg.isVisible("#canteenMenuBox"), "menu of the week can be viewed");
+  // Strg+V: a pasted screenshot goes to the canteen menu on the Plan tab and to "Foto später" on Heute
+  const pasteImg = (sel) => pg.evaluate(async (sel) => {
+    const b = await (await fetch("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")).blob();
+    const dt = new DataTransfer(); dt.items.add(new File([b], "shot.png", { type: "image/png" }));
+    (sel ? document.querySelector(sel) : document).dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true }));
+  }, sel);
+  await pasteImg(null); await pg.waitForTimeout(800);
+  const pl5 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
+  check((pl5.planChange.match(/Kantinen-Menü/g) || []).length === 2, "pasted screenshot is used as canteen menu");
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  check(await pg.isVisible("#pasteHint"), "paste hint shown on Heute");
+  await pasteImg("#mealText"); await pg.waitForTimeout(800);
+  const d5 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
+  check(d5.meals.some((m) => m.pending && /^data:image/.test(m.photo || "")), "pasted screenshot queued as meal photo");
   // with an API key Claude reads the menu right away and proposes the office-day lunches
   await pg.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ summary: "Kantine eingeplant", plan: { note: "Kantine", days: [{ date: "2026-11-05", type: "Büro", meals: [{ slot: "Mittag (Kantine)", name: "Frittatensuppe, Kartoffelsalat, Topfencreme", detail: "", kcal: 750, protein: 30, cook: false }] }], swaps: [] } }) }] }) }));
   await pg.evaluate(() => localStorage.setItem("kurs:apiKey", "sk-test")); await pg.reload(); await pg.waitForTimeout(800);

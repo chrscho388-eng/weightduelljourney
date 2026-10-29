@@ -278,6 +278,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <button class="btn ghost" id="askBtn" type="button" hidden>An Claude senden (später)</button>
         <label class="btn ghost" id="askPhotoLabel" hidden>Foto an Claude senden (später)<input type="file" id="askPhotoInput" accept="image/*" hidden></label>
       </div>
+      <p class="small muted" id="pasteHint" hidden style="margin:6px 0 0">Screenshot in der Zwischenablage? Einfach mit Strg+V einfügen.</p>
       <p class="small muted" id="askHint" hidden style="margin:6px 0 0">„Später“ geht nicht sofort: Claude schätzt beim nächsten Abgleich (stündlich 6 bis 23 Uhr, in der Web-App sofort per ⟳ Sync), dafür ohne API-Kosten. Ein Text zum Foto hilft, z. B. die Menge.</p>
       <div class="status" id="estStatus"></div>
       <div id="estPreview" class="preview" hidden>
@@ -398,7 +399,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     <div class="panel" style="margin-top:14px">
       <div class="field"><label class="label" for="canteenHabits">Kantine: was du dort meistens isst</label>
         <textarea id="canteenHabits" placeholder="z. B. Suppe mit Einlage, kleine Salatschüssel, Dessert im kleinen Glas"></textarea></div>
-      <p class="small muted" style="margin:4px 0 0" id="canteenHint">Lade das Wochenmenü als Foto oder Screenshot hoch, sobald es da ist. Claude wählt dann für jeden Bürotag die beste Kombination und gleicht den Rest des Tages aus.</p>
+      <p class="small muted" style="margin:4px 0 0" id="canteenHint">Lade das Wochenmenü als Foto oder Screenshot hoch, sobald es da ist. Claude wählt dann für jeden Bürotag die beste Kombination und gleicht den Rest des Tages aus. Einen Screenshot kannst du auch direkt mit Strg+V einfügen.</p>
       <div class="btnrow"><label class="btn" id="canteenLabel" hidden>Menü-Foto hochladen<input type="file" id="canteenInput" accept="image/*" hidden></label><button class="btn ghost" type="button" id="canteenHabitsSave">Gewohnheiten speichern</button></div>
       <details id="canteenMenuBox" style="margin-top:10px" hidden><summary class="small">Menü dieser Woche</summary><img class="mphoto" id="canteenImg" alt="Kantinen-Menü dieser Woche" style="margin-top:8px"></details>
       <div class="status" id="canteenStatus"></div>
@@ -1402,6 +1403,17 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     } finally { $("canteenLabel").classList.remove("disabled"); }
   }
   $("canteenInput").onchange = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) sendCanteen(f); };
+  // Strg+V with an image (e.g. a fresh screenshot): Plan tab -> canteen menu, Heute tab -> meal photo
+  document.addEventListener("paste", (e) => {
+    const item = [...((e.clipboardData && e.clipboardData.items) || [])].find((it) => it.kind === "file" && it.type.startsWith("image/"));
+    const f = item && item.getAsFile();
+    if (!f) return;
+    const view = (document.querySelector("[data-view]:not([hidden])") || {}).id;
+    if (view === "view-plan" && !$("canteenLabel").hidden) { e.preventDefault(); sendCanteen(f); }
+    else if (view === "view-heute" && !$("photoLabel").hidden) { e.preventDefault(); runEstimate(f); }
+    else if (view === "view-heute" && !$("askPhotoLabel").hidden) { e.preventDefault(); queueEstimate(f); }
+  });
+  function pasteHintUpd() { $("pasteHint").hidden = $("photoLabel").hidden && $("askPhotoLabel").hidden; }
   $("planAccept").onclick = async () => {
     if (!pendingPlan || !base) return;
     const { week, plan, wish } = pendingPlan;
@@ -1784,7 +1796,7 @@ Antworte nur mit JSON in genau dieser Form:
   function updateSyncBtn() {
     $("syncHdr").hidden = STANDALONE ? !syncCfg() : !(mcpApi && S.syncTriggerId);
     const rq = requestMode(); $("planAsk").hidden = !(sample || rq); $("planAdjustBtn").hidden = !sample; $("planLaterBtn").hidden = !rq;
-    $("askBtn").hidden = !rq; $("askPhotoLabel").hidden = !rq; $("askHint").hidden = !rq;
+    $("askBtn").hidden = !rq; $("askPhotoLabel").hidden = !rq; $("askHint").hidden = !rq; pasteHintUpd();
   }
   $("syncHdr").onclick = async () => {
     if (STANDALONE) { syncNow(true); return; }
@@ -2037,10 +2049,10 @@ Antworte nur mit JSON in genau dieser Form:
   })();
   async function initSample() {
     sample = await use("sample");
-    $("estimateBtn").hidden = !sample; $("photoLabel").hidden = true;
+    $("estimateBtn").hidden = !sample; $("photoLabel").hidden = true; pasteHintUpd();
     updateSyncBtn();
     if (!sample) return;
-    try { const lim = await sample.limits(); if (lim && lim.images) { sampleImages = true; $("photoLabel").hidden = false; } } catch (e) {}
+    try { const lim = await sample.limits(); if (lim && lim.images) { sampleImages = true; $("photoLabel").hidden = false; pasteHintUpd(); } } catch (e) {}
   }
   initSample();
   if (!STANDALONE) use("mcp").then((m) => { mcpApi = m; updateSyncBtn(); }).catch(() => {});
