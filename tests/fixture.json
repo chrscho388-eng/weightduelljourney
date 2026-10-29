@@ -106,6 +106,28 @@
       "kcal": 160,
       "protein": 27,
       "cook": false
+     },
+     {
+      "slot": "Abend",
+      "name": "Linsensuppe",
+      "detail": "200 g Linsen",
+      "kcal": 500,
+      "protein": 30,
+      "cook": true,
+      "recipe": {
+       "servings": "1 Portion",
+       "minutes": 30,
+       "ingredients": [
+        {
+         "amount": "200 g",
+         "item": "Berglinsen"
+        }
+       ],
+       "steps": [
+        "Kochen."
+       ],
+       "tip": ""
+      }
      }
     ]
    },
