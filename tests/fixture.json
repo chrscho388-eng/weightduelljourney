@@ -42,6 +42,13 @@
     "Büro": 3,
     "WE": 1,
     "Frei": 1
+   },
+   "byType": {
+    "Büro": {
+     "kcal": 47.5,
+     "protein": 2.5,
+     "label": "Cappuccino (Firma)"
+    }
    }
   }
  },

@@ -30,6 +30,12 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   }
   const today0 = await pg.$$eval("#mealList .mname", (e) => e.map((x) => x.textContent));
   check(today0.includes("Frühstück vorhanden") && today0.includes("Cappuccino"), "auto coffee keeps existing meals");
+  // office days use the smaller office cappuccino
+  await pg.click("#prevDay"); await pg.waitForTimeout(400);
+  const d3 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-03")));
+  const cof = d3.meals.find((m) => m.id === "coffee");
+  check(cof && cof.kcal === 143 && cof.protein === 8 && cof.label === "3× Cappuccino (Firma)", "office coffee uses its own size");
+  await pg.click("#nextDay"); await pg.waitForTimeout(200);
   // manual entry
   await pg.fill("#mealText", "Testessen"); await pg.fill("#manKcal", "300"); await pg.fill("#manProt", "20");
   await pg.click("#manAdd"); await pg.waitForTimeout(200);

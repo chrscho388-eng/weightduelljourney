@@ -693,7 +693,9 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     if (d.coffeeOff) return;
     const n = (c.perType || {})[d.dayType || defaultType(date)] || 0;
     const cur = (d.meals || []).find((m) => m.id === "coffee");
-    const want = n ? { id: "coffee", label: n === 1 ? "Cappuccino" : n + "× Cappuccino", kcal: n * (c.kcal || 95), protein: n * (c.protein ?? 5), auto: true } : null;
+    // per day type a different cup is possible (c.byType, e.g. smaller office cappuccino)
+    const per = { kcal: c.kcal || 95, protein: c.protein ?? 5, label: "Cappuccino", ...((c.byType || {})[d.dayType || defaultType(date)] || {}) };
+    const want = n ? { id: "coffee", label: n === 1 ? per.label : n + "× " + per.label, kcal: Math.round(n * per.kcal), protein: Math.round(n * per.protein), auto: true } : null;
     if (!want && !cur) return;
     if (want && cur && cur.kcal === want.kcal && cur.protein === want.protein && cur.label === want.label) return;
     saveDay(date, (doc) => {
