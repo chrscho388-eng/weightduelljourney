@@ -126,6 +126,9 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("#planAccept"); await pg.waitForTimeout(400);
   const pl4 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
   check(pl4.days[0].meals[0].name.startsWith("Frittatensuppe") && /^data:image/.test(pl4.canteenMenu || ""), "accepted plan keeps the menu photo");
+  await pg.click("nav.tabs a[data-tab=profil]"); await pg.waitForTimeout(150);
+  await pg.click("#changelogBox > summary");
+  check(await pg.isVisible("#changelog .ver") && (await pg.$$("#changelog .ver")).length > 20 && /^3\.\d+/.test(await pg.textContent("#changelog .ver b")), "changelog lists the versions");
   check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
   await b.close();
   if (fails.length) { console.log(`\n${fails.length} check(s) failed`); process.exit(1); }
