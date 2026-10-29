@@ -35,6 +35,15 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("#manAdd"); await pg.waitForTimeout(200);
   check((await pg.$$eval("#mealList .mname", (e) => e.map((x) => x.textContent))).includes("Testessen"), "manual meal is added");
   check((await pg.$$("#favChips .chip")).length > 0, "favourites are shown");
+  // plan chip fills the form first, logging happens on "Eintragen"
+  const chip = await pg.$('#planChips .chip:has-text("Reispfanne")');
+  await chip.click(); await pg.waitForTimeout(150);
+  const listed = () => pg.$$eval("#mealList .mname", (e) => e.map((x) => x.textContent).join("|"));
+  check((await pg.inputValue("#mealText")).startsWith("Reispfanne") && (await pg.inputValue("#manKcal")) === "800" && !/Reispfanne/.test(await listed()), "plan chip fills the form instead of logging");
+  await pg.fill("#manKcal", "700"); await pg.click("#manAdd"); await pg.waitForTimeout(200);
+  const d0 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
+  const rp = d0.meals.find((m) => m.label.startsWith("Reispfanne"));
+  check(rp && rp.kcal === 700 && rp.fromPlan === "Reispfanne" && (await pg.inputValue("#mealText")) === "", "adjusted plan meal logged and marked as taken");
   // history
   await pg.click("nav.tabs a[data-tab=verlauf]"); await pg.waitForTimeout(150);
   check((await pg.textContent("#insight")).includes("Prognose"), "overview shows the forecast");

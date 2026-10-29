@@ -541,7 +541,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   let curDay = todayStr();
   let curWeek = mondayOf(curDay);
   let curPlan = mondayOf(curDay);
-  let editingId = null;
+  let editingId = null, planFill = null;
   let pendingEst = null;
 
   const dayDoc = (d) => days[d] || { date: d, meals: [] };
@@ -650,7 +650,15 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         const taken = (d.meals || []).some((m) => m.fromPlan === pm.name);
         const c = document.createElement("button"); c.className = "chip" + (taken ? " on" : "");
         c.textContent = `${pm.slot ? pm.slot + ": " : ""}${pm.name} · ${fmt(pm.kcal)}`;
-        c.onclick = () => { if (taken) return; addMeals([{ label: pm.name + (pm.detail ? " (" + pm.detail + ")" : ""), kcal: pm.kcal, protein: pm.protein, fromPlan: pm.name }]); };
+        // fill the entry form instead of logging right away, so portions can be adjusted first
+        c.onclick = () => {
+          if (taken) return;
+          if (editingId) endEdit();
+          $("mealText").value = pm.name + (pm.detail ? " (" + pm.detail + ")" : ""); $("manKcal").value = pm.kcal; $("manProt").value = pm.protein;
+          planFill = pm.name;
+          setStatus("estStatus", "Aus dem Plan übernommen. Passe Text, kcal oder Eiweiß an und tippe auf „Eintragen“, oder lass den geänderten Text schätzen.");
+          $("mealText").focus(); $("mealText").scrollIntoView({ block: "center", behavior: "smooth" });
+        };
         chips.append(c);
       });
     } else wrap.hidden = true;
@@ -756,7 +764,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     $("mealText").focus();
   }
   function endEdit() {
-    editingId = null; $("mealText").value = ""; $("manKcal").value = ""; $("manProt").value = "";
+    editingId = null; planFill = null; $("mealText").value = ""; $("manKcal").value = ""; $("manProt").value = "";
     $("manAdd").textContent = "Eintragen"; $("editCancel").hidden = true;
   }
   $("editCancel").onclick = endEdit;
@@ -766,7 +774,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     if (editingId) {
       const id = editingId;
       saveDay(curDay, (doc) => { doc.meals = doc.meals.map((m) => m.id === id ? { ...m, label, kcal: Math.round(kcal), protein: Math.round(prot) } : m); });
-    } else addMeals([{ label, kcal, protein: prot }]);
+    } else addMeals([{ label, kcal, protein: prot, ...(planFill ? { fromPlan: planFill } : {}) }]);
     setStatus("estStatus", ""); endEdit();
   };
 
