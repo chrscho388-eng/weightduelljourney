@@ -146,6 +146,15 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("#sendBtn"); await pg.waitForTimeout(800);
   check(estImgs === 2 && await pg.isVisible("#estPreview") && !(await pg.isVisible("#attachBox")), "direct estimate sends both photos (" + estImgs + ")");
   check((await pg.textContent("#sendBtn")) === "Schätzen" && await pg.$eval("#askHint", (e) => e.hidden) && !(await pg.textContent("#view-heute")).includes("später"), "with API key only 'Schätzen', no 'später'");
+  check(await pg.isVisible("#sendMode"), "send mode switch shown with API key and sync");
+  await pg.click("#sendMode [data-send-mode=claude]"); await pg.waitForTimeout(100);
+  check((await pg.textContent("#sendBtn")) === "An Claude senden" && await pg.isVisible("#askHint"), "switch to 'über Claude' changes the send button");
+  estImgs = -1; await pg.fill("#mealText", "Mango-Shake über Claude"); await pg.click("#sendBtn"); await pg.waitForTimeout(800);
+  check(estImgs === -1 && (await dayNow()).meals.some((m) => m.pending && m.request === "Mango-Shake über Claude"), "'über Claude' queues a request instead of estimating");
+  await pg.reload(); await pg.waitForTimeout(800);
+  check((await pg.textContent("#sendBtn")) === "An Claude senden", "send mode remembered");
+  await pg.click("#sendMode [data-send-mode=direct]"); await pg.waitForTimeout(100);
+  check((await pg.textContent("#sendBtn")) === "Schätzen", "switch back to direct");
   await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
   await pg.setInputFiles("#canteenInput", { name: "menu.png", mimeType: "image/png", buffer: png }); await pg.waitForTimeout(1000);
   check(await pg.isVisible("#planProposal") && (await pg.textContent("#planBody")).includes("Frittatensuppe"), "canteen proposal shown with API key");
