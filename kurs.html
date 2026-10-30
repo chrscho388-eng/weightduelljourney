@@ -102,7 +102,10 @@ input[type=number] { font-family: var(--font-data); }
 .btn:disabled { opacity: .5; cursor: default; }
 .attach { display: flex; gap: 10px; align-items: center; margin-top: 10px; padding: 8px; border: 1px dashed var(--line); border-radius: 8px; }
 .attach[hidden] { display: none; }
-.attach img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; }
+.attach .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.attach .thumb { position: relative; }
+.attach img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; display: block; }
+.attach .thumb .x { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; line-height: 20px; padding: 0; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
 .attach span { flex: 1; }
 .attach .x { border: 0; background: none; color: var(--muted); font-size: 20px; cursor: pointer; }
 .btn.disabled { opacity: .5; pointer-events: none; }
@@ -283,15 +286,13 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <label class="label" for="mealText">Was hast du gegessen?</label>
         <textarea id="mealText" placeholder="z. B. 250 g griechischer Joghurt mit 60 g Whey und 100 g Beeren"></textarea>
       </div>
+      <div id="attachBox" class="attach" hidden><div id="attachList" class="thumbs"></div><span class="small" id="attachTxt"></span></div>
       <div class="btnrow">
-        <button class="btn" id="estimateBtn" hidden>Jetzt schätzen</button>
-        <label class="btn ghost" id="photoLabel" hidden>Foto jetzt schätzen<input type="file" id="photoInput" accept="image/*" hidden></label>
-        <button class="btn ghost" id="askBtn" type="button" hidden>An Claude senden (später)</button>
-        <label class="btn ghost" id="askPhotoLabel" hidden>Foto anhängen<input type="file" id="askPhotoInput" accept="image/*" hidden></label>
+        <label class="btn ghost" id="photoAdd" hidden>Foto hinzufügen<input type="file" id="photoInput" accept="image/*" multiple hidden></label>
+        <button class="btn" id="sendBtn" type="button" hidden>Schätzen</button>
       </div>
-      <div id="attachBox" class="attach" hidden><img id="attachImg" alt="Angehängtes Foto"><span class="small">Foto angehängt. Text ergänzen, dann „An Claude senden (später)“.</span><button class="x" type="button" id="attachDel" aria-label="Foto entfernen">×</button></div>
       <p class="small muted" id="pasteHint" hidden style="margin:6px 0 0">Screenshot in der Zwischenablage? Einfach mit Strg+V einfügen.</p>
-      <p class="small muted" id="askHint" hidden style="margin:6px 0 0">„Später“ geht nicht sofort: Claude schätzt beim nächsten Abgleich (stündlich 6 bis 23 Uhr, in der Web-App sofort per ⟳ Sync), dafür ohne API-Kosten. Ein Text zum Foto hilft, z. B. die Menge.</p>
+      <p class="small muted" id="askHint" hidden style="margin:6px 0 0">Claude schätzt beim nächsten Abgleich (stündlich 6 bis 23 Uhr, in der Web-App sofort per ⟳ Sync), dafür ohne API-Kosten. Ein Text zum Foto hilft, z. B. die Menge.</p>
       <div class="status" id="estStatus"></div>
       <div id="estPreview" class="preview" hidden>
         <div class="estbody" id="estSeenBox" hidden><img class="mphoto" id="estPhoto" alt="Dein Foto"><p class="seen small" id="estSeen"></p></div>
@@ -518,7 +519,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     try { theme ? localStorage.setItem("kurs:theme", theme) : localStorage.removeItem("kurs:theme"); } catch (e) {}
     applyTheme(theme);
   });
-  const CHANGELOG = [{"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
+  const CHANGELOG = [{"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
   function renderChangelog() {
     const el = $("changelog"); if (!el) return;
     el.innerHTML = CHANGELOG.map((c) => '<div class="ver"><b>' + esc(c.v) + '</b> <span class="muted">' + esc(c.d) + '</span><ul>' + c.items.map((i) => "<li>" + esc(i) + "</li>").join("") + "</ul></div>").join("");
@@ -776,28 +777,55 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     .map((x) => ({ name: String(x.name).slice(0, 80), grams: Math.round(Number(x.grams) || 0), kcal: Math.round(Number(x.kcal) || 0), protein: Math.round(Number(x.protein) || 0) }));
   // ---- requests Claude answers at the next sync (no API key needed) ----
   const requestMode = () => STANDALONE ? !!syncCfg() : !!(S.syncTriggerId);
-  async function queueEstimate(image) {
+  async function queueEstimate(images) {
     const text = $("mealText").value.trim();
-    if (!text && !image) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast, oder wähle ein Foto.", true); return false; }
-    const photo = image ? await thumb(image) : null;
+    if (!text && !images.length) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast, oder füge ein Foto hinzu.", true); return false; }
+    const pics = (await Promise.all(images.map((f) => thumb(f)))).filter(Boolean);
+    const photo = pics[0] || null;
     saveDay(curDay, (doc) => {
       doc.meals = doc.meals || [];
-      doc.meals.push({ id: uid(), label: text ? text.slice(0, 200) : "Foto", kcal: 0, protein: 0, pending: true, request: text.slice(0, 600), ...(photo ? { photo } : {}) });
+      doc.meals.push({ id: uid(), label: text ? text.slice(0, 200) : "Foto", kcal: 0, protein: 0, pending: true, request: text.slice(0, 600), ...(photo ? { photo } : {}), ...(pics.length > 1 ? { photos: pics } : {}) });
       if (!doc.dayType) doc.dayType = defaultType(curDay);
     });
     $("mealText").value = "";
     setStatus("estStatus", "An Claude geschickt. Die Werte erscheinen nach dem nächsten Abgleich.");
     return true;
   }
-  // a photo for "later" is only attached; it is sent together with the text on "An Claude senden (später)"
-  let attached = null;
-  function attachPhoto(f) {
-    attached = f; $("attachBox").hidden = !f;
-    if (f) { const u = URL.createObjectURL(f); $("attachImg").onload = () => URL.revokeObjectURL(u); $("attachImg").src = u; setStatus("estStatus", ""); $("mealText").focus(); }
+  // photos are only attached (several, e.g. dish and nutrition label); one button sends them together with the text
+  const MAX_PHOTOS = 4;
+  let attached = [];
+  function renderAttach() {
+    const box = $("attachList"); box.innerHTML = "";
+    attached.forEach((f, i) => {
+      const w = document.createElement("div"); w.className = "thumb";
+      const img = document.createElement("img"), u = URL.createObjectURL(f); img.onload = () => URL.revokeObjectURL(u); img.src = u; img.alt = "Foto " + (i + 1);
+      const x = document.createElement("button"); x.type = "button"; x.className = "x"; x.textContent = "×"; x.setAttribute("aria-label", "Foto entfernen");
+      x.onclick = () => { attached.splice(i, 1); renderAttach(); };
+      w.append(img, x); box.append(w);
+    });
+    $("attachBox").hidden = !attached.length;
+    $("attachTxt").textContent = attached.length ? `${attached.length === 1 ? "1 Foto" : attached.length + " Fotos"} angehängt. Text ergänzen, dann „${$("sendBtn").textContent}“.` : "";
   }
-  $("askBtn").onclick = async () => { if (await queueEstimate(attached)) attachPhoto(null); };
-  $("askPhotoInput").onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) attachPhoto(f); e.target.value = ""; };
-  $("attachDel").onclick = () => attachPhoto(null);
+  function attachPhoto(f) {
+    if (!f) { attached = []; renderAttach(); return; }
+    if (attached.length >= MAX_PHOTOS) { setStatus("estStatus", "Höchstens " + MAX_PHOTOS + " Fotos pro Mahlzeit.", true); return; }
+    attached.push(f); renderAttach(); setStatus("estStatus", ""); $("mealText").focus();
+  }
+  // estimate right away when Claude is reachable (web app or API key), otherwise ask Claude at the next sync
+  $("sendBtn").onclick = async () => {
+    const imgs = attached.slice();
+    const ok = sample && (!imgs.length || sampleImages) ? await runEstimate(imgs) : requestMode() ? await queueEstimate(imgs) : false;
+    if (ok) attachPhoto(null);
+  };
+  $("photoInput").onchange = (e) => { [...(e.target.files || [])].forEach((f) => attachPhoto(f)); e.target.value = ""; };
+  function updateEntryButtons() {
+    const rq = requestMode(), direct = !!sample;
+    $("sendBtn").hidden = !(direct || rq);
+    $("sendBtn").textContent = direct ? "Schätzen" : "An Claude senden";
+    $("photoAdd").hidden = !((direct && sampleImages) || rq);
+    $("askHint").hidden = direct || !rq;
+    pasteHintUpd(); renderAttach();
+  }
   function addMeals(items) {
     saveDay(curDay, (doc) => {
       doc.meals = doc.meals || [];
@@ -853,20 +881,21 @@ Regeln:
 - Bei Marken- oder Restaurantprodukten nutze die bekannten Herstellerangaben.
 - Fasse ein Gericht als einen Posten zusammen; getrennte Lebensmittel oder Getränke als getrennte Posten.
 - label: kurz und auf Deutsch, mit den wichtigsten Mengen.
-${withImage ? "- Das Bild zeigt die Mahlzeit. Schätze die Portion aus dem Bild, der Text ergänzt es.\n" : ""}${S.estimateHints ? "Persönliche Hinweise der Person (nur für die Schätzung):\n" + S.estimateHints.slice(0, 600) + "\n" : ""}
+${withImage ? "- Die Bilder zeigen die Mahlzeit, eventuell auch Verpackung oder Nährwerttabelle. Steht eine Nährwerttabelle drauf, nimm deren Werte für die gegessene Menge; sonst schätze die Portion aus dem Bild. Der Text ergänzt die Bilder.\n" : ""}${S.estimateHints ? "Persönliche Hinweise der Person (nur für die Schätzung):\n" + S.estimateHints.slice(0, 600) + "\n" : ""}
 Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
 {"seen":"${withImage ? "1 bis 3 Sätze: was du auf dem Foto erkennst und wie groß du die Portion einschätzt" : ""}","items":[{"label":"…","kcal":0,"protein":0,"parts":[{"name":"Zutat","grams":0,"kcal":0,"protein":0}]}],"note":"eine kurze Annahme, die die Schätzung am stärksten beeinflusst"}
 parts: die wichtigsten Bestandteile des Postens mit geschätzter Menge in Gramm; ihre kcal und protein ergeben zusammen die Werte des Postens.
 
 ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste, \"wie gestern\", Anteile eines Topfes):\n" + ctx + "\n\n" : ""}Mahlzeit: ${text || "(siehe Bild)"}`;
   }
-  async function runEstimate(image) {
+  async function runEstimate(images) {
     const text = $("mealText").value.trim();
-    if (!text && !image) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast.", true); return; }
-    $("estimateBtn").disabled = true; setStatus("estStatus", "Claude schätzt …");
+    if (!text && !images.length) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast, oder füge ein Foto hinzu.", true); return false; }
+    $("sendBtn").disabled = true; setStatus("estStatus", "Claude schätzt …");
     try {
       const opts = { modelTier: "default" };
-      if (image) opts.images = [image];
+      if (images.length) opts.images = images;
+      const image = images[0];
       const res = await sample.json(estPrompt(text, !!image), opts);
       const items = (res && Array.isArray(res.items) ? res.items : []).filter((x) => x && x.label).map((x) => ({ label: String(x.label), kcal: Math.round(Number(x.kcal) || 0), protein: Math.round(Number(x.protein) || 0), parts: cleanParts(x.parts) }));
       if (!items.length) throw { code: "empty" };
@@ -892,17 +921,17 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
       const tk = items.reduce((a, x) => a + x.kcal, 0), tp = items.reduce((a, x) => a + x.protein, 0);
       $("estNote").textContent = `Zusammen ${fmt(tk)} kcal und ${fmt(tp)} g Eiweiß.` + (res.note ? " Annahme: " + res.note : "");
       $("estPreview").hidden = false; setStatus("estStatus", "Prüfen und übernehmen. Einzelne Posten kannst du nach dem Übernehmen antippen und anpassen.");
+      return true;
     } catch (e) {
       const c = e && e.code;
-      if (c === "not_granted") { setStatus("estStatus", "Schätzen ist nicht erlaubt worden. Trag kcal und Eiweiß selbst ein.", true); $("estimateBtn").hidden = true; $("photoLabel").hidden = true; }
+      if (c === "not_granted") { setStatus("estStatus", "Schätzen ist nicht erlaubt worden. Trag kcal und Eiweiß selbst ein.", true); sample = null; updateEntryButtons(); }
       else if (c === "bad_key") setStatus("estStatus", "Der API-Schlüssel wurde abgelehnt. Prüfe ihn im Tab Profil.", true);
       else if (c === "network") setStatus("estStatus", "Keine Verbindung zur Schätzung. Prüfe die Internetverbindung.", true);
       else if (c === "rate_limited") setStatus("estStatus", "Gerade zu viele Anfragen. Versuch es in einer Minute erneut.", true);
       else setStatus("estStatus", "Die Schätzung hat nicht geklappt. Formuliere es etwas genauer oder trag die Werte selbst ein.", true);
-    } finally { $("estimateBtn").disabled = false; }
+    } finally { $("sendBtn").disabled = false; }
+    return false;
   }
-  $("estimateBtn").onclick = () => runEstimate(null);
-  $("photoInput").onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) runEstimate(f); e.target.value = ""; };
   $("estAccept").onclick = () => { if (pendingEst && pendingEst.length) addMeals(pendingEst); pendingEst = null; $("estPreview").hidden = true; $("estSeenBox").hidden = true; $("mealText").value = ""; setStatus("estStatus", "Eingetragen."); };
   $("estDiscard").onclick = () => { pendingEst = null; $("estPreview").hidden = true; $("estSeenBox").hidden = true; setStatus("estStatus", ""); };
 
@@ -1467,10 +1496,9 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     if (!f) return;
     const view = (document.querySelector("[data-view]:not([hidden])") || {}).id;
     if (view === "view-plan" && !$("canteenLabel").hidden) { e.preventDefault(); sendCanteen(f); }
-    else if (view === "view-heute" && !$("photoLabel").hidden) { e.preventDefault(); runEstimate(f); }
-    else if (view === "view-heute" && !$("askPhotoLabel").hidden) { e.preventDefault(); attachPhoto(f); }
+    else if (view === "view-heute" && !$("photoAdd").hidden) { e.preventDefault(); attachPhoto(f); }
   });
-  function pasteHintUpd() { $("pasteHint").hidden = $("photoLabel").hidden && $("askPhotoLabel").hidden; }
+  function pasteHintUpd() { $("pasteHint").hidden = $("photoAdd").hidden; }
   $("planAccept").onclick = async () => {
     if (!pendingPlan || !base) return;
     const { week, plan, wish } = pendingPlan;
@@ -1866,7 +1894,7 @@ Antworte nur mit JSON in genau dieser Form:
   function updateSyncBtn() {
     $("syncHdr").hidden = STANDALONE ? !syncCfg() : !(mcpApi && S.syncTriggerId);
     const rq = requestMode(); $("planAsk").hidden = !(sample || rq); $("planAdjustBtn").hidden = !sample; $("planLaterBtn").hidden = !rq;
-    $("askBtn").hidden = !rq; $("askPhotoLabel").hidden = !rq; $("askHint").hidden = !rq; pasteHintUpd();
+    updateEntryButtons();
   }
   $("syncHdr").onclick = async () => {
     if (STANDALONE) { syncNow(true); return; }
@@ -2119,10 +2147,9 @@ Antworte nur mit JSON in genau dieser Form:
   })();
   async function initSample() {
     sample = await use("sample");
-    $("estimateBtn").hidden = !sample; $("photoLabel").hidden = true; pasteHintUpd();
     updateSyncBtn();
     if (!sample) return;
-    try { const lim = await sample.limits(); if (lim && lim.images) { sampleImages = true; $("photoLabel").hidden = false; pasteHintUpd(); } } catch (e) {}
+    try { const lim = await sample.limits(); if (lim && lim.images) { sampleImages = true; updateEntryButtons(); } } catch (e) {}
   }
   initSample();
   renderChangelog();

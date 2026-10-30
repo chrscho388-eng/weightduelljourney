@@ -126,12 +126,26 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pasteImg("#mealText"); await pg.waitForTimeout(400);
   const dayNow = () => pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
   check(await pg.isVisible("#attachBox") && !(await dayNow()).meals.some((m) => m.pending && m.photo), "pasted photo is attached, not sent yet");
-  await pg.fill("#mealText", "nur halbe Portion Pommes"); await pg.click("#askBtn"); await pg.waitForTimeout(800);
+  check((await pg.textContent("#sendBtn")) === "An Claude senden" && (await pg.$$eval("#view-heute .btnrow:has(#sendBtn) > :not([hidden])", (e) => e.length)) === 2, "one send button and one photo button without API key");
+  await pg.fill("#mealText", "nur halbe Portion Pommes"); await pg.click("#sendBtn"); await pg.waitForTimeout(800);
   const d5 = await dayNow();
   check(d5.meals.some((m) => m.pending && /^data:image/.test(m.photo || "") && m.request === "nur halbe Portion Pommes") && !(await pg.isVisible("#attachBox")), "photo sent together with the edited text");
+  // several photos at once (dish and nutrition label)
+  await pg.setInputFiles("#photoInput", [{ name: "a.png", mimeType: "image/png", buffer: png }, { name: "b.png", mimeType: "image/png", buffer: png }]); await pg.waitForTimeout(300);
+  check((await pg.$$("#attachList .thumb")).length === 2, "two photos attached");
+  await pg.click("#attachList .thumb .x"); await pg.waitForTimeout(100);
+  await pg.setInputFiles("#photoInput", [{ name: "c.png", mimeType: "image/png", buffer: png }]); await pg.waitForTimeout(300);
+  await pg.fill("#mealText", "Fertiggericht, Etikett"); await pg.click("#sendBtn"); await pg.waitForTimeout(800);
+  const d6 = (await dayNow()).meals.find((m) => m.request === "Fertiggericht, Etikett");
+  check(d6 && d6.photos && d6.photos.length === 2 && d6.photo === d6.photos[0], "several photos sent with one request");
   // with an API key Claude reads the menu right away and proposes the office-day lunches
-  await pg.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ summary: "Kantine eingeplant", plan: { note: "Kantine", days: [{ date: "2026-11-05", type: "Büro", meals: [{ slot: "Mittag (Kantine)", name: "Frittatensuppe, Kartoffelsalat, Topfencreme", detail: "", kcal: 750, protein: 30, cook: false }] }], swaps: [] } }) }] }) }));
+  let estImgs = -1;
+  await pg.route("https://api.anthropic.com/**", (r) => { const body = r.request().postData() || ""; if (body.includes("Ernährungslog")) { estImgs = (body.match(/"type":"image"/g) || []).length; return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ seen: "Teller und Etikett", items: [{ label: "Fertiggericht", kcal: 410, protein: 39, parts: [] }], note: "" }) }] }) }); } return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ summary: "Kantine eingeplant", plan: { note: "Kantine", days: [{ date: "2026-11-05", type: "Büro", meals: [{ slot: "Mittag (Kantine)", name: "Frittatensuppe, Kartoffelsalat, Topfencreme", detail: "", kcal: 750, protein: 30, cook: false }] }], swaps: [] } }) }] }) }); });
   await pg.evaluate(() => localStorage.setItem("kurs:apiKey", "sk-test")); await pg.reload(); await pg.waitForTimeout(800);
+  await pg.setInputFiles("#photoInput", [{ name: "a.png", mimeType: "image/png", buffer: png }, { name: "b.png", mimeType: "image/png", buffer: png }]); await pg.waitForTimeout(300);
+  await pg.click("#sendBtn"); await pg.waitForTimeout(800);
+  check(estImgs === 2 && await pg.isVisible("#estPreview") && !(await pg.isVisible("#attachBox")), "direct estimate sends both photos (" + estImgs + ")");
+  check((await pg.textContent("#sendBtn")) === "Schätzen" && await pg.$eval("#askHint", (e) => e.hidden) && !(await pg.textContent("#view-heute")).includes("später"), "with API key only 'Schätzen', no 'später'");
   await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
   await pg.setInputFiles("#canteenInput", { name: "menu.png", mimeType: "image/png", buffer: png }); await pg.waitForTimeout(1000);
   check(await pg.isVisible("#planProposal") && (await pg.textContent("#planBody")).includes("Frittatensuppe"), "canteen proposal shown with API key");
