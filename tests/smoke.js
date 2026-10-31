@@ -113,6 +113,9 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const pl = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
   check(pl.planChange === "Mittwoch Pizza" && (await pg.inputValue("#planPrompt")) === "", "plan change stored and text box cleared");
   check((await pg.textContent("#planBody")).includes("Anpassung angefordert"), "requested change is shown");
+  await pg.fill("#planPrompt", "Freitag Sushi"); await pg.click("#planLaterBtn"); await pg.waitForTimeout(300);
+  const plm = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
+  check(plm.planChange === "Mittwoch Pizza | Freitag Sushi" && (await pg.textContent("#planBody")).includes("2 Anpassungen angefordert"), "second plan wish is added, not replacing the first");
   // standing wishes for all plans
   await pg.fill("#planRuleNew", "Kein Frühstück"); await pg.check("#rulesApply"); await pg.click("#planRulesSave"); await pg.waitForTimeout(400);
   await pg.fill("#planRuleNew", "Kein Fisch"); await pg.press("#planRuleNew", "Enter"); await pg.waitForTimeout(400);
