@@ -232,6 +232,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 .shop li input { width: auto; }
 .shop li .amt { font-family: var(--font-data); font-size: 14px; white-space: nowrap; }
 .shop li.done .nm, .shop li.done .amt { text-decoration: line-through; color: var(--muted); }
+.updbanner { margin: 10px 0 0; border-color: var(--accent); }
 .shop details.donebox { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
 .shop details.donebox > summary { cursor: pointer; font-size: 14px; color: var(--muted); }
 .meals li .medit { grid-column: 1 / -1; border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -255,6 +256,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     <div class="topright"><div class="top-meta" id="topMeta"><div class="tm2">lädt …</div></div><button class="syncbtn" type="button" id="syncHdr" hidden>⟳ Sync</button></div>
   </header>
   <div class="syncmsg" id="syncHdrMsg" hidden></div>
+  <div class="panel updbanner" id="updBanner" hidden><span id="updText"></span><div class="btnrow" style="margin-top:8px"><button class="btn" type="button" id="updInstall">Jetzt aktualisieren</button><button class="btn ghost" type="button" id="updLater">Später</button></div></div>
 
   <div id="dbNotice" class="notice" hidden>Der Speicher ist in dieser Ansicht nicht erreichbar. Öffne die App angemeldet in Claude, dann erscheinen deine Einträge.</div>
   <div id="roNotice" class="notice" hidden>Du kannst hier gerade nichts speichern. Bitte die Person, die dir die App geteilt hat, dich als „Mitwirkende“ einzuladen. Deine Einträge bleiben trotzdem privat.</div>
@@ -484,6 +486,8 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     <div id="localBox" hidden>
       <h2>Diese Version</h2>
       <p class="small muted" id="appVersion" hidden></p>
+      <div class="btnrow" id="updRow" hidden style="margin:0 0 12px"><button class="btn ghost" type="button" id="updCheck">Nach Update suchen</button></div>
+      <div class="status small" id="updStatus"></div>
       <div class="panel">
         <p class="small" style="margin:0 0 10px">Deine Daten liegen nur auf diesem Gerät. Sichere sie ab und zu als Datei, besonders bevor du Browserdaten löschst oder das Gerät wechselst.</p>
         <div class="btnrow" style="margin-top:0"><button class="btn ghost" type="button" id="exportBtn">Daten sichern</button><label class="btn ghost">Daten laden<input type="file" id="importInput" accept="application/json,.json" hidden></label></div>
@@ -530,7 +534,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     try { theme ? localStorage.setItem("kurs:theme", theme) : localStorage.removeItem("kurs:theme"); } catch (e) {}
     applyTheme(theme);
   });
-  const CHANGELOG = [{"v": "3.41", "d": "31.10.", "items": ["Korrektur Plan: mehrere Änderungswünsche über Claude werden gesammelt statt überschrieben und alle beim nächsten Abgleich umgesetzt"]}, {"v": "3.40", "d": "31.10.", "items": ["Heute: Eintrag antippen zum Anpassen – Menge (z. B. 120 statt 100 g Whey), Portion in %, einzelne Zutaten weglassen oder Änderung beschreiben und neu schätzen bzw. an Claude senden", "Plan: Feld „Plan ändern“ ganz oben, mit demselben Umschalter wie Heute (Jetzt berechnen oder über Claude)", "Einkaufsliste: abgehakte Einträge gesammelt im aufklappbaren Bereich „Abgehakt“"]}, {"v": "3.39", "d": "30.10.", "items": ["Heute (echte App mit API-Schlüssel): Umschalter „Direkt schätzen“ oder „Über Claude (Abgleich)“"]}, {"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
+  const CHANGELOG = [{"v": "3.42", "d": "31.10.", "items": ["Echte App: sucht selbst nach Updates auf GitHub (beim Start, höchstens alle 3 Stunden, oder im Profil per „Nach Update suchen“) und installiert sie nach einer Bestätigung"]}, {"v": "3.41", "d": "31.10.", "items": ["Korrektur Plan: mehrere Änderungswünsche über Claude werden gesammelt statt überschrieben und alle beim nächsten Abgleich umgesetzt"]}, {"v": "3.40", "d": "31.10.", "items": ["Heute: Eintrag antippen zum Anpassen – Menge (z. B. 120 statt 100 g Whey), Portion in %, einzelne Zutaten weglassen oder Änderung beschreiben und neu schätzen bzw. an Claude senden", "Plan: Feld „Plan ändern“ ganz oben, mit demselben Umschalter wie Heute (Jetzt berechnen oder über Claude)", "Einkaufsliste: abgehakte Einträge gesammelt im aufklappbaren Bereich „Abgehakt“"]}, {"v": "3.39", "d": "30.10.", "items": ["Heute (echte App mit API-Schlüssel): Umschalter „Direkt schätzen“ oder „Über Claude (Abgleich)“"]}, {"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
   function renderChangelog() {
     const el = $("changelog"); if (!el) return;
     el.innerHTML = CHANGELOG.map((c) => '<div class="ver"><b>' + esc(c.v) + '</b> <span class="muted">' + esc(c.d) + '</span><ul>' + c.items.map((i) => "<li>" + esc(i) + "</li>").join("") + "</ul></div>").join("");
@@ -2011,6 +2015,39 @@ Antworte nur mit JSON in genau dieser Form:
     } finally { $("pSave").disabled = false; }
   });
 
+
+  // ---- app updates (real Android app only): the app asks GitHub for the newest release and installs it ----
+  function initUpdates() {
+    const A = window.WeightplanAndroid;
+    if (!A || typeof A.checkUpdate !== "function") return;
+    $("updRow").hidden = false;
+    let manual = false, latest = "";
+    const show = (t) => { $("updText").textContent = t; $("updBanner").hidden = false; };
+    window.__wpUpdate = (kind, val) => {
+      if (kind === "available") {
+        latest = val;
+        if (manual || lsGet(LS + "updSkip") !== val) show(`Version ${val} ist da. Die App lädt sie von GitHub und Android fragt dich einmal, ob du sie installieren willst. Deine Daten bleiben erhalten.`);
+        setStatus("updStatus", `Version ${val} ist verfügbar.`);
+      } else if (kind === "current") { if (manual) setStatus("updStatus", `Du hast die neueste Version (${val}).`); }
+      else if (kind === "progress") { show(`Lade Version ${latest} … ${val} %`); }
+      else if (kind === "permission") { show("Erlaube Weightplan einmalig, Apps zu installieren, und geh dann zurück. Die Installation startet danach von selbst."); $("updInstall").disabled = false; }
+      else if (kind === "installing") { show(`Bestätige im Android-Fenster „Aktualisieren“. Danach startet Weightplan ${latest}.`); $("updInstall").disabled = false; }
+      else if (kind === "error") { $("updInstall").disabled = false; if (manual || !$("updBanner").hidden) { setStatus("updStatus", val, true); if (!$("updBanner").hidden) show(val); } }
+      manual = false;
+    };
+    const check = (m) => { manual = m; try { lsSet(LS + "updLast", String(Date.now())); A.checkUpdate(); } catch (e) {} };
+    $("updCheck").onclick = () => { setStatus("updStatus", "Suche nach Updates …"); check(true); };
+    $("updLater").onclick = () => { if (latest) lsSet(LS + "updSkip", latest); $("updBanner").hidden = true; };
+    $("updInstall").onclick = async () => {
+      $("updInstall").disabled = true; show(`Lade Version ${latest} …`);
+      try { if (syncCfg()) await syncNow(true); } catch (e) {}
+      try { A.installUpdate(); } catch (e) { $("updInstall").disabled = false; }
+    };
+    // check on start and when the app comes back, at most every 3 hours
+    const auto = () => { const last = Number(lsGet(LS + "updLast") || 0); if (Date.now() - last > 3 * 3600 * 1000) check(false); };
+    setTimeout(auto, 2500);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") auto(); });
+  }
   // ---- header sync button: real app syncs with GitHub directly; the claude.ai version asks Claude to run the GitHub sync ----
   let hdrTimer = null;
   function hdrMsg(t, err) { const el = $("syncHdrMsg"); el.textContent = t; el.hidden = !t; el.classList.toggle("err", !!err); clearTimeout(hdrTimer); if (t && !err) hdrTimer = setTimeout(() => { el.hidden = true; }, 15000); }
@@ -2205,6 +2242,7 @@ Antworte nur mit JSON in genau dieser Form:
     setTimeout(syncNow, 800);
     $("localBox").hidden = false;
     try { const v = window.WeightplanAndroid && window.WeightplanAndroid.getVersion ? window.WeightplanAndroid.getVersion() : ""; if (v) { $("appVersion").textContent = "App-Version " + v; $("appVersion").hidden = false; } } catch (e) {}
+    initUpdates();
     $("profilIntro").textContent = "Deine Angaben und Einträge bleiben auf diesem Gerät. Niemand sonst sieht sie.";
     if (lsGet(LS + "apiKey")) $("apiKey").placeholder = "gespeichert";
     $("keySave").onclick = () => {

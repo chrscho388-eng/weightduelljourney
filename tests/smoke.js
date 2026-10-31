@@ -221,6 +221,17 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(await pg.evaluate(() => getComputedStyle(document.body).backgroundColor) === "rgb(243, 244, 239)", "light mode can be switched on");
   await pg.click("#changelogBox > summary");
   check(await pg.isVisible("#changelog .ver") && (await pg.$$("#changelog .ver")).length > 20 && /^3\.\d+/.test(await pg.textContent("#changelog .ver b")), "changelog lists the versions");
+  // real app: update check through the Android bridge
+  await pg.addInitScript(() => { window.__installed = 0; window.WeightplanAndroid = { getVersion: () => "3.40", saveFile: () => "", checkUpdate: () => setTimeout(() => window.__wpUpdate("available", "3.99"), 50), installUpdate: () => { window.__installed++; setTimeout(() => window.__wpUpdate("progress", "50"), 10); } }; });
+  await pg.evaluate(() => localStorage.removeItem("kurs:updLast")); await pg.reload(); await pg.waitForTimeout(3200);
+  check(await pg.isVisible("#updBanner") && /3\.99/.test(await pg.textContent("#updText")), "update banner shown when a newer release exists");
+  await pg.click("#updInstall"); await pg.waitForTimeout(1500);
+  check(await pg.evaluate(() => window.__installed) === 1 && /50 %/.test(await pg.textContent("#updText")), "install starts the download");
+  await pg.click("#updLater"); await pg.reload(); await pg.waitForTimeout(800);
+  await pg.evaluate(() => localStorage.removeItem("kurs:updLast")); await pg.reload(); await pg.waitForTimeout(3200);
+  check(!(await pg.isVisible("#updBanner")), "'Später' hides the banner for that version");
+  await pg.click("nav.tabs a[data-tab=profil]"); await pg.click("#updCheck"); await pg.waitForTimeout(300);
+  check(await pg.isVisible("#updBanner") && /3\.99 ist verfügbar/.test(await pg.textContent("#updStatus")), "manual check in the profile shows the update");
   check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
   await b.close();
   if (fails.length) { console.log(`\n${fails.length} check(s) failed`); process.exit(1); }
