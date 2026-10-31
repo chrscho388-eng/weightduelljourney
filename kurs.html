@@ -232,6 +232,15 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 .shop li input { width: auto; }
 .shop li .amt { font-family: var(--font-data); font-size: 14px; white-space: nowrap; }
 .shop li.done .nm, .shop li.done .amt { text-decoration: line-through; color: var(--muted); }
+.shop details.donebox { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
+.shop details.donebox > summary { cursor: pointer; font-size: 14px; color: var(--muted); }
+.meals li .medit { grid-column: 1 / -1; border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.medit .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.medit .row [data-me=label] { grid-column: 1 / -1; }
+.medit .prow { display: grid; grid-template-columns: 1fr 80px auto; gap: 8px; align-items: center; font-size: 14px; }
+.medit .prow.gone .pn { text-decoration: line-through; color: var(--muted); }
+.medit input { padding: 6px 8px; }
+.medit .sum { font-family: var(--font-data); font-size: 14px; }
 .rules { list-style: none; margin: 6px 0 0; padding: 0; }
 .rules li { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 15px; }
 .rules li.none { display: block; color: var(--muted); font-size: 14px; }
@@ -404,10 +413,22 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="dname" id="planName">–</div>
       <button class="iconbtn" id="nextPlan" aria-label="Nächste Woche">›</button>
     </div>
+    <div id="planAsk" class="panel" style="margin-top:14px" hidden>
+      <div class="field"><label class="label" for="planPrompt">Plan ändern</label>
+        <textarea id="planPrompt" placeholder="z. B. Heute kein Frühstück und ich esse abends auswärts"></textarea></div>
+      <div class="chips" id="planSendMode" role="group" aria-label="Plan ändern" hidden style="margin-bottom:8px"><button type="button" class="chip" data-send-mode="direct">Jetzt berechnen</button><button type="button" class="chip" data-send-mode="claude">Über Claude (Abgleich)</button></div>
+      <div class="btnrow"><button class="btn" id="planAdjustBtn" hidden>Jetzt berechnen</button><button class="btn" type="button" id="planLaterBtn" hidden>An Claude senden</button><button class="btn ghost" id="planUndo" hidden>Letzte Änderung rückgängig</button></div>
+      <div class="status" id="planStatus"></div>
+      <div id="planProposal" class="preview" hidden>
+        <p class="small" id="planSummary" style="margin:0"></p>
+        <div class="btnrow"><button class="btn" id="planAccept">Übernehmen</button><button class="btn ghost" id="planDiscard">Verwerfen</button></div>
+        <p class="small muted" style="margin:6px 0 0">Unten siehst du den Vorschlag. Gespeichert wird er erst mit „Übernehmen“.</p>
+      </div>
+    </div>
     <div class="panel" style="margin-top:14px">
       <div class="field"><label class="label" for="planNotes">Hinweise für diese Woche</label>
         <textarea id="planNotes" placeholder="z. B. Mo und Do Büro, Rest Home Office. Mi abends Essen auswärts, Fr Abend verplant."></textarea></div>
-      <p class="small muted" style="margin:4px 0 0">Claude berücksichtigt das beim Erstellen des Wochenplans (montags eine Woche im Voraus) und bei „Plan anpassen“.</p>
+      <p class="small muted" style="margin:4px 0 0">Claude berücksichtigt das beim Erstellen des Wochenplans (montags eine Woche im Voraus) und bei „Plan ändern“.</p>
       <div class="btnrow"><button class="btn ghost" type="button" id="planNotesSave">Hinweise speichern</button></div>
       <div class="status" id="planNotesStatus"></div>
     </div>
@@ -428,17 +449,6 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <label class="small" id="rulesApplyWrap" style="display:flex;gap:8px;align-items:center;margin-top:8px" hidden><input type="checkbox" id="rulesApply" style="width:auto"> Auch auf schon erstellte Pläne ab heute anwenden</label>
       <div class="btnrow"><button class="btn ghost" type="button" id="planRulesSave">Hinzufügen</button></div>
       <div class="status" id="planRulesStatus"></div>
-    </div>
-    <div id="planAsk" class="panel" style="margin-top:14px" hidden>
-      <div class="field"><label class="label" for="planPrompt">Plan anpassen</label>
-        <textarea id="planPrompt" placeholder="z. B. Heute kein Frühstück und ich esse abends auswärts"></textarea></div>
-      <div class="btnrow"><button class="btn" id="planAdjustBtn" hidden>Plan anpassen lassen</button><button class="btn ghost" type="button" id="planLaterBtn" hidden>An Claude senden (später)</button><button class="btn ghost" id="planUndo" hidden>Letzte Änderung rückgängig</button></div>
-      <div class="status" id="planStatus"></div>
-      <div id="planProposal" class="preview" hidden>
-        <p class="small" id="planSummary" style="margin:0"></p>
-        <div class="btnrow"><button class="btn" id="planAccept">Übernehmen</button><button class="btn ghost" id="planDiscard">Verwerfen</button></div>
-        <p class="small muted" style="margin:6px 0 0">Unten siehst du den Vorschlag. Gespeichert wird er erst mit „Übernehmen“.</p>
-      </div>
     </div>
     <div id="shopBox" style="margin-top:14px"></div>
     <div id="planBody"></div>
@@ -520,7 +530,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     try { theme ? localStorage.setItem("kurs:theme", theme) : localStorage.removeItem("kurs:theme"); } catch (e) {}
     applyTheme(theme);
   });
-  const CHANGELOG = [{"v": "3.39", "d": "30.10.", "items": ["Heute (echte App mit API-Schlüssel): Umschalter „Direkt schätzen“ oder „Über Claude (Abgleich)“"]}, {"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
+  const CHANGELOG = [{"v": "3.40", "d": "31.10.", "items": ["Heute: Eintrag antippen zum Anpassen – Menge (z. B. 120 statt 100 g Whey), Portion in %, einzelne Zutaten weglassen oder Änderung beschreiben und neu schätzen bzw. an Claude senden", "Plan: Feld „Plan ändern“ ganz oben, mit demselben Umschalter wie Heute (Jetzt berechnen oder über Claude)", "Einkaufsliste: abgehakte Einträge gesammelt im aufklappbaren Bereich „Abgehakt“"]}, {"v": "3.39", "d": "30.10.", "items": ["Heute (echte App mit API-Schlüssel): Umschalter „Direkt schätzen“ oder „Über Claude (Abgleich)“"]}, {"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
   function renderChangelog() {
     const el = $("changelog"); if (!el) return;
     el.innerHTML = CHANGELOG.map((c) => '<div class="ver"><b>' + esc(c.v) + '</b> <span class="muted">' + esc(c.d) + '</span><ul>' + c.items.map((i) => "<li>" + esc(i) + "</li>").join("") + "</ul></div>").join("");
@@ -659,7 +669,8 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     (d.meals || []).forEach((m) => {
       const li = document.createElement("li");
       const nm = document.createElement("div"); nm.className = "mname";
-      const b = document.createElement("button"); b.textContent = m.label; b.title = "Bearbeiten"; b.onclick = () => startEdit(m);
+      const b = document.createElement("button"); b.textContent = m.label; b.title = "Anpassen";
+      b.onclick = () => { if (m.pending) return; medit = medit && medit.id === m.id ? null : mEditStart(m); renderDay(); };
       nm.append(b);
       const v = document.createElement("div"); v.className = "mv"; v.textContent = m.pending ? "wartet auf\nClaude" : `${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß`;
       const x = document.createElement("button"); x.className = "x"; x.setAttribute("aria-label", "Löschen: " + m.label); x.textContent = "×";
@@ -670,6 +681,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       if (m.auto || m.pending) st.style.visibility = "hidden";
       li.append(nm, v, st, x);
       const det = mealDetails(m); if (det) li.append(det);
+      if (medit && medit.id === m.id && medit.day === curDay) li.append(mEditBox(m));
       ul.append(li);
     });
 
@@ -822,11 +834,14 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   const sendModeGet = () => { try { return localStorage.getItem("kurs:sendMode") === "claude" ? "claude" : "direct"; } catch (e) { return "direct"; } };
   // with an API key and GitHub sync both ways work: let the user pick (remembered on the device)
   const directNow = () => !!sample && !(STANDALONE && requestMode() && sendModeGet() === "claude");
-  document.querySelectorAll("#sendMode .chip").forEach((c) => c.onclick = () => { try { localStorage.setItem("kurs:sendMode", c.dataset.sendMode); } catch (e) {} updateEntryButtons(); });
+  document.querySelectorAll("[data-send-mode]").forEach((c) => c.onclick = () => { try { localStorage.setItem("kurs:sendMode", c.dataset.sendMode); } catch (e) {} updateEntryButtons(); if (medit && hasProfile) renderDay(); });
   function updateEntryButtons() {
     const rq = requestMode(), direct = directNow();
     $("sendMode").hidden = !(STANDALONE && sample && rq);
-    document.querySelectorAll("#sendMode .chip").forEach((c) => c.classList.toggle("on", c.dataset.sendMode === sendModeGet()));
+    document.querySelectorAll("[data-send-mode]").forEach((c) => c.classList.toggle("on", c.dataset.sendMode === sendModeGet()));
+    // plan tab: same switch, one button (direct = compute now, else queue for Claude at the next sync)
+    $("planSendMode").hidden = !(STANDALONE && sample && rq);
+    $("planAsk").hidden = !(sample || rq); $("planAdjustBtn").hidden = !direct; $("planLaterBtn").hidden = direct || !rq;
     $("sendBtn").hidden = !(direct || rq);
     $("sendBtn").textContent = direct ? "Schätzen" : "An Claude senden";
     $("photoAdd").hidden = !((direct && sampleImages) || rq);
@@ -839,6 +854,93 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       if (!doc.dayType) doc.dayType = defaultType(curDay);
       items.forEach((it) => doc.meals.push({ id: uid(), label: String(it.label).slice(0, 300), kcal: Math.round(Number(it.kcal) || 0), protein: Math.round(Number(it.protein) || 0), ...(it.fromPlan ? { fromPlan: it.fromPlan } : {}), ...(it.photo ? { photo: it.photo } : {}), ...(it.seen ? { seen: String(it.seen).slice(0, 600) } : {}), ...(it.parts && it.parts.length ? { parts: it.parts } : {}) }));
     });
+  }
+
+  // ---- adjust a logged meal in place: amount, single ingredients, or a described change ----
+  let medit = null;
+  const GRAM_RE = /(\d+(?:[.,]\d+)?)\s?g\b/g;
+  function mEditStart(m) {
+    const grams = [...String(m.label).matchAll(GRAM_RE)];
+    return { id: m.id, day: curDay, label: m.label, kcal: m.kcal, protein: m.protein, orig: { kcal: m.kcal, protein: m.protein, label: m.label },
+      parts: (m.parts || []).map((pt) => ({ ...pt, g0: pt.grams, k0: pt.kcal, p0: pt.protein, gone: false })),
+      g0: grams.length === 1 ? Number(grams[0][1].replace(",", ".")) : null, g: null, pct: 100, change: "" };
+  }
+  // recompute totals from the edited amounts (parts scale linearly with their grams)
+  function mEditCalc(e) {
+    if (e.parts.length) {
+      let dk = 0, dp = 0;
+      e.parts.forEach((pt) => {
+        const f = pt.gone ? 0 : pt.g0 > 0 ? (Number(pt.grams) || 0) / pt.g0 : 1;
+        pt.kcal = Math.round(pt.k0 * f); pt.protein = Math.round(pt.p0 * f);
+        dk += pt.kcal - pt.k0; dp += pt.protein - pt.p0;
+      });
+      e.kcal = Math.max(0, Math.round(e.orig.kcal + dk)); e.protein = Math.max(0, Math.round(e.orig.protein + dp));
+    } else if (e.g0 && e.g != null) {
+      const f = (Number(e.g) || 0) / e.g0;
+      e.kcal = Math.round(e.orig.kcal * f); e.protein = Math.round(e.orig.protein * f);
+      e.label = e.orig.label.replace(GRAM_RE, (all, n) => fmt(Number(e.g) || 0) + all.slice(n.length));
+    } else {
+      const f = (Number(e.pct) || 0) / 100;
+      e.kcal = Math.round(e.orig.kcal * f); e.protein = Math.round(e.orig.protein * f);
+    }
+  }
+  function mEditBox(m) {
+    const e = medit, box = document.createElement("div"); box.className = "medit";
+    const direct = directNow(), rq = requestMode();
+    const row = (cls, html) => { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; return d; };
+    box.append(row("row", `<input type="text" data-me="label" aria-label="Bezeichnung" value="${esc(e.label)}"><input type="number" inputmode="numeric" min="0" data-me="kcal" aria-label="kcal" value="${e.kcal}"><input type="number" inputmode="numeric" min="0" data-me="protein" aria-label="Eiweiß (g)" value="${e.protein}">`));
+    box.append(row("small muted", "Oben die Bezeichnung, darunter kcal und Eiweiß (g)."));
+    if (e.parts.length) {
+      box.append(row("small label", "Zutaten anpassen"));
+      e.parts.forEach((pt, i) => box.append(row("prow" + (pt.gone ? " gone" : ""), `<span class="pn">${esc(pt.name)}</span><input type="number" inputmode="numeric" min="0" step="5" data-pg="${i}" aria-label="Gramm ${esc(pt.name)}" value="${pt.gone ? 0 : pt.grams}"${pt.gone ? " disabled" : ""}><button type="button" class="chip" data-px="${i}">${pt.gone ? "wieder rein" : "weggelassen"}</button>`)));
+    } else if (e.g0) {
+      box.append(row("prow", `<span class="pn">Menge statt ${fmt(e.g0)} g</span><input type="number" inputmode="numeric" min="0" step="5" data-me="g" aria-label="Menge in Gramm" value="${e.g ?? e.g0}"><span class="small muted">g</span>`));
+    } else {
+      box.append(row("prow", `<span class="pn">Portion</span><input type="number" inputmode="numeric" min="0" step="10" data-me="pct" aria-label="Portion in Prozent" value="${e.pct}"><span class="small muted">%</span>`));
+    }
+    if (direct || rq) box.append(row("", `<textarea data-me="change" rows="2" placeholder="Oder beschreiben, was anders war, z. B. ohne Feta, dafür 50 g Reis mehr">${esc(e.change)}</textarea><div class="btnrow" style="margin-top:6px"><button type="button" class="btn ghost" data-ma="ask">${direct ? "Neu schätzen" : "An Claude senden"}</button></div>`));
+    box.append(row("btnrow", `<button type="button" class="btn" data-ma="save">Speichern</button><button type="button" class="btn ghost" data-ma="cancel">Abbrechen</button>`));
+    const st = row("status small", ""); box.append(st);
+    const sync = () => { box.querySelector('[data-me="kcal"]').value = e.kcal; box.querySelector('[data-me="protein"]').value = e.protein; box.querySelector('[data-me="label"]').value = e.label; };
+    box.querySelectorAll("[data-me]").forEach((inp) => inp.oninput = () => {
+      const k = inp.dataset.me; e[k] = inp.value;
+      if (k === "g" || k === "pct") { mEditCalc(e); sync(); }
+      if (k === "kcal" || k === "protein") e[k] = Number(inp.value) || 0;
+    });
+    box.querySelectorAll("[data-pg]").forEach((inp) => inp.oninput = () => { e.parts[+inp.dataset.pg].grams = Number(inp.value) || 0; mEditCalc(e); sync(); });
+    box.querySelectorAll("[data-px]").forEach((b) => b.onclick = () => { const pt = e.parts[+b.dataset.px]; pt.gone = !pt.gone; if (!pt.gone && !pt.grams) pt.grams = pt.g0; mEditCalc(e); renderDay(); });
+    box.querySelector('[data-ma="cancel"]').onclick = () => { medit = null; renderDay(); };
+    box.querySelector('[data-ma="save"]').onclick = () => {
+      const label = String(e.label).trim() || e.orig.label, id = e.id, day = e.day;
+      const parts = e.parts.length ? e.parts.filter((pt) => !pt.gone).map((pt) => ({ name: pt.name, grams: Math.round(Number(pt.grams) || 0), kcal: pt.kcal, protein: pt.protein })) : null;
+      medit = null;
+      saveDay(day, (doc) => { doc.meals = (doc.meals || []).map((x) => x.id === id ? { ...x, label: label.slice(0, 300), kcal: Math.round(Number(e.kcal) || 0), protein: Math.round(Number(e.protein) || 0), ...(parts ? { parts } : {}) } : x); });
+    };
+    const ask = box.querySelector('[data-ma="ask"]');
+    if (ask) ask.onclick = async () => {
+      const change = String(e.change || "").trim();
+      if (!change) { st.textContent = "Beschreib kurz, was anders war."; st.classList.add("err"); return; }
+      const before = `${e.orig.label} (${e.orig.kcal} kcal, ${e.orig.protein} g Eiweiß${e.parts.length ? "; Bestandteile: " + e.parts.map((pt) => `${pt.name} ${pt.g0} g`).join(", ") : ""})`;
+      if (!directNow()) {
+        // queue: Claude re-estimates at the next sync; the old values count until then
+        const id = e.id, day = e.day; medit = null;
+        saveDay(day, (doc) => { doc.meals = (doc.meals || []).map((x) => x.id === id ? { ...x, pending: true, request: `Korrektur dieses Eintrags. Bisher: ${before}. Änderung: ${change}`.slice(0, 600) } : x); });
+        setStatus("estStatus", "An Claude geschickt. Die neue Schätzung kommt beim nächsten Abgleich, bis dahin zählen die bisherigen Werte.");
+        return;
+      }
+      ask.disabled = true; st.classList.remove("err"); st.textContent = "Claude schätzt neu …";
+      try {
+        const res = await sample.json(estPrompt(`Ein schon eingetragener Posten wird korrigiert. Bisher: ${before}. Änderung: ${change}. Gib genau EINEN Posten mit dem korrigierten Stand zurück.`, false), { modelTier: "default" });
+        const it = res && Array.isArray(res.items) && res.items.find((x) => x && x.label);
+        if (!it) throw { code: "empty" };
+        e.label = String(it.label).slice(0, 300); e.kcal = Math.round(Number(it.kcal) || 0); e.protein = Math.round(Number(it.protein) || 0);
+        const parts = cleanParts(it.parts);
+        e.orig = { kcal: e.kcal, protein: e.protein, label: e.label }; e.parts = parts.map((pt) => ({ ...pt, g0: pt.grams, k0: pt.kcal, p0: pt.protein, gone: false })); e.change = ""; e.g0 = null; e.pct = 100;
+        renderDay();
+        const st2 = document.querySelector(".medit .status"); if (st2) st2.textContent = "Neu geschätzt. Prüfen und speichern.";
+      } catch (er) { st.classList.add("err"); st.textContent = er && er.code === "rate_limited" ? "Gerade zu viele Anfragen. Versuch es gleich noch einmal." : "Das hat nicht geklappt. Formuliere es etwas genauer."; ask.disabled = false; }
+    };
+    return box;
   }
   function startEdit(m) {
     editingId = m.id;
@@ -980,6 +1082,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     });
     return Object.values(cnt).filter((x) => x.n >= 2 && !isFav(x.m)).sort((a, b) => b.n - a.n).slice(0, 6).map((x) => x.m);
   }
+  let favAdded = null, favAddedT = null;
   function renderFavs() {
     const favs = S.favorites || [], freq = favEditing ? [] : frequentMeals();
     if (!favs.length) favEditing = false;
@@ -989,12 +1092,13 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
       const c = document.createElement("button"); c.type = "button"; c.className = "chip fav" + cls;
       c.textContent = (favEditing ? "× " : "") + `${m.label} · ${fmt(m.kcal)}`;
       c.title = favEditing ? "Aus Favoriten entfernen" : `${m.label}: ${fmt(m.kcal)} kcal, ${fmt(m.protein)} g Eiweiß eintragen`;
-      c.onclick = () => { if (favEditing) toggleFav(m); else if (add) addMeals([{ label: m.label, kcal: m.kcal, protein: m.protein, ...(m.parts && m.parts.length ? { parts: m.parts } : {}) }]); };
+      c.onclick = () => { if (favEditing) toggleFav(m); else if (add) { addMeals([{ label: m.label, kcal: m.kcal, protein: m.protein, ...(m.parts && m.parts.length ? { parts: m.parts } : {}) }]); setStatus("estStatus", ""); favAdded = m.label; } };
       fc.append(c);
     };
     favs.forEach((f) => chip(f, "", true));
     freq.forEach((m) => chip(m, " freq", true));
     $("favEdit").hidden = !favs.length; $("favEdit").textContent = favEditing ? "Fertig" : "Bearbeiten";
+    if (favAdded && !favEditing) { $("favHint").textContent = `„${favAdded}“ eingetragen. Tippe oben in der Liste auf den Eintrag, um Menge oder Zutaten anzupassen.`; clearTimeout(favAddedT); favAddedT = setTimeout(() => { favAdded = null; renderFavs(); }, 15000); return; }
     $("favHint").textContent = favEditing ? "Tipp auf einen Favoriten, um ihn zu entfernen." : favs.length ? (freq.length ? "Gestrichelt: oft gegessen. Mit ☆ bei einer Mahlzeit heftest du sie an." : "") : "Oft gegessen. Mit ☆ bei einer Mahlzeit heftest du sie dauerhaft an.";
   }
   $("favEdit").onclick = () => { favEditing = !favEditing; renderFavs(); };
@@ -1383,6 +1487,7 @@ Regeln:
 Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
 {"summary":"1 bis 3 Sätze auf Deutsch, was du geändert hast und warum","plan":{"note":"…","days":[{"date":"JJJJ-MM-TT","type":"…","info":"…","meals":[{"slot":"…","name":"…","detail":"…","kcal":0,"protein":0,"cook":true}]}],"swaps":[{"name":"…","detail":"…","kcal":0,"protein":0,"cook":true}]}}`;
   }
+  $("planPrompt").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); const b = !$("planAdjustBtn").hidden ? $("planAdjustBtn") : $("planLaterBtn"); if (!b.hidden) b.click(); } });
   $("planAdjustBtn").onclick = async () => {
     const wish = $("planPrompt").value.trim();
     if (!wish) { setStatus("planStatus", "Beschreib zuerst, was sich ändern soll.", true); return; }
@@ -1774,7 +1879,7 @@ Antworte nur mit JSON in genau dieser Form:
       return one(outer) || (/\d/.test(inner) && !/ca\.|circa/i.test(inner) ? one(inner) : null);
     }).filter(Boolean);
   }
-  let shopOpen = false;
+  let shopOpen = false, shopDoneOpen = false;
   const shopPref = (k, def) => { const v = lsGet(LS + "shop:" + k); return v == null ? def : v === "1"; };
   function shopList(p, forTwo, fromToday) {
     const items = {}, pantry = {}, skipped = [], today = todayStr();
@@ -1815,21 +1920,27 @@ Antworte nur mit JSON in genau dieser Form:
     const groups = {};
     L.items.forEach(([k, it]) => (groups[shopCat(it.name)] = groups[shopCat(it.name)] || []).push([k, it]));
     const order = SHOP_CATS.map((c) => c[0]).concat("Sonstiges");
-    let h = `<details class="panel shop"${shopOpen ? " open" : ""}><summary>Einkaufsliste · ${L.items.length} Artikel</summary>`
+    let h = `<details class="panel shop"${shopOpen ? " open" : ""}><summary>Einkaufsliste · ${L.items.filter(([k]) => !ticks[k]).length} von ${L.items.length} offen</summary>`
       + `<div class="chips" style="margin-top:10px"><button type="button" class="chip${forTwo ? " on" : ""}" data-sp="two">Gekochtes für 2</button><button type="button" class="chip" data-sp="copy">Liste kopieren</button></div>`;
-    order.filter((c) => groups[c]).forEach((c) => {
-      h += `<h4>${c}</h4><ul>` + groups[c].sort((a, b) => a[1].name.localeCompare(b[1].name, "de")).map(([k, it]) =>
-        `<li class="${ticks[k] ? "done" : ""}"><label><input type="checkbox" data-k="${esc(k)}"${ticks[k] ? " checked" : ""}><span class="nm">${esc(it.name)}${it.note ? ` <span class="small muted">(${esc(it.note)})</span>` : ""}</span><span class="amt">${esc(amtTxt(it.units))}</span></label></li>`).join("") + `</ul>`;
+    const li = ([k, it]) => `<li class="${ticks[k] ? "done" : ""}"><label><input type="checkbox" data-k="${esc(k)}"${ticks[k] ? " checked" : ""}><span class="nm">${esc(it.name)}${it.note ? ` <span class="small muted">(${esc(it.note)})</span>` : ""}</span><span class="amt">${esc(amtTxt(it.units))}</span></label></li>`;
+    const byName = (a, b) => a[1].name.localeCompare(b[1].name, "de");
+    // open items by category; ticked ones move into a separate collapsible box
+    order.filter((c) => groups[c] && groups[c].some(([k]) => !ticks[k])).forEach((c) => {
+      h += `<h4>${c}</h4><ul>` + groups[c].filter(([k]) => !ticks[k]).sort(byName).map(li).join("") + `</ul>`;
     });
+    const done = L.items.filter(([k]) => ticks[k]);
+    if (L.items.length && done.length === L.items.length) h += `<p class="small" style="margin:10px 0 0">Alles abgehakt.</p>`;
+    if (done.length) h += `<details class="donebox"${shopDoneOpen ? " open" : ""}><summary>Abgehakt · ${done.length}</summary><ul>` + done.sort(byName).map(li).join("") + `</ul></details>`;
     if (!L.items.length) h += `<p class="small muted">Im Plan stehen keine Zutaten mit Mengen.</p>`;
     if (L.pantry.length) h += `<h4>Wahrscheinlich schon im Haushalt</h4><p class="small muted" style="margin:0">${esc(L.pantry.sort((a, b) => a.localeCompare(b, "de")).join(", "))}</p>`;
     if (L.skipped.length) h += `<p class="small muted" style="margin:10px 0 0">Nicht enthalten (auswärts oder geschätzt): ${esc(L.skipped.join(", "))}</p>`;
     h += `<p class="small muted" style="margin:6px 0 0">Mengen roh laut Plan und Rezepten. ${forTwo ? "Gekochte Gerichte doppelt, Frühstück und Snacks einfach." : "Alles für eine Person."}</p><span class="status small" id="shopStatus"></span></details>`;
     box.innerHTML = h;
     const det = box.querySelector("details"); det.ontoggle = () => { shopOpen = det.open; };
+    const dbx = box.querySelector("details.donebox"); if (dbx) dbx.ontoggle = () => { shopDoneOpen = dbx.open; };
     box.querySelectorAll("input[data-k]").forEach((cb) => cb.onchange = () => {
       if (cb.checked) ticks[cb.dataset.k] = 1; else delete ticks[cb.dataset.k];
-      lsSet(LS + "shop:ticks:" + week, JSON.stringify(ticks)); cb.closest("li").classList.toggle("done", cb.checked);
+      lsSet(LS + "shop:ticks:" + week, JSON.stringify(ticks)); renderShop(p);
     });
     box.querySelectorAll("[data-sp]").forEach((b) => b.onclick = async () => {
       const k = b.dataset.sp;
@@ -1900,7 +2011,6 @@ Antworte nur mit JSON in genau dieser Form:
   let mcpApi = null;
   function updateSyncBtn() {
     $("syncHdr").hidden = STANDALONE ? !syncCfg() : !(mcpApi && S.syncTriggerId);
-    const rq = requestMode(); $("planAsk").hidden = !(sample || rq); $("planAdjustBtn").hidden = !sample; $("planLaterBtn").hidden = !rq;
     updateEntryButtons();
   }
   $("syncHdr").onclick = async () => {
