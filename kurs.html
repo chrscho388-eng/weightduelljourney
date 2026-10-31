@@ -232,6 +232,12 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 .shop li input { width: auto; }
 .shop li .amt { font-family: var(--font-data); font-size: 14px; white-space: nowrap; }
 .shop li.done .nm, .shop li.done .amt { text-decoration: line-through; color: var(--muted); }
+.remrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.remrow input[type=checkbox] { width: auto; }
+.remrow input[type=time] { width: auto; padding: 4px 6px; }
+.toast { position: fixed; left: 16px; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 50; display: flex; gap: 12px; align-items: center; justify-content: space-between; background: var(--fg); color: var(--bg); padding: 10px 14px; border-radius: 10px; font-size: 14px; max-width: 560px; margin: 0 auto; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+.toast[hidden] { display: none; }
+.toast button { all: unset; cursor: pointer; font-weight: 600; color: var(--accent-soft); text-decoration: underline; }
 .updbanner { margin: 10px 0 0; border-color: var(--accent); }
 .shop details.donebox { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
 .shop details.donebox > summary { cursor: pointer; font-size: 14px; color: var(--muted); }
@@ -256,6 +262,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     <div class="topright"><div class="top-meta" id="topMeta"><div class="tm2">lädt …</div></div><button class="syncbtn" type="button" id="syncHdr" hidden>⟳ Sync</button></div>
   </header>
   <div class="syncmsg" id="syncHdrMsg" hidden></div>
+  <div class="toast" id="toast" role="status" hidden><span id="toastText"></span><button type="button" id="toastUndo">Rückgängig</button></div>
   <div class="panel updbanner" id="updBanner" hidden><span id="updText"></span><div class="btnrow" style="margin-top:8px"><button class="btn" type="button" id="updInstall">Jetzt aktualisieren</button><button class="btn ghost" type="button" id="updLater">Später</button></div></div>
 
   <div id="dbNotice" class="notice" hidden>Der Speicher ist in dieser Ansicht nicht erreichbar. Öffne die App angemeldet in Claude, dann erscheinen deine Einträge.</div>
@@ -488,6 +495,12 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <p class="small muted" id="appVersion" hidden></p>
       <div class="btnrow" id="updRow" hidden style="margin:0 0 12px"><button class="btn ghost" type="button" id="updCheck">Nach Update suchen</button></div>
       <div class="status small" id="updStatus"></div>
+      <div class="panel" id="remBox" hidden>
+        <div class="label">Erinnerungen</div>
+        <label class="small remrow"><input type="checkbox" id="remWeigh"> Dienstag ans Wiegen erinnern um <input type="time" id="remWeighT" value="07:00"></label>
+        <label class="small remrow"><input type="checkbox" id="remSteps"> An die Schritte erinnern, falls noch keine eingetragen, um <input type="time" id="remStepsT" value="20:30"></label>
+        <p class="small muted" style="margin:6px 0 0">Die Erinnerung kommt nur, wenn Gewicht bzw. Schritte für den Tag noch fehlen.</p>
+      </div>
       <div class="panel">
         <p class="small" style="margin:0 0 10px">Deine Daten liegen nur auf diesem Gerät. Sichere sie ab und zu als Datei, besonders bevor du Browserdaten löschst oder das Gerät wechselst.</p>
         <div class="btnrow" style="margin-top:0"><button class="btn ghost" type="button" id="exportBtn">Daten sichern</button><label class="btn ghost">Daten laden<input type="file" id="importInput" accept="application/json,.json" hidden></label></div>
@@ -534,7 +547,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     try { theme ? localStorage.setItem("kurs:theme", theme) : localStorage.removeItem("kurs:theme"); } catch (e) {}
     applyTheme(theme);
   });
-  const CHANGELOG = [{"v": "3.42", "d": "31.10.", "items": ["Echte App: sucht selbst nach Updates auf GitHub (beim Start, höchstens alle 3 Stunden, oder im Profil per „Nach Update suchen“) und installiert sie nach einer Bestätigung"]}, {"v": "3.41", "d": "31.10.", "items": ["Korrektur Plan: mehrere Änderungswünsche über Claude werden gesammelt statt überschrieben und alle beim nächsten Abgleich umgesetzt"]}, {"v": "3.40", "d": "31.10.", "items": ["Heute: Eintrag antippen zum Anpassen – Menge (z. B. 120 statt 100 g Whey), Portion in %, einzelne Zutaten weglassen oder Änderung beschreiben und neu schätzen bzw. an Claude senden", "Plan: Feld „Plan ändern“ ganz oben, mit demselben Umschalter wie Heute (Jetzt berechnen oder über Claude)", "Einkaufsliste: abgehakte Einträge gesammelt im aufklappbaren Bereich „Abgehakt“"]}, {"v": "3.39", "d": "30.10.", "items": ["Heute (echte App mit API-Schlüssel): Umschalter „Direkt schätzen“ oder „Über Claude (Abgleich)“"]}, {"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
+  const CHANGELOG = [{"v": "3.43", "d": "31.10.", "items": ["Fotos und Menübilder liegen nicht mehr in den Daten, sondern im Foto-Speicher der App und als eigene Dateien im Daten-Repo – kleinere Daten, schnellerer Sync, kein voller Speicher mehr", "Sync: Mahlzeiten eines Tages werden einzeln zusammengeführt, Einträge vom Handy und aus der Web-App gehen nicht mehr verloren", "Heute: Löschen mit „Rückgängig“", "Echte App: Erinnerungen an den Wiegetag und an die Schritte (Profil)"]}, {"v": "3.42", "d": "31.10.", "items": ["Echte App: sucht selbst nach Updates auf GitHub (beim Start, höchstens alle 3 Stunden, oder im Profil per „Nach Update suchen“) und installiert sie nach einer Bestätigung"]}, {"v": "3.41", "d": "31.10.", "items": ["Korrektur Plan: mehrere Änderungswünsche über Claude werden gesammelt statt überschrieben und alle beim nächsten Abgleich umgesetzt"]}, {"v": "3.40", "d": "31.10.", "items": ["Heute: Eintrag antippen zum Anpassen – Menge (z. B. 120 statt 100 g Whey), Portion in %, einzelne Zutaten weglassen oder Änderung beschreiben und neu schätzen bzw. an Claude senden", "Plan: Feld „Plan ändern“ ganz oben, mit demselben Umschalter wie Heute (Jetzt berechnen oder über Claude)", "Einkaufsliste: abgehakte Einträge gesammelt im aufklappbaren Bereich „Abgehakt“"]}, {"v": "3.39", "d": "30.10.", "items": ["Heute (echte App mit API-Schlüssel): Umschalter „Direkt schätzen“ oder „Über Claude (Abgleich)“"]}, {"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
   function renderChangelog() {
     const el = $("changelog"); if (!el) return;
     el.innerHTML = CHANGELOG.map((c) => '<div class="ver"><b>' + esc(c.v) + '</b> <span class="muted">' + esc(c.d) + '</span><ul>' + c.items.map((i) => "<li>" + esc(i) + "</li>").join("") + "</ul></div>").join("");
@@ -617,6 +630,26 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       .then(() => setStatus("saveStatus", "Gespeichert"))
       .catch((e) => { if (e && e.code === "invalid_argument") $("roNotice").hidden = false; setStatus("saveStatus", "Speichern fehlgeschlagen (" + (e && e.code || "Fehler") + ").", true); });
   }
+  // delete a meal, remember it for the merge and offer a short undo
+  let undoT = null;
+  function deleteMeal(date, m) {
+    const before = ((dayDoc(date).meals) || []).findIndex((y) => y.id === m.id);
+    saveDay(date, (doc) => {
+      doc.meals = (doc.meals || []).filter((y) => y.id !== m.id);
+      if (m.id === "coffee") doc.coffeeOff = true; else doc.removed = [...new Set([...(doc.removed || []), m.id])].slice(-100);
+    });
+    const t = $("toast"); $("toastText").textContent = `„${m.label}“ gelöscht.`; t.hidden = false;
+    clearTimeout(undoT); undoT = setTimeout(() => { t.hidden = true; }, 8000);
+    $("toastUndo").onclick = () => {
+      clearTimeout(undoT); t.hidden = true;
+      saveDay(date, (doc) => {
+        doc.meals = doc.meals || [];
+        if (!doc.meals.some((y) => y.id === m.id)) doc.meals.splice(Math.max(0, Math.min(before, doc.meals.length)), 0, m);
+        doc.removed = (doc.removed || []).filter((id) => id !== m.id); if (!doc.removed.length) delete doc.removed;
+        if (m.id === "coffee") delete doc.coffeeOff;
+      });
+    };
+  }
   function setStatus(id, txt, err) { const el = $(id); el.textContent = txt || ""; el.classList.toggle("err", !!err); }
 
   // ---- routing ----
@@ -678,7 +711,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       nm.append(b);
       const v = document.createElement("div"); v.className = "mv"; v.textContent = m.pending ? "wartet auf\nClaude" : `${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß`;
       const x = document.createElement("button"); x.className = "x"; x.setAttribute("aria-label", "Löschen: " + m.label); x.textContent = "×";
-      x.onclick = () => saveDay(curDay, (doc) => { doc.meals = doc.meals.filter((y) => y.id !== m.id); if (m.id === "coffee") doc.coffeeOff = true; });
+      x.onclick = () => deleteMeal(curDay, m);
       const st = document.createElement("button"); st.className = "x star"; const fav = isFav(m);
       st.textContent = fav ? "★" : "☆"; st.setAttribute("aria-label", (fav ? "Aus Favoriten entfernen: " : "Als Favorit merken: ") + m.label); st.title = fav ? "Favorit entfernen" : "Als Favorit merken";
       st.onclick = () => toggleFav(m);
@@ -771,7 +804,11 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     const det = document.createElement("details"); det.className = "mdet";
     const su = document.createElement("summary"); su.textContent = m.photo ? "Foto und Zusammensetzung" : "Zusammensetzung"; det.append(su);
     const body = document.createElement("div"); body.className = "dbody";
-    if (m.photo) { const img = document.createElement("img"); img.className = "mphoto"; img.alt = "Foto: " + m.label; img.src = m.photo; body.append(img); }
+    if (m.photo && String(m.photo).startsWith(PHOTO_REF)) {
+      const p = document.createElement("p"); p.className = "small muted";
+      if (STANDALONE && syncCfg()) { p.textContent = "Foto wird geladen …"; photoFetch(m.photo.slice(PHOTO_REF.length)); } else p.textContent = STANDALONE ? "Foto liegt im Daten-Repo (Sync einrichten, um es zu sehen)." : "Das Foto ist in der echten App gespeichert.";
+      body.append(p);
+    } else if (m.photo) { const img = document.createElement("img"); img.className = "mphoto"; img.alt = "Foto: " + m.label; img.src = m.photo; body.append(img); }
     if (m.seen) { const p = document.createElement("p"); p.className = "seen"; p.textContent = m.seen; body.append(p); }
     if (m.parts && m.parts.length) body.append(partsTable(m.parts));
     det.append(body);
@@ -1675,7 +1712,9 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
     if (document.activeElement !== $("canteenHabits")) $("canteenHabits").value = S.canteenHabits || "";
     $("canteenLabel").hidden = !((sample && sampleImages) || requestMode());
     const menu = plans[curPlan] && plans[curPlan].canteenMenu;
-    $("canteenMenuBox").hidden = !menu; if (menu && $("canteenImg").src !== menu) $("canteenImg").src = menu;
+    const menuRef = menu && String(menu).startsWith(PHOTO_REF);
+    if (menuRef && STANDALONE) photoFetch(menu.slice(PHOTO_REF.length));
+    $("canteenMenuBox").hidden = !menu || menuRef; if (menu && !menuRef && $("canteenImg").src !== menu) $("canteenImg").src = menu;
     const wn = weekNo(curPlan);
     $("planName").textContent = `Plan ${wn >= 1 ? "Woche " + wn : ""} · ${dm(curPlan)}–${dm(addDays(curPlan, 6))}`;
     const isProposal = !!(pendingPlan && pendingPlan.week === curPlan);
@@ -2016,6 +2055,28 @@ Antworte nur mit JSON in genau dieser Form:
   });
 
 
+  // ---- reminders (real Android app only): settings go to the app, which plans local notifications ----
+  function initReminders() {
+    const A = window.WeightplanAndroid;
+    if (!A || typeof A.setReminders !== "function") return;
+    $("remBox").hidden = false;
+    let cfg = {}; try { cfg = JSON.parse(lsGet(LS + "reminders") || "{}"); } catch (e) {}
+    const w = cfg.weigh || { on: false, time: "07:00" }, st = cfg.steps || { on: false, time: "20:30" };
+    $("remWeigh").checked = !!w.on; $("remWeighT").value = w.time; $("remSteps").checked = !!st.on; $("remStepsT").value = st.time;
+    const save = () => {
+      const c = { weigh: { on: $("remWeigh").checked, time: $("remWeighT").value || "07:00" }, steps: { on: $("remSteps").checked, time: $("remStepsT").value || "20:30" } };
+      lsSet(LS + "reminders", JSON.stringify(c)); try { A.setReminders(JSON.stringify(c)); } catch (e) {}
+    };
+    ["remWeigh", "remWeighT", "remSteps", "remStepsT"].forEach((id) => $(id).onchange = save);
+  }
+  let dayStateLast = "";
+  function reportToday() {
+    const A = window.WeightplanAndroid;
+    if (!A || typeof A.dayState !== "function" || !daysLoaded) return;
+    const t = todayStr(), d = days[t] || {}, w = !!d.weight, st = (Number(d.flatSteps) || 0) + (Number(d.inclineSteps) || 0) > 0;
+    const key = t + w + st; if (key === dayStateLast) return; dayStateLast = key;
+    try { A.dayState(t, w, st); } catch (e) {}
+  }
   // ---- app updates (real Android app only): the app asks GitHub for the newest release and installs it ----
   function initUpdates() {
     const A = window.WeightplanAndroid;
@@ -2066,17 +2127,71 @@ Antworte nur mit JSON in genau dieser Form:
       hdrMsg(e && e.code === "not_granted" ? "Der Sync braucht deine Freigabe für Claude Code Remote. Tippe erneut und erlaube den Zugriff." : "Der Abgleich ließ sich nicht starten. Er läuft trotzdem stündlich automatisch.", true);
     } finally { setTimeout(() => { b.disabled = false; }, 20000); }
   };
-  function renderAll() { updateSyncBtn(); renderTop(); if (hasProfile) { renderDay(); renderWeek(); renderHistory(); renderInsights(); renderExpChart(); renderDaily(); renderPlan(); } }
+  function renderAll() { reportToday(); updateSyncBtn(); renderTop(); if (hasProfile) { renderDay(); renderWeek(); renderHistory(); renderInsights(); renderExpChart(); renderDaily(); renderPlan(); } }
 
   // ---- standalone mode (outside claude.ai, e.g. GitHub Pages): browser storage + own API key ----
   const STANDALONE = !(window.claude && typeof window.claude.use === "function");
   const LS = "kurs:";
   const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
+  // ---- photos live outside the documents (real app): IndexedDB on the device, photos/<id>.jpg in the data repo ----
+  // A document only keeps "photo:<id>"; id = FNV-1a 64 of the data URL, so every side derives the same id.
+  const PHOTO_REF = "photo:";
+  const photoMem = new Map(); let photoIdb = null;
+  function photoId(s) { let h = 0xcbf29ce484222325n; for (let i = 0; i < s.length; i++) { h ^= BigInt(s.charCodeAt(i) & 0xff); h = (h * 0x100000001b3n) & 0xffffffffffffffffn; } return h.toString(16).padStart(16, "0"); }
+  function photoInit() {
+    return new Promise((res) => {
+      let req; try { req = indexedDB.open("weightplan", 1); } catch (e) { res(false); return; }
+      req.onupgradeneeded = () => req.result.createObjectStore("photos");
+      req.onerror = () => res(false);
+      req.onsuccess = () => {
+        const idb = req.result;
+        try {
+          const all = idb.transaction("photos").objectStore("photos").openCursor();
+          all.onsuccess = () => { const c = all.result; if (c) { photoMem.set(c.key, c.value); c.continue(); } else { photoIdb = idb; res(true); } };
+          all.onerror = () => res(false);
+        } catch (e) { res(false); }
+      };
+    });
+  }
+  function photoPut(id, data) { photoMem.set(id, data); try { photoIdb.transaction("photos", "readwrite").objectStore("photos").put(data, id); } catch (e) {} }
+  // walk a document and swap inline images for references (or back)
+  const walkStrings = (v, f) => Array.isArray(v) ? v.map((x) => walkStrings(x, f)) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walkStrings(x, f)])) : typeof v === "string" ? f(v) : v;
+  function photosOut(doc) {
+    if (!photoIdb || !doc) return doc;
+    return walkStrings(doc, (x) => { if (!x.startsWith("data:image/")) return x; const id = photoId(x); if (!photoMem.has(id)) photoPut(id, x); return PHOTO_REF + id; });
+  }
+  const photosIn = (doc) => !doc || !photoMem.size ? doc : walkStrings(doc, (x) => x.startsWith(PHOTO_REF) && photoMem.has(x.slice(PHOTO_REF.length)) ? photoMem.get(x.slice(PHOTO_REF.length)) : x);
+  const photoRefs = (doc, out) => { walkStrings(doc, (x) => { if (x.startsWith(PHOTO_REF)) out.add(x.slice(PHOTO_REF.length)); return x; }); return out; };
+  // move inline photos of old documents into the photo store (keeps updatedAt: the content stays the same)
+  function photoMigrate() {
+    if (!photoIdb) return;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i); if (!k.startsWith(LS + "data/")) continue;
+        const raw = localStorage.getItem(k); if (!raw || !raw.includes("data:image/")) continue;
+        localStorage.setItem(k, JSON.stringify(photosOut(JSON.parse(raw))));
+      }
+    } catch (e) {}
+  }
+  // two versions of one day: meals are merged one by one, deletions travel along in "removed"
+  function mergeDay(a, b) {
+    if (!a || !b) return a || b;
+    const [nw, old] = (b.updatedAt || "") > (a.updatedAt || "") ? [b, a] : [a, b];
+    const removed = [...new Set([...(old.removed || []), ...(nw.removed || [])])].slice(-100);
+    const gone = new Set(removed), have = new Set((nw.meals || []).map((m) => m.id));
+    const olds = new Map((old.meals || []).map((m) => [m.id, m]));
+    // a side without the photo (e.g. shortened) never deletes the other side's photo
+    const keepPhoto = (m) => { const o = olds.get(m.id); return o && !m.photo && !m.photos && (o.photo || o.photos) ? { ...m, ...(o.photo ? { photo: o.photo } : {}), ...(o.photos ? { photos: o.photos } : {}) } : m; };
+    const meals = [...(nw.meals || []).map(keepPhoto), ...(old.meals || []).filter((m) => !have.has(m.id))].filter((m) => !gone.has(m.id));
+    const out = { ...nw, meals };
+    if (removed.length) out.removed = removed; else delete out.removed;
+    return out;
+  }
   function localDb() {
     const listeners = {};
     const keys = () => { const out = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(LS + "data/")) out.push(k.slice(LS.length)); } } catch (e) {} return out; };
-    const read = (path) => { const v = lsGet(LS + path); return v ? JSON.parse(v) : null; };
+    const read = (path) => { const v = lsGet(LS + path); return v ? photosIn(JSON.parse(v)) : null; };
     const snap = (path) => { const d = read(path); return { id: path.split("/").pop(), exists: !!d, data: () => d }; };
     const notify = (path) => { const coll = path.split("/").slice(0, -1).join("/"); [path, coll].forEach((k) => (listeners[k] || []).forEach((f) => f())); };
     const listen = (key, f) => { (listeners[key] = listeners[key] || []).push(f); setTimeout(f, 0); return () => { listeners[key] = listeners[key].filter((x) => x !== f); }; };
@@ -2084,7 +2199,7 @@ Antworte nur mit JSON in genau dieser Form:
       return {
         path,
         get: async () => snap(path),
-        set: async (d) => { if (!lsSet(LS + path, JSON.stringify(d))) throw { code: "quota_exceeded" }; notify(path); onLocalWrite(); },
+        set: async (d) => { if (!lsSet(LS + path, JSON.stringify(photosOut(d)))) throw { code: "quota_exceeded" }; notify(path); onLocalWrite(); },
         delete: async () => { try { localStorage.removeItem(LS + path); } catch (e) {} notify(path); },
         onSnapshot: (next) => listen(path, () => next(snap(path))),
         collection: (name) => collRef(path + "/" + name)
@@ -2167,12 +2282,36 @@ Antworte nur mit JSON in genau dieser Form:
     try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(LS + USER_ROOT)) out[k.slice((LS + USER_ROOT).length)] = JSON.parse(localStorage.getItem(k)); } } catch (e) {}
     return out;
   }
-  async function gh(cfg, method, body, raw) {
-    return fetch(`https://api.github.com/repos/${cfg.repo}/contents/${SYNC_FILE}`, {
+  async function gh(cfg, method, body, raw, file) {
+    return fetch(`https://api.github.com/repos/${cfg.repo}/contents/${file || SYNC_FILE}`, {
       method, cache: "no-store",
       headers: { Authorization: "Bearer " + cfg.token, Accept: raw ? "application/vnd.github.raw+json" : "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", ...(body ? { "Content-Type": "application/json" } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {})
     });
+  }
+  // photos referenced in the documents go to photos/<id>.jpg once; missing ones are fetched on demand
+  async function photosUpload(cfg, docs) {
+    if (!photoIdb) return;
+    let up = []; try { up = JSON.parse(lsGet(LS + "photosUp") || "[]"); } catch (e) {}
+    const done = new Set(up), need = [...photoRefs(docs, new Set())].filter((id) => !done.has(id) && photoMem.has(id));
+    for (const id of need) {
+      const data = photoMem.get(id), b64 = data.split(",")[1] || "";
+      try {
+        const w = await gh(cfg, "PUT", { message: "Foto " + id, content: b64 }, false, "photos/" + id + ".jpg");
+        if (w.ok || w.status === 422) done.add(id); // 422: file is already there
+      } catch (e) { break; }
+    }
+    lsSet(LS + "photosUp", JSON.stringify([...done]));
+  }
+  const photoLoading = new Set();
+  async function photoFetch(id) {
+    const cfg = syncCfg();
+    if (!cfg || !photoIdb || photoLoading.has(id) || photoMem.has(id)) return;
+    photoLoading.add(id);
+    try {
+      const r = await gh(cfg, "GET", null, false, "photos/" + id + ".jpg");
+      if (r.ok) { const j = await r.json(); if (j.content) { photoPut(id, "data:image/jpeg;base64," + j.content.replace(/\s/g, "")); db && db.reloadAll && db.reloadAll(); } }
+    } catch (e) {} finally { photoLoading.delete(id); }
   }
   async function syncNow(manual) {
     const cfg = syncCfg(); if (!cfg) return;
@@ -2194,7 +2333,8 @@ Antworte nur mit JSON in genau dieser Form:
         let localChanged = false, remoteChanged = false;
         new Set([...Object.keys(local), ...Object.keys(remote)]).forEach((k) => {
           const a = local[k], b = remote[k];
-          const pick = !a ? b : !b ? a : ((b.updatedAt || "") > (a.updatedAt || "") ? b : a);
+          let pick = !a ? b : !b ? a : k.startsWith("profile/days/") ? mergeDay(a, b) : ((b.updatedAt || "") > (a.updatedAt || "") ? b : a);
+          pick = photosOut(pick);
           merged[k] = pick;
           const same = (x) => x && JSON.stringify(x) === JSON.stringify(pick);
           if (!same(a)) localChanged = true;
@@ -2206,6 +2346,7 @@ Antworte nur mit JSON in genau dieser Form:
           applyingRemote = false;
           db && db.reloadAll && db.reloadAll();
         }
+        await photosUpload(cfg, merged);
         if (remoteChanged || !sha) {
           const body = { message: "Weightplan-Sync " + new Date().toISOString(), content: b64enc(JSON.stringify({ app: "weightplan", updatedAt: new Date().toISOString(), docs: merged })), ...(sha ? { sha } : {}) };
           const w = await gh(cfg, "PUT", body);
@@ -2242,7 +2383,7 @@ Antworte nur mit JSON in genau dieser Form:
     setTimeout(syncNow, 800);
     $("localBox").hidden = false;
     try { const v = window.WeightplanAndroid && window.WeightplanAndroid.getVersion ? window.WeightplanAndroid.getVersion() : ""; if (v) { $("appVersion").textContent = "App-Version " + v; $("appVersion").hidden = false; } } catch (e) {}
-    initUpdates();
+    initUpdates(); initReminders();
     $("profilIntro").textContent = "Deine Angaben und Einträge bleiben auf diesem Gerät. Niemand sonst sieht sie.";
     if (lsGet(LS + "apiKey")) $("apiKey").placeholder = "gespeichert";
     $("keySave").onclick = () => {
@@ -2285,6 +2426,7 @@ Antworte nur mit JSON in genau dieser Form:
   $("pStartD").value = todayStr();
   route(); renderAll();
   (async () => {
+    if (STANDALONE && await photoInit()) photoMigrate();
     db = await use("db");
     const user = await use("user");
     const id = user ? await user.id() : null;

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -226,6 +227,27 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 return "";
             }
+        }
+
+        /** Reminder settings from the page, e.g. {"weigh":{"on":true,"time":"07:00"},"steps":{"on":true,"time":"20:30"}}. */
+        @JavascriptInterface
+        public void setReminders(String json) {
+            getSharedPreferences(ReminderReceiver.PREFS, MODE_PRIVATE).edit().putString("config", json).apply();
+            ReminderReceiver.schedule(MainActivity.this);
+            boolean any = json.contains("\"on\":true");
+            if (any && Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                runOnUiThread(() -> requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 7));
+            }
+        }
+
+        /** Today's state from the page, so a reminder is skipped when the thing is already logged. */
+        @JavascriptInterface
+        public void dayState(String date, boolean weighed, boolean steps) {
+            if (!date.equals(ReminderReceiver.today())) return;
+            SharedPreferences.Editor e = getSharedPreferences(ReminderReceiver.PREFS, MODE_PRIVATE).edit();
+            if (weighed) e.putString("weighed", date);
+            if (steps) e.putString("steps", date);
+            e.apply();
         }
 
         /** Looks up the newest release on GitHub; answers window.__wpUpdate("available"|"current"|"error", ...). */

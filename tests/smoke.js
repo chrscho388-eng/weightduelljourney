@@ -133,7 +133,7 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.setInputFiles("#canteenInput", { name: "menu.png", mimeType: "image/png", buffer: png }); await pg.waitForTimeout(800);
   const pl3 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
   const prof3 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile")));
-  check(/^data:image\/jpeg/.test(pl3.canteenMenu || "") && /Kantinen-Menü/.test(pl3.planChange || "") && /Mittwoch Pizza/.test(pl3.planChange || ""), "canteen menu stored and queued");
+  check(/^photo:[0-9a-f]{16}$/.test(pl3.canteenMenu || "") && /Kantinen-Menü/.test(pl3.planChange || "") && /Mittwoch Pizza/.test(pl3.planChange || ""), "canteen menu stored and queued");
   check(prof3.canteenHabits === "Suppe, kleiner Salat, Dessert" && /Suppe/.test(pl3.planChange), "canteen habits saved and sent along");
   check(await pg.isVisible("#canteenMenuBox"), "menu of the week can be viewed");
   // Strg+V: a pasted screenshot goes to the canteen menu on the Plan tab and to "Foto später" on Heute
@@ -153,7 +153,7 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check((await pg.textContent("#sendBtn")) === "An Claude senden" && (await pg.$$eval("#view-heute .btnrow:has(#sendBtn) > :not([hidden])", (e) => e.length)) === 2, "one send button and one photo button without API key");
   await pg.fill("#mealText", "nur halbe Portion Pommes"); await pg.click("#sendBtn"); await pg.waitForTimeout(800);
   const d5 = await dayNow();
-  check(d5.meals.some((m) => m.pending && /^data:image/.test(m.photo || "") && m.request === "nur halbe Portion Pommes") && !(await pg.isVisible("#attachBox")), "photo sent together with the edited text");
+  check(d5.meals.some((m) => m.pending && /^photo:[0-9a-f]{16}$/.test(m.photo || "") && m.request === "nur halbe Portion Pommes") && !(await pg.isVisible("#attachBox")), "photo sent together with the edited text");
   // several photos at once (dish and nutrition label)
   await pg.setInputFiles("#photoInput", [{ name: "a.png", mimeType: "image/png", buffer: png }, { name: "b.png", mimeType: "image/png", buffer: png }]); await pg.waitForTimeout(300);
   check((await pg.$$("#attachList .thumb")).length === 2, "two photos attached");
@@ -209,7 +209,7 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(await pg.isVisible("#planProposal") && (await pg.textContent("#planBody")).includes("Frittatensuppe"), "canteen proposal shown with API key");
   await pg.click("#planAccept"); await pg.waitForTimeout(400);
   const pl4 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
-  check(pl4.days[0].meals[0].name.startsWith("Frittatensuppe") && /^data:image/.test(pl4.canteenMenu || ""), "accepted plan keeps the menu photo");
+  check(pl4.days[0].meals[0].name.startsWith("Frittatensuppe") && /^photo:[0-9a-f]{16}$/.test(pl4.canteenMenu || ""), "accepted plan keeps the menu photo");
   await pg.click("nav.tabs a[data-tab=profil]"); await pg.waitForTimeout(150);
   await pg.click('#themeChips [data-theme-set="dark"]'); await pg.waitForTimeout(100);
   const bgDark = await pg.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -221,8 +221,48 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(await pg.evaluate(() => getComputedStyle(document.body).backgroundColor) === "rgb(243, 244, 239)", "light mode can be switched on");
   await pg.click("#changelogBox > summary");
   check(await pg.isVisible("#changelog .ver") && (await pg.$$("#changelog .ver")).length > 20 && /^3\.\d+/.test(await pg.textContent("#changelog .ver b")), "changelog lists the versions");
+  // photos: inline photos of old data move into the photo store, documents keep only a reference
+  const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  await pg.evaluate((src) => localStorage.setItem("kurs:data/users/local/profile/days/2026-11-02", JSON.stringify({ date: "2026-11-02", dayType: "HO", meals: [{ id: "p1", label: "Altes Foto", kcal: 100, protein: 5, photo: src }], updatedAt: "2026-11-02T10:00:00.000Z" })), tinyPng);
+  await pg.reload(); await pg.waitForTimeout(900);
+  const mig = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-02")));
+  check(/^photo:[0-9a-f]{16}$/.test(mig.meals[0].photo) && mig.updatedAt === "2026-11-02T10:00:00.000Z", "inline photo migrated to a reference");
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  await pg.click("#prevDay"); await pg.click("#prevDay"); await pg.waitForTimeout(300);
+  await pg.click("#mealList .mdet summary"); await pg.waitForTimeout(100);
+  check((await pg.getAttribute("#mealList .mdet img", "src")) === tinyPng, "migrated photo still shown from the photo store");
+  await pg.click("#nextDay"); await pg.click("#nextDay"); await pg.waitForTimeout(200);
+  // sync: days merge meal by meal, photos go to photos/<id>.jpg, the file only holds references
+  let putJson = null; const putPhotos = [];
+  const remoteFile = (docs) => ({ sha: "s1", content: Buffer.from(JSON.stringify({ app: "weightplan", docs })).toString("base64") });
+  let remoteDocs = { "profile/days/2026-11-04": { date: "2026-11-04", dayType: "HO", meals: [{ id: "r1", label: "Remote-Apfel", kcal: 50, protein: 0 }], updatedAt: "2026-11-01T00:00:00.000Z" } };
+  await pg.route("https://api.github.com/repos/a/b/contents/**", (r) => {
+    const u = r.request().url(), m = r.request().method();
+    if (u.includes("/photos/")) { if (m === "PUT") { putPhotos.push(u.split("/photos/")[1]); return r.fulfill({ status: 201, body: "{}" }); } return r.fulfill({ status: 404, body: "{}" }); }
+    if (m === "PUT") { putJson = JSON.parse(Buffer.from(JSON.parse(r.request().postData()).content, "base64").toString("utf8")); return r.fulfill({ status: 200, body: "{}" }); }
+    return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(remoteFile(remoteDocs)) });
+  });
+  await pg.click("nav.tabs a[data-tab=profil]"); await pg.click("#syncNowBtn"); await pg.waitForTimeout(1200);
+  const merged = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
+  const ml = merged.meals.map((m) => m.label);
+  check(ml.includes("Remote-Apfel") && ml.includes("Frühstück vorhanden"), "sync merges meals from both sides (" + ml.length + ")");
+  const upDay = putJson && putJson.docs["profile/days/2026-11-04"];
+  check(upDay && upDay.meals.some((m) => m.id === "r1") && upDay.meals.some((m) => m.label === "Frühstück vorhanden"), "merged day uploaded");
+  check(!JSON.stringify(putJson || {}).includes("data:image") && putPhotos.includes(mig.meals[0].photo.slice(6) + ".jpg"), "file has only photo references, photos uploaded (" + putPhotos.length + ")");
+  // delete with undo, deletion survives the merge
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  await pg.click('#mealList li:has-text("Remote-Apfel") .x:not(.star)'); await pg.waitForTimeout(200);
+  check(await pg.isVisible("#toast") && !/Remote-Apfel/.test(await listed()), "delete shows an undo notice");
+  await pg.click("#toastUndo"); await pg.waitForTimeout(200);
+  const und = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
+  check(/Remote-Apfel/.test(await listed()) && !(und.removed || []).includes("r1"), "undo brings the meal back");
+  await pg.click('#mealList li:has-text("Remote-Apfel") .x:not(.star)'); await pg.waitForTimeout(200);
+  await pg.click("nav.tabs a[data-tab=profil]"); await pg.click("#syncNowBtn"); await pg.waitForTimeout(1200);
+  const del = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
+  check(!del.meals.some((m) => m.id === "r1") && del.removed.includes("r1") && !putJson.docs["profile/days/2026-11-04"].meals.some((m) => m.id === "r1"), "deleted meal stays deleted after the merge");
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   // real app: update check through the Android bridge
-  await pg.addInitScript(() => { window.__installed = 0; window.WeightplanAndroid = { getVersion: () => "3.40", saveFile: () => "", checkUpdate: () => setTimeout(() => window.__wpUpdate("available", "3.99"), 50), installUpdate: () => { window.__installed++; setTimeout(() => window.__wpUpdate("progress", "50"), 10); } }; });
+  await pg.addInitScript(() => { window.__installed = 0; window.WeightplanAndroid = { getVersion: () => "3.40", saveFile: () => "", checkUpdate: () => setTimeout(() => window.__wpUpdate("available", "3.99"), 50), setReminders: (j) => { window.__rem = j; }, dayState: (d, w, st) => { window.__day = [d, w, st]; }, installUpdate: () => { window.__installed++; setTimeout(() => window.__wpUpdate("progress", "50"), 10); } }; });
   await pg.evaluate(() => localStorage.removeItem("kurs:updLast")); await pg.reload(); await pg.waitForTimeout(3200);
   check(await pg.isVisible("#updBanner") && /3\.99/.test(await pg.textContent("#updText")), "update banner shown when a newer release exists");
   await pg.click("#updInstall"); await pg.waitForTimeout(1500);
@@ -231,6 +271,11 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.evaluate(() => localStorage.removeItem("kurs:updLast")); await pg.reload(); await pg.waitForTimeout(3200);
   check(!(await pg.isVisible("#updBanner")), "'Später' hides the banner for that version");
   await pg.click("nav.tabs a[data-tab=profil]"); await pg.click("#updCheck"); await pg.waitForTimeout(300);
+  check(await pg.isVisible("#remBox"), "reminder settings shown in the real app");
+  await pg.check("#remSteps"); await pg.fill("#remStepsT", "21:15"); await pg.dispatchEvent("#remStepsT", "change"); await pg.waitForTimeout(100);
+  const rem = JSON.parse(await pg.evaluate(() => window.__rem || "{}"));
+  check(rem.steps && rem.steps.on === true && rem.steps.time === "21:15" && rem.weigh && rem.weigh.on === false, "reminder settings sent to the app");
+  check(JSON.stringify(await pg.evaluate(() => window.__day)) === JSON.stringify(["2026-11-04", false, false]), "today's state reported to the app");
   check(await pg.isVisible("#updBanner") && /3\.99 ist verfügbar/.test(await pg.textContent("#updStatus")), "manual check in the profile shows the update");
   check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
   await b.close();
