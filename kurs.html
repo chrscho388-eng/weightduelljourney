@@ -88,6 +88,10 @@ h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin
 .balance-row b { text-align: right; }
 .balance-row b { font-family: var(--font-data); font-weight: 500; }
 .pos { color: var(--bad); } .neg { color: var(--good); }
+.wgoal { margin-top: 12px; }
+.wgoal h3 { margin: 0 0 6px; font-size: 15px; }
+.wgoal .balance-row { margin-top: 0; }
+.wgoal h3 + .balance-row + h3 { margin-top: 12px; }
 
 /* forms */
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
@@ -282,6 +286,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="gauge"><div class="label">Eiweiß</div><div class="val" id="gProt">0 g</div><div class="of" id="gProtOf">von 180 g</div><div class="bar" id="gProtBar"><i style="width:0"></i><b id="gProtOpt" hidden></b></div></div>
     </div>
     <div class="balance-row" id="balanceRow"></div>
+    <div class="panel wgoal" id="weekGoal" hidden></div>
     <div class="small muted" id="streakLine" style="margin-top:8px"></div>
 
     <h2>Essen</h2>
@@ -550,7 +555,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     try { theme ? localStorage.setItem("kurs:theme", theme) : localStorage.removeItem("kurs:theme"); } catch (e) {}
     applyTheme(theme);
   });
-  const CHANGELOG = [{"v": "3.45", "d": "31.10.", "items": ["Eiweiß: Mindestziel plus optionales Optimum (Profil), Anzeige „von 150 g (optimal 180 g)“ mit Markierung im Balken; Plan-Anpassungen planen auf das Optimum hin"]}, {"v": "3.44", "d": "31.10.", "items": ["Echte App: Updates, die nur die App-Seite betreffen (fast alle), lädt die App selbst ohne Installation und ohne Sicherheitsabfragen – „Jetzt neu laden“ oder beim nächsten Start", "Echte App: installiert keine APKs mehr selbst (Play Protect hatte das als schädlich markiert); seltene Updates der Android-Hülle über „Herunterladen“ im Browser"]}, {"v": "3.43", "d": "31.10.", "items": ["Fotos und Menübilder liegen nicht mehr in den Daten, sondern im Foto-Speicher der App und als eigene Dateien im Daten-Repo – kleinere Daten, schnellerer Sync, kein voller Speicher mehr", "Sync: Mahlzeiten eines Tages werden einzeln zusammengeführt, Einträge vom Handy und aus der Web-App gehen nicht mehr verloren", "Heute: Löschen mit „Rückgängig“", "Echte App: Erinnerungen an den Wiegetag und an die Schritte (Profil)"]}, {"v": "3.42", "d": "31.10.", "items": ["Echte App: sucht selbst nach Updates auf GitHub (beim Start, höchstens alle 3 Stunden, oder im Profil per „Nach Update suchen“) und installiert sie nach einer Bestätigung"]}, {"v": "3.41", "d": "31.10.", "items": ["Korrektur Plan: mehrere Änderungswünsche über Claude werden gesammelt statt überschrieben und alle beim nächsten Abgleich umgesetzt"]}, {"v": "3.40", "d": "31.10.", "items": ["Heute: Eintrag antippen zum Anpassen – Menge (z. B. 120 statt 100 g Whey), Portion in %, einzelne Zutaten weglassen oder Änderung beschreiben und neu schätzen bzw. an Claude senden", "Plan: Feld „Plan ändern“ ganz oben, mit demselben Umschalter wie Heute (Jetzt berechnen oder über Claude)", "Einkaufsliste: abgehakte Einträge gesammelt im aufklappbaren Bereich „Abgehakt“"]}, {"v": "3.39", "d": "30.10.", "items": ["Heute (echte App mit API-Schlüssel): Umschalter „Direkt schätzen“ oder „Über Claude (Abgleich)“"]}, {"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
+  const CHANGELOG = [{"v": "3.46", "d": "31.10.", "items": ["Heute: Wochenziel-Kasten – wie viele Schritte heute nötig sind, damit der Wochenschnitt das Schrittziel erreicht (auch verteilt auf die Resttage)", "Heute: Soll-Defizit pro Tag aus Kalorien- und Schrittziel, Ist-Schnitt der Woche und das Defizit, das heute nötig ist, um den Wochenschnitt einzuholen, samt „heute noch essen“"]}, {"v": "3.45", "d": "31.10.", "items": ["Eiweiß: Mindestziel plus optionales Optimum (Profil), Anzeige „von 150 g (optimal 180 g)“ mit Markierung im Balken; Plan-Anpassungen planen auf das Optimum hin"]}, {"v": "3.44", "d": "31.10.", "items": ["Echte App: Updates, die nur die App-Seite betreffen (fast alle), lädt die App selbst ohne Installation und ohne Sicherheitsabfragen – „Jetzt neu laden“ oder beim nächsten Start", "Echte App: installiert keine APKs mehr selbst (Play Protect hatte das als schädlich markiert); seltene Updates der Android-Hülle über „Herunterladen“ im Browser"]}, {"v": "3.43", "d": "31.10.", "items": ["Fotos und Menübilder liegen nicht mehr in den Daten, sondern im Foto-Speicher der App und als eigene Dateien im Daten-Repo – kleinere Daten, schnellerer Sync, kein voller Speicher mehr", "Sync: Mahlzeiten eines Tages werden einzeln zusammengeführt, Einträge vom Handy und aus der Web-App gehen nicht mehr verloren", "Heute: Löschen mit „Rückgängig“", "Echte App: Erinnerungen an den Wiegetag und an die Schritte (Profil)"]}, {"v": "3.42", "d": "31.10.", "items": ["Echte App: sucht selbst nach Updates auf GitHub (beim Start, höchstens alle 3 Stunden, oder im Profil per „Nach Update suchen“) und installiert sie nach einer Bestätigung"]}, {"v": "3.41", "d": "31.10.", "items": ["Korrektur Plan: mehrere Änderungswünsche über Claude werden gesammelt statt überschrieben und alle beim nächsten Abgleich umgesetzt"]}, {"v": "3.40", "d": "31.10.", "items": ["Heute: Eintrag antippen zum Anpassen – Menge (z. B. 120 statt 100 g Whey), Portion in %, einzelne Zutaten weglassen oder Änderung beschreiben und neu schätzen bzw. an Claude senden", "Plan: Feld „Plan ändern“ ganz oben, mit demselben Umschalter wie Heute (Jetzt berechnen oder über Claude)", "Einkaufsliste: abgehakte Einträge gesammelt im aufklappbaren Bereich „Abgehakt“"]}, {"v": "3.39", "d": "30.10.", "items": ["Heute (echte App mit API-Schlüssel): Umschalter „Direkt schätzen“ oder „Über Claude (Abgleich)“"]}, {"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
   function renderChangelog() {
     const el = $("changelog"); if (!el) return;
     el.innerHTML = CHANGELOG.map((c) => '<div class="ver"><b>' + esc(c.v) + '</b> <span class="muted">' + esc(c.d) + '</span><ul>' + c.items.map((i) => "<li>" + esc(i) + "</li>").join("") + "</ul></div>").join("");
@@ -705,6 +710,8 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       `<span>Verbrauch</span><b>${fmt(out)} kcal</b>` +
       `<span>Bilanz heute</span><b class="${bal > 0 ? "pos" : "neg"}">${signed(bal)} kcal</b>` +
       (avgBal != null ? `<span>Schnitt ${wn >= 1 ? "Woche " + wn : "dieser Woche"} (${wdays.length} ${wdays.length === 1 ? "Tag" : "Tage"})</span><b class="${avgBal > 0 ? "pos" : "neg"}">${signed(Math.round(avgBal / 5) * 5)} kcal</b>` : "");
+
+    renderWeekGoal();
 
     // meals
     const ul = $("mealList"); ul.innerHTML = "";
@@ -1149,6 +1156,66 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     $("favHint").textContent = favEditing ? "Tipp auf einen Favoriten, um ihn zu entfernen." : favs.length ? (freq.length ? "Gestrichelt: oft gegessen. Mit ☆ bei einer Mahlzeit heftest du sie an." : "") : "Oft gegessen. Mit ☆ bei einer Mahlzeit heftest du sie dauerhaft an.";
   }
   $("favEdit").onclick = () => { favEditing = !favEditing; renderFavs(); };
+
+  // ---- week targets: what today needs so the running week average meets the goals ----
+  // average step goal per day (e.g. 18,000 on 5 days and 13,000 on 2 → 16,571)
+  function stepAvgGoal(date) { const g = stepGoalFor(date); return g ? (g.min < g.full ? (5 * g.full + 2 * g.min) / 7 : g.full) : 0; }
+  // planned balance of a day: kcal target minus the burn when the step goal is reached (flat steps as logged, rest with incline)
+  function sollBal(date) {
+    const d = dayDoc(date), f = Number(d.flatSteps) || 0, i = Number(d.inclineSteps) || 0;
+    const goal = stepAvgGoal(date);
+    const out = d.burnOverride || burn({ flatSteps: f, inclineSteps: Math.max(i, goal - f) });
+    return { bal: (d.event ? S.eventKcal : S.kcalTarget) - out, out };
+  }
+  function weekTargets(date) {
+    const mon = mondayOf(date), n = weekday(date) + 1, d = dayDoc(date), today = stepsOf(d);
+    const r = { n, left: 7 - n + 1 };
+    // steps: every day of the week so far counts, days without steps as 0
+    let goalSum = 0, before = 0, weekGoal = 0;
+    for (let k = 0; k < 7; k++) { const x = addDays(mon, k), g = stepAvgGoal(x); weekGoal += g; if (k < n) goalSum += g; if (k < n - 1) before += stepsOf(dayDoc(x)); }
+    if (weekGoal > 0) {
+      r.steps = { today, before, avg: n > 1 ? before / (n - 1) : null, goalAvg: goalSum / n,
+        need: Math.max(0, Math.round(goalSum - before)), spread: Math.max(0, Math.round((weekGoal - before) / r.left / 10) * 10) };
+      r.steps.rest = Math.max(0, r.steps.need - today);
+    }
+    // calories: only earlier days with entries count, plus today
+    let sollSum = 0, istSum = 0, cnt = 0;
+    for (let k = 0; k < n - 1; k++) { const x = addDays(mon, k), dx = dayDoc(x); if (!hasData(dx)) continue; cnt++; sollSum += sollBal(x).bal; istSum += intake(dx) - burn(dx); }
+    const st = sollBal(date);
+    sollSum += st.bal;
+    r.kcal = { soll: sollSum / (cnt + 1), ist: cnt ? istSum / cnt : null, days: cnt,
+      need: sollSum - istSum, outToday: Math.max(burn(d), st.out), inToday: intake(d) };
+    r.kcal.eatLeft = r.kcal.need + r.kcal.outToday - r.kcal.inToday;
+    // deficit the deadline needs from the latest weight
+    const ws = Object.values(days).filter((x) => x.weight && x.date <= date).sort((a, b) => a.date < b.date ? -1 : 1);
+    const w = ws.length ? ws[ws.length - 1].weight : S.startWeight;
+    const dl = Math.round((toUTC(S.goalDate) - toUTC(date)) / 864e5);
+    if (w > S.goalWeight && dl > 0) r.deadline = (w - S.goalWeight) * (S.kcalPerKg || 7000) / dl;
+    return r;
+  }
+  const defTxt = (bal) => { const v = Math.round(Math.abs(bal) / 10) * 10; return bal <= 0 ? `${fmt(v)} Defizit` : `${fmt(v)} Überschuss`; };
+  function renderWeekGoal() {
+    const box = $("weekGoal");
+    if (!hasProfile || curDay > todayStr()) { box.hidden = true; return; }
+    const t = weekTargets(curDay), today = curDay === todayStr();
+    let h = "";
+    if (t.steps) {
+      const s = t.steps;
+      h += `<h3>Schritte für den Wochenschnitt</h3><div class="balance-row">` +
+        `<span>Heute nötig (Schnitt ${fmt(Math.round(s.goalAvg / 100) * 100)})</span><b>${fmt(s.need)}</b>` +
+        `<span>${today ? "Davon noch offen" : "Offen geblieben"}</span><b class="${s.rest > 0 ? "pos" : "neg"}">${s.rest > 0 ? fmt(s.rest) : "erreicht"}</b>` +
+        (s.avg != null ? `<span>Schnitt bisher (${t.n - 1} ${t.n - 1 === 1 ? "Tag" : "Tage"})</span><b>${fmt(Math.round(s.avg))}</b>` : "") +
+        (t.left > 1 ? `<span>Verteilt auf ${t.left} Resttage</span><b>${fmt(s.spread)} / Tag</b>` : "") + `</div>`;
+    }
+    const k = t.kcal;
+    h += `<h3>Defizit für den Wochenschnitt</h3><div class="balance-row">` +
+      `<span>Soll pro Tag</span><b class="neg">${defTxt(k.soll)}</b>` +
+      (k.ist != null ? `<span>Ist-Schnitt (${k.days} ${k.days === 1 ? "Tag" : "Tage"})</span><b class="${k.ist > k.soll ? "pos" : "neg"}">${defTxt(k.ist)}</b>` : "") +
+      `<span>Heute nötig</span><b class="${k.need > 0 ? "pos" : "neg"}">${defTxt(k.need)}</b>` +
+      (today ? `<span>Spielraum heute</span><b class="${k.eatLeft < 0 ? "pos" : ""}">${k.eatLeft < 0 ? "schon " + fmt(Math.round(-k.eatLeft / 10) * 10) + " drüber" : fmt(Math.round(k.eatLeft / 10) * 10) + " kcal essen"}</b>` : "") + `</div>`;
+    h += `<p class="small muted" style="margin:6px 0 0">Kalorien in kcal. Soll = ${fmt(S.kcalTarget)} kcal essen bei erreichtem Schrittziel${today ? ", damit rechnet auch der Spielraum" : ""}. ${t.deadline ? `Für ${fmt(S.goalWeight, 1)} kg bis ${dm(S.goalDate)}${S.goalDate.slice(0, 4)} reichen im Schnitt ${fmt(Math.round(t.deadline / 10) * 10)} kcal Defizit pro Tag.` : ""}</p>`;
+    box.innerHTML = h; box.hidden = false;
+  }
 
   // ---- streaks: days in a row meeting a goal; today counts once met and never breaks the run ----
   function stepGoalFor(date) {

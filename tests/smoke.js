@@ -28,6 +28,8 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
     await pg.click(`nav.tabs a[data-tab=${t}]`); await pg.waitForTimeout(150);
     check(await pg.$eval("#view-" + t, (e) => !e.hidden), "tab " + t + " opens");
   }
+  const wg = await pg.textContent("#weekGoal");
+  check(!(await pg.$eval("#weekGoal", (e) => e.hidden)) && /Heute nötig/.test(wg) && /Soll pro Tag/.test(wg) && /Defizit|Überschuss/.test(wg), "week goal box shows steps and deficit needed today");
   const today0 = await pg.$$eval("#mealList .mname", (e) => e.map((x) => x.textContent));
   check(today0.includes("Frühstück vorhanden") && today0.includes("Cappuccino"), "auto coffee keeps existing meals");
   // office days use the smaller office cappuccino
