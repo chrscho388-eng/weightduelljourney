@@ -76,6 +76,11 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk "Weightplan-3.${GITHUB_RUN_NUMBER}.apk"
           cp android-web/app/build/outputs/apk/release/app-release.apk "Weightplan-Web-2.${GITHUB_RUN_NUMBER}.apk"
           cp "Weightplan-3.${GITHUB_RUN_NUMBER}.apk" Weightplan.apk
+          # page-only updates: the tested page plus the native shell version (NATIVE in MainActivity)
+          cp android/app/src/main/assets/index.html Weightplan-page.html
+          NATIVE=$(grep -oP 'static final int NATIVE = \K\d+' android/app/src/main/java/de/weightplan/app/MainActivity.java)
+          printf '{"build":%s,"native":%s}' "${GITHUB_RUN_NUMBER}" "${NATIVE}" > update.json
+          cat update.json
 
       - uses: actions/upload-artifact@v4
         with:
@@ -87,6 +92,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest Weightplan.apk "Weightplan-3.${GITHUB_RUN_NUMBER}.apk" "Weightplan-Web-2.${GITHUB_RUN_NUMBER}.apk" \
+          gh release create latest Weightplan.apk "Weightplan-3.${GITHUB_RUN_NUMBER}.apk" "Weightplan-Web-2.${GITHUB_RUN_NUMBER}.apk" Weightplan-page.html update.json \
             --title "Weightplan 3.${GITHUB_RUN_NUMBER} (Web 2.${GITHUB_RUN_NUMBER})" \
             --notes "Automatisch gebaut aus ${GITHUB_SHA::7}. Weightplan.apk ist immer die neueste eigenständige App (gleich wie Weightplan-3.x), Weightplan-Web-2.x öffnet die claude.ai-Version. Anleitung in der README."

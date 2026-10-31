@@ -277,6 +277,10 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(rem.steps && rem.steps.on === true && rem.steps.time === "21:15" && rem.weigh && rem.weigh.on === false, "reminder settings sent to the app");
   check(JSON.stringify(await pg.evaluate(() => window.__day)) === JSON.stringify(["2026-11-04", false, false]), "today's state reported to the app");
   check(await pg.isVisible("#updBanner") && /3\.99 ist verfügbar/.test(await pg.textContent("#updStatus")), "manual check in the profile shows the update");
+  await pg.evaluate(() => { window.__reloaded = 0; window.WeightplanAndroid.reloadPage = () => { window.__reloaded++; }; window.__wpUpdate("page", "3.98"); }); await pg.waitForTimeout(100);
+  check(/3\.98 ist geladen/.test(await pg.textContent("#updText")) && (await pg.textContent("#updInstall")) === "Jetzt neu laden", "page-only update offers a reload instead of an install");
+  await pg.click("#updInstall"); await pg.waitForTimeout(800);
+  check(await pg.evaluate(() => window.__reloaded) === 1, "reload button reloads the page");
   check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
   await b.close();
   if (fails.length) { console.log(`\n${fails.length} check(s) failed`); process.exit(1); }

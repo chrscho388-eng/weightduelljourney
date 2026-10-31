@@ -31,8 +31,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Runs the Weightplan web app bundled in assets/index.html inside a WebView.
@@ -45,9 +43,14 @@ public class MainActivity extends Activity {
 
     private static final String START_URL = "https://appassets.androidplatform.net/assets/index.html";
     private static final int FILE_CHOOSER_REQUEST = 1;
-    private static final String RELEASE_API = "https://api.github.com/repos/chrscho388-eng/weightduelljourney/releases/tags/latest";
     private static final String APK_URL = "https://github.com/chrscho388-eng/weightduelljourney/releases/download/latest/Weightplan.apk";
-    private File pendingApk;
+    private static final String UPDATE_JSON = "https://github.com/chrscho388-eng/weightduelljourney/releases/download/latest/update.json";
+    private static final String PAGE_URL = "https://github.com/chrscho388-eng/weightduelljourney/releases/download/latest/Weightplan-page.html";
+    /**
+     * Version of the native shell (Java code, bridge, manifest). Raise it whenever something here changes:
+     * releases with a higher number need a real APK install; all others only swap the page (no installer).
+     */
+    static final int NATIVE = 3;
 
     private WebView webView;
     private ValueCallback<Uri[]> pendingFileCallback;
@@ -74,7 +77,15 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                return assetLoader.shouldInterceptRequest(request.getUrl());
+                Uri u = request.getUrl();
+                // a newer page downloaded from the release replaces the bundled one
+                if ("appassets.androidplatform.net".equals(u.getHost()) && "/assets/index.html".equals(u.getPath()) && pageActive()) {
+                    try {
+                        return new WebResourceResponse("text/html", "utf-8", new java.io.FileInputStream(pageFile()));
+                    } catch (Exception ignored) {
+                    }
+                }
+                return assetLoader.shouldInterceptRequest(u);
             }
 
             @Override
@@ -159,19 +170,52 @@ public class MainActivity extends Activity {
         lastPhotoUri = null;
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (pendingApk != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && getPackageManager().canRequestPackageInstalls()) {
-            File f = pendingApk;
-            pendingApk = null;
-            startInstall(f);
-        }
-    }
-
     /** Sends a result to the page: window.__wpUpdate(kind, value). */
     private void toPage(final String kind, final String value) {
         runOnUiThread(() -> webView.evaluateJavascript("window.__wpUpdate && window.__wpUpdate(" + JSONObject.quote(kind) + "," + JSONObject.quote(value) + ")", null));
+    }
+
+    private File pageFile() {
+        return new File(new File(getFilesDir(), "web"), "index.html");
+    }
+
+    private int pageBuild() {
+        return getSharedPreferences("app", MODE_PRIVATE).getInt("pageBuild", 0);
+    }
+
+    /** The downloaded page counts only while it is newer than the page inside the installed APK. */
+    private boolean pageActive() {
+        return pageBuild() > ownBuild() && pageFile().exists();
+    }
+
+    private int currentBuild() {
+        return pageActive() ? pageBuild() : ownBuild();
+    }
+
+    private static String readAll(HttpURLConnection c) throws Exception {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        try (InputStream in = c.getInputStream()) { byte[] b = new byte[8192]; int n; while ((n = in.read(b)) > 0) buf.write(b, 0, n); }
+        return buf.toString("UTF-8");
+    }
+
+    /** Downloads the page of a release into files/web/index.html; true on success. */
+    private boolean downloadPage(int build) {
+        try {
+            HttpURLConnection c = open(PAGE_URL);
+            if (c.getResponseCode() != 200) return false;
+            String html = readAll(c);
+            // only a complete page: the script block has to be closed
+            if (html.lastIndexOf("</script>") < html.lastIndexOf("<script>") || html.length() < 10000) return false;
+            File dir = pageFile().getParentFile();
+            if (!dir.exists() && !dir.mkdirs()) return false;
+            File tmp = new File(dir, "index.tmp");
+            try (OutputStream out = new FileOutputStream(tmp)) { out.write(html.getBytes(StandardCharsets.UTF_8)); }
+            if (!tmp.renameTo(pageFile())) return false;
+            getSharedPreferences("app", MODE_PRIVATE).edit().putInt("pageBuild", build).apply();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private int ownBuild() {
@@ -192,19 +236,6 @@ public class MainActivity extends Activity {
         return c;
     }
 
-    private void startInstall(File apk) {
-        try {
-            Uri uri = androidx.core.content.FileProvider.getUriForFile(this, getPackageName() + ".files", apk);
-            Intent i = new Intent(Intent.ACTION_VIEW);
-            i.setDataAndType(uri, "application/vnd.android.package-archive");
-            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(i);
-            toPage("installing", "");
-        } catch (Exception e) {
-            toPage("error", "Installation konnte nicht gestartet werden.");
-        }
-    }
-
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
@@ -222,11 +253,13 @@ public class MainActivity extends Activity {
         /** Version name of the installed app, e.g. "3.12". */
         @JavascriptInterface
         public String getVersion() {
-            try {
-                return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-            } catch (Exception e) {
-                return "";
-            }
+            return "3." + currentBuild();
+        }
+
+        /** Shows a freshly downloaded page right away. */
+        @JavascriptInterface
+        public void reloadPage() {
+            runOnUiThread(() -> webView.loadUrl(START_URL));
         }
 
         /** Reminder settings from the page, e.g. {"weigh":{"on":true,"time":"07:00"},"steps":{"on":true,"time":"20:30"}}. */
@@ -250,57 +283,45 @@ public class MainActivity extends Activity {
             e.apply();
         }
 
-        /** Looks up the newest release on GitHub; answers window.__wpUpdate("available"|"current"|"error", ...). */
+        /**
+         * Looks up the newest release. Only the page changed: it is downloaded right away ("page").
+         * The native shell changed: an APK install is needed ("available"). Otherwise "current" or "error".
+         */
         @JavascriptInterface
         public void checkUpdate() {
             new Thread(() -> {
                 try {
-                    HttpURLConnection c = open(RELEASE_API);
-                    c.setRequestProperty("Accept", "application/vnd.github+json");
-                    if (c.getResponseCode() != 200) { toPage("error", "GitHub antwortet nicht (" + c.getResponseCode() + ")."); return; }
-                    ByteArrayOutputStream buf = new ByteArrayOutputStream();
-                    try (InputStream in = c.getInputStream()) { byte[] b = new byte[8192]; int n; while ((n = in.read(b)) > 0) buf.write(b, 0, n); }
-                    String name = new JSONObject(buf.toString("UTF-8")).optString("name", "");
-                    Matcher m = Pattern.compile("Weightplan 3\\.(\\d+)").matcher(name);
-                    if (!m.find()) { toPage("error", "Keine Version im Release gefunden."); return; }
-                    int latest = Integer.parseInt(m.group(1));
-                    toPage(latest > ownBuild() ? "available" : "current", "3." + latest);
+                    HttpURLConnection u = open(UPDATE_JSON);
+                    if (u.getResponseCode() == 200) {
+                        JSONObject j = new JSONObject(readAll(u));
+                        int build = j.optInt("build", 0), nat = j.optInt("native", 0);
+                        if (nat > NATIVE) { toPage("available", "3." + build); return; }
+                        if (build <= currentBuild()) { toPage("current", "3." + currentBuild()); return; }
+                        boolean ok = downloadPage(build);
+                        toPage(ok ? "page" : "error", ok ? "3." + build : "Download der neuen Version fehlgeschlagen.");
+                        return;
+                    }
+                    toPage("error", "Keine Update-Info gefunden (" + u.getResponseCode() + ").");
                 } catch (Exception e) {
                     toPage("error", "Keine Verbindung zu GitHub.");
                 }
             }).start();
         }
 
-        /** Downloads the newest APK and opens Android's installer (the user confirms there). */
+        /**
+         * A new native shell: open the APK link in the browser (the app itself does not install apps;
+         * Play Protect flags apps that download and install other APKs).
+         */
         @JavascriptInterface
         public void installUpdate() {
-            new Thread(() -> {
+            runOnUiThread(() -> {
                 try {
-                    File dir = new File(getCacheDir(), "updates");
-                    if (!dir.exists() && !dir.mkdirs()) { toPage("error", "Kein Speicherplatz für das Update."); return; }
-                    File apk = new File(dir, "Weightplan.apk");
-                    HttpURLConnection c = open(APK_URL);
-                    if (c.getResponseCode() != 200) { toPage("error", "Download fehlgeschlagen (" + c.getResponseCode() + ")."); return; }
-                    long total = c.getContentLengthLong(), done = 0; int last = -1;
-                    try (InputStream in = c.getInputStream(); OutputStream out = new FileOutputStream(apk)) {
-                        byte[] b = new byte[65536]; int n;
-                        while ((n = in.read(b)) > 0) {
-                            out.write(b, 0, n); done += n;
-                            if (total > 0) { int pct = (int) (done * 100 / total); if (pct / 10 != last) { last = pct / 10; toPage("progress", String.valueOf(pct)); } }
-                        }
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
-                        // first time: Android asks once to allow installs from this app, then we continue in onResume
-                        pendingApk = apk;
-                        toPage("permission", "");
-                        runOnUiThread(() -> startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName()))));
-                        return;
-                    }
-                    startInstall(apk);
-                } catch (Exception e) {
-                    toPage("error", "Download fehlgeschlagen. Prüfe die Internetverbindung.");
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(APK_URL)));
+                    toPage("browser", "");
+                } catch (ActivityNotFoundException e) {
+                    toPage("error", "Kein Browser gefunden.");
                 }
-            }).start();
+            });
         }
 
         /** Saves a text file into Downloads and returns where it went, or "" on failure. */
