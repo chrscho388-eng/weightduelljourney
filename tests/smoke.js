@@ -261,6 +261,10 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const del = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
   check(!del.meals.some((m) => m.id === "r1") && del.removed.includes("r1") && !putJson.docs["profile/days/2026-11-04"].meals.some((m) => m.id === "r1"), "deleted meal stays deleted after the merge");
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  // protein: minimum target plus optimum
+  await pg.click("nav.tabs a[data-tab=profil]"); await pg.fill("#pProtOpt", "250"); await pg.click("#pSave"); await pg.waitForTimeout(300);
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  check(/optimal 250 g/.test(await pg.textContent("#gProtOf")) && await pg.isVisible("#gProtOpt"), "protein optimum shown next to the target");
   // real app: update check through the Android bridge
   await pg.addInitScript(() => { window.__installed = 0; window.WeightplanAndroid = { getVersion: () => "3.40", saveFile: () => "", checkUpdate: () => setTimeout(() => window.__wpUpdate("available", "3.99"), 50), setReminders: (j) => { window.__rem = j; }, dayState: (d, w, st) => { window.__day = [d, w, st]; }, installUpdate: () => { window.__installed++; setTimeout(() => window.__wpUpdate("progress", "50"), 10); } }; });
   await pg.evaluate(() => localStorage.removeItem("kurs:updLast")); await pg.reload(); await pg.waitForTimeout(3200);
