@@ -28,6 +28,13 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
     await pg.click(`nav.tabs a[data-tab=${t}]`); await pg.waitForTimeout(150);
     check(await pg.$eval("#view-" + t, (e) => !e.hidden), "tab " + t + " opens");
   }
+  // weekly review: hidden while the week runs (fixture date is a Wednesday), shown for the past week
+  await pg.click("nav.tabs a[data-tab=woche]"); await pg.waitForTimeout(150);
+  check(await pg.$eval("#weekReviewWrap", (e) => e.hidden), "weekly review hidden for the running week");
+  await pg.click("#prevWeek"); await pg.waitForTimeout(200);
+  const rv = await pg.$eval("#weekReviewWrap", (e) => e.hidden ? "" : e.textContent);
+  check(/Wochenrückblick/.test(rv) && /Bilanz/.test(rv) && /Empfehlung/.test(rv), "weekly review shown for the past week");
+  await pg.click("#nextWeek"); await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   const wg = await pg.textContent("#weekGoal");
   check(!(await pg.$eval("#weekGoal", (e) => e.hidden)) && /Heute nötig/.test(wg) && /Soll pro Tag/.test(wg) && /Defizit|Überschuss/.test(wg), "week goal box shows steps and deficit needed today");
   const today0 = await pg.$$eval("#mealList .mname", (e) => e.map((x) => x.textContent));
