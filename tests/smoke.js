@@ -51,6 +51,7 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("#planName"); await pg.waitForTimeout(100);
   check((await pg.$$("#planPicker button")).length >= 1, "plan picker lists weeks");
   await pg.click("#planName"); await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  check(/Wochenrückblick/.test(await pg.textContent("#featuresBox")), "profile has the feature list");
   const wg = await pg.textContent("#weekGoal");
   check(!(await pg.$eval("#weekGoal", (e) => e.hidden)) && /Heute nötig/.test(wg) && /Soll pro Tag/.test(wg) && /Defizit|Überschuss/.test(wg), "week goal box shows steps and deficit needed today");
   const today0 = await pg.$$eval("#mealList .mname", (e) => e.map((x) => x.textContent));
