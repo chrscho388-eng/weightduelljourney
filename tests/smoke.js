@@ -50,7 +50,16 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
   await pg.click("#planName"); await pg.waitForTimeout(100);
   check((await pg.$$("#planPicker button")).length >= 1, "plan picker lists weeks");
-  await pg.click("#planName"); await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  await pg.click("#planName"); await pg.waitForTimeout(100);
+  // recipe ingredients for 1 or 2 people
+  await pg.evaluate(() => document.querySelectorAll("#plan details.recipe, details.recipe").forEach((d) => d.open = true));
+  const rec = pg.locator("details.recipe", { hasText: "Hähnchenbrust" }).first();
+  await rec.locator("[data-pp='2']").click(); await pg.waitForTimeout(100);
+  const r2 = await rec.innerText();
+  check(/500 g Hähnchenbrust/.test(r2) && /160 g Reis/.test(r2) && /2 Prise/.test(r2) && !/\b250 g Hähnchenbrust/.test(r2), "recipe shows amounts for two people");
+  await rec.locator("[data-pp='1']").click(); await pg.waitForTimeout(100);
+  check(/250 g Hähnchenbrust/.test(await rec.innerText()), "recipe switches back to one person");
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   check(/Wochenrückblick/.test(await pg.textContent("#featuresBox")), "profile has the feature list");
   const wg = await pg.textContent("#weekGoal");
   check(!(await pg.$eval("#weekGoal", (e) => e.hidden)) && /Heute nötig/.test(wg) && /Soll pro Tag/.test(wg) && /Defizit|Überschuss/.test(wg), "week goal box shows steps and deficit needed today");
