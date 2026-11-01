@@ -35,6 +35,22 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const rv = await pg.$eval("#weekReviewWrap", (e) => e.hidden ? "" : e.textContent);
   check(/Wochenrückblick/.test(rv) && /Bilanz/.test(rv) && /Empfehlung/.test(rv), "weekly review shown for the past week");
   await pg.click("#nextWeek"); await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  // quick pickers
+  await pg.click("#dayName"); await pg.waitForTimeout(100);
+  check((await pg.$$("#dayPicker button")).length >= 7, "day picker lists the days of the week");
+  await pg.click("#dayPicker button >> nth=0"); await pg.waitForTimeout(200);
+  check((await pg.textContent("#dayName")).includes("02.11.") && await pg.$eval("#dayPicker", (e) => e.hidden), "day picker jumps to Monday");
+  await pg.click("#dayName"); await pg.click("#dayPicker button >> nth=2"); await pg.waitForTimeout(200);
+  await pg.click("nav.tabs a[data-tab=woche]"); await pg.waitForTimeout(150);
+  await pg.click("#weekName"); await pg.waitForTimeout(100);
+  const wk = await pg.$$eval("#weekPicker button", (e) => e.map((x) => x.textContent));
+  check(wk.length >= 2, "week picker lists past weeks (" + wk.length + ")");
+  await pg.click("#weekPicker button >> nth=1"); await pg.waitForTimeout(150);
+  check((await pg.textContent("#weekName")).includes("26.10."), "week picker opens the chosen week");
+  await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
+  await pg.click("#planName"); await pg.waitForTimeout(100);
+  check((await pg.$$("#planPicker button")).length >= 1, "plan picker lists weeks");
+  await pg.click("#planName"); await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   const wg = await pg.textContent("#weekGoal");
   check(!(await pg.$eval("#weekGoal", (e) => e.hidden)) && /Heute nötig/.test(wg) && /Soll pro Tag/.test(wg) && /Defizit|Überschuss/.test(wg), "week goal box shows steps and deficit needed today");
   const today0 = await pg.$$eval("#mealList .mname", (e) => e.map((x) => x.textContent));
