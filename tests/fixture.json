@@ -211,6 +211,53 @@
       "kcal": 500,
       "protein": 80,
       "cook": false
+     },
+     {
+      "slot": "Mittag",
+      "name": "Hähnchen-Nudeln",
+      "detail": "250 g Hähnchenbrust, 100 g Nudeln",
+      "kcal": 300,
+      "protein": 30,
+      "cook": true,
+      "recipe": {
+       "servings": "1 Portion",
+       "minutes": 20,
+       "ingredients": [
+        {
+         "amount": "250 g",
+         "item": "Gegrillte Hähnchenbrust"
+        },
+        {
+         "amount": "½",
+         "item": "Limette, Saft"
+        },
+        {
+         "amount": "",
+         "item": "Limettensaft"
+        },
+        {
+         "amount": "150 g",
+         "item": "Bohnen (Rest von letzter Woche)"
+        },
+        {
+         "amount": "40 g",
+         "item": "Schmand",
+         "have": true
+        },
+        {
+         "amount": "15 g",
+         "item": "Öl"
+        },
+        {
+         "amount": "",
+         "item": "Salz"
+        }
+       ],
+       "steps": [
+        "Alles mischen."
+       ],
+       "tip": ""
+      }
      }
     ]
    }
