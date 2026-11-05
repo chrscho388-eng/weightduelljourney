@@ -320,6 +320,21 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(/3\.98 ist geladen/.test(await pg.textContent("#updText")) && (await pg.textContent("#updInstall")) === "Jetzt neu laden", "page-only update offers a reload instead of an install");
   await pg.click("#updInstall"); await pg.waitForTimeout(800);
   check(await pg.evaluate(() => window.__reloaded) === 1, "reload button reloads the page");
+  // steps per incline: 0 % plus the profile's inclines, legacy fields stay filled
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  check(await pg.$("#steps_0") && await pg.$("#steps_9"), "step fields for 0 % and the profile incline");
+  await pg.fill("#steps_9", "10000"); await pg.dispatchEvent("#steps_9", "change"); await pg.waitForTimeout(200);
+  const sd = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
+  check(sd.steps && sd.steps["9"] === 10000 && sd.inclineSteps === 10000 && sd.flatSteps === (sd.steps["0"] || null), "incline steps saved per incline and as legacy fields");
+  await pg.click("nav.tabs a[data-tab=profil]"); await pg.waitForTimeout(150);
+  await pg.fill("#pInclineAdd", "5"); await pg.click("#pInclineAddBtn"); await pg.waitForTimeout(100);
+  check(/5 %/.test(await pg.textContent("#pInclines")), "incline added in the profile");
+  check((await pg.textContent("#remWeighDay")) === "Dienstag", "weigh reminder names the weigh day");
+  await pg.$eval("#profileForm", (f) => f.requestSubmit()); await pg.waitForTimeout(300);
+  const pf = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile")));
+  check(JSON.stringify(pf.inclines) === "[5,9]" && pf.inclinePct === 9, "incline list saved, legacy incline kept");
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  check(await pg.$("#steps_5"), "new incline gets its own step field");
   check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
   await b.close();
   if (fails.length) { console.log(`\n${fails.length} check(s) failed`); process.exit(1); }
