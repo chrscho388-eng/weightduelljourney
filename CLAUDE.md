@@ -4,7 +4,7 @@ Sprache: Deutsch. Tokens sind wichtiger als Zeit. Code erst auf ausdrücklichen 
 
 ## Historie
 
-Kontext liegt als eine Datei pro Tag unter einem Ordner pro Chat: `/mnt/project-files/history/<chat-name>/JJJJ-MM-TT.md` (Projektordner). Bei Bedarf dort nachlesen statt Kontext mitzuschleppen; am Ende jeder Arbeit 3–5 Zeilen in die Tagesdatei schreiben.
+Kontext liegt als eine Datei pro Tag unter einem Ordner pro Chat: `/mnt/project-files/history/health/<chat-name>/health_<chat-name>_JJJJ-MM-TT.md` (Projektordner). Bei Bedarf dort nachlesen statt Kontext mitzuschleppen; am Ende jeder Arbeit 3–5 Zeilen in die Tagesdatei schreiben.
 
 
 ## Die Entwicklungsschleife
