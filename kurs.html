@@ -510,6 +510,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <div class="field"><label class="label" for="pProtOpt">Eiweiß optimal (g, optional)</label><input id="pProtOpt" type="number" inputmode="numeric" step="5" min="0"></div>
         <div class="field"><label class="label" for="pIncline">Steigung Laufband (%)</label><input id="pIncline" type="number" inputmode="decimal" step="0.5" min="0" max="15" value="9"></div>
         <div class="field"><label class="label" for="pSpeed">Tempo (km/h)</label><input id="pSpeed" type="number" inputmode="decimal" step="0.1" min="1" max="8" value="3.5"></div>
+        <div class="field"><label class="label" for="pWeighDay">Wiegetag (morgens; die Woche beginnt mit ihm)</label><select id="pWeighDay"><option value="0">Montag</option><option value="1" selected>Dienstag</option><option value="2">Mittwoch</option><option value="3">Donnerstag</option><option value="4">Freitag</option><option value="5">Samstag</option><option value="6">Sonntag</option></select></div>
       </div>
       <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pRail" style="width:auto"> Hände beim Gehen locker abgestützt (−5 % Verbrauch)</label>
       <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für Schätzung und Plan</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal; kein Rind; esse mit Partnerin; schnelle Gerichte"></textarea></div>
@@ -533,7 +534,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <h4>Woche: wie lief die Woche?</h4><ul>
         <li>Alle Tage der Woche nebeneinander, mit Durchschnitt und Summe.</li>
         <li>Vergleich: Wie viel solltest du rechnerisch abgenommen haben, und was sagt die Waage?</li>
-        <li><b>Wochenrückblick:</b> am Sonntag eine erste Einschätzung, ab Montag die fertige Auswertung mit Prognose und einem Tipp für die nächste Woche.</li>
+        <li><b>Wochenrückblick:</b> am letzten Tag der Woche eine erste Einschätzung, ab dem Wiegetag die fertige Auswertung mit Prognose und einem Tipp für die nächste Woche.</li>
         <li>Tipp auf den Wochennamen, um zu einer früheren Woche zu springen.</li>
       </ul>
       <h4>Verlauf: der große Überblick</h4><ul>
@@ -625,7 +626,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 
   // ---- profile (data/users/<id>/profile); neutral placeholder until it loads ----
   const DEFAULTS = {
-    name: "", sex: "m", age: null, heightCm: null, inclinePct: 9, speedKmh: 3.5, handrail: false,
+    name: "", sex: "m", age: null, heightCm: null, inclinePct: 9, speedKmh: 3.5, handrail: false, weighDay: 1,
     baseKcal: 2300, flatFactor: 0.036, inclineFactor: 0.07,
     kcalTarget: 2000, eventKcal: 3000, proteinTarget: 150,
     startDate: null, startWeightDate: null, startWeight: null, goalWeight: null, goalDate: null,
@@ -658,6 +659,9 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   const addDays = (s, n) => fromUTC(toUTC(s) + n * 86400000);
   const weekday = (s) => (new Date(toUTC(s)).getUTCDay() + 6) % 7; // 0 = Mo
   const mondayOf = (s) => addDays(s, -weekday(s));
+  // balance weeks run from weigh day to weigh day (weighed in the morning, so that day belongs to the new week); meal plans stay Mon–Sun
+  const wkPos = (s) => (weekday(s) - (S.weighDay ?? 1) + 7) % 7;
+  const wkStart = (s) => addDays(s, -wkPos(s));
   const WD = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
   const WDL = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
   const dm = (s) => { const [, m, d] = s.split("-"); return `${d}.${m}.`; };
@@ -668,7 +672,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   const days = {};      // date -> doc
   const plans = {};     // monday -> doc
   let curDay = todayStr();
-  let curWeek = mondayOf(curDay);
+  let curWeek = wkStart(curDay);
   let curPlan = mondayOf(curDay);
   let editingId = null, planFill = null;
   let pendingEst = null;
@@ -738,7 +742,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     const weights = Object.values(days).filter((d) => d.weight).sort((a, b) => a.date < b.date ? -1 : 1);
     const last = weights.length ? weights[weights.length - 1] : { weight: S.startWeight, date: S.startWeightDate };
     const toGo = last.weight - S.goalWeight;
-    $("topMeta").innerHTML = `<div class="tm1">${fmt(last.weight, 1)} kg</div><div class="tm2">noch ${fmt(toGo, 1)} kg · Woche ${Math.max(0, weekNo(mondayOf(todayStr())))}</div>`;
+    $("topMeta").innerHTML = `<div class="tm1">${fmt(last.weight, 1)} kg</div><div class="tm2">noch ${fmt(toGo, 1)} kg · Woche ${Math.max(0, weekNo(wkStart(todayStr())))}</div>`;
   }
 
   // ---- render: today ----
@@ -746,7 +750,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   function renderDay() {
     if (hasProfile) setTimeout(() => ensureCoffee(curDay), 0);
     const d = dayDoc(curDay);
-    const wn = weekNo(mondayOf(curDay));
+    const wn = weekNo(wkStart(curDay));
     $("dayName").textContent = `${WDL[weekday(curDay)]}, ${dm(curDay)}${curDay === todayStr() ? " · heute" : ""}`;
     const kin = intake(d), pr = protein(d), out = burn(d), bal = kin - out;
     const target = d.event ? S.eventKcal : S.kcalTarget;
@@ -762,8 +766,8 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     $("gProtOpt").hidden = !popt; if (popt) $("gProtOpt").style.left = (S.proteinTarget / popt * 100) + "%";
 
     // week-to-date average
-    const mon = mondayOf(curDay);
-    const wdays = []; for (let i = 0; i <= weekday(curDay); i++) { const x = addDays(mon, i); if (hasData(dayDoc(x))) wdays.push(dayDoc(x)); }
+    const mon = wkStart(curDay);
+    const wdays = []; for (let i = 0; i <= wkPos(curDay); i++) { const x = addDays(mon, i); if (hasData(dayDoc(x))) wdays.push(dayDoc(x)); }
     const avgBal = wdays.length ? wdays.reduce((a, x) => a + intake(x) - burn(x), 0) / wdays.length : null;
     $("balanceRow").innerHTML =
       `<span>Verbrauch</span><b>${fmt(out)} kcal</b>` +
@@ -796,13 +800,13 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 
     renderFavs();
     $("streakLine").innerHTML = streakLine();
-    // Sunday: preview of this week's review, Monday: the full review of last week
-    { const t = todayStr(), wd = weekday(t), rh = $("reviewHint");
+    // last day of the week: preview of this week's review, weigh day: the full review of last week
+    { const t = todayStr(), wd = wkPos(t), rh = $("reviewHint");
       rh.hidden = !(curDay === t && hasProfile && (wd === 6 || wd === 0));
-      if (!rh.hidden) { const m = wd === 6 ? mondayOf(t) : addDays(mondayOf(t), -7); rh.textContent = wd === 6 ? "Wochenrückblick: Vorabinfo ansehen ›" : "Wochenrückblick der letzten Woche ansehen ›"; rh.onclick = () => { curWeek = m; location.hash = "#woche"; renderWeek(); }; } }
+      if (!rh.hidden) { const m = wd === 6 ? wkStart(t) : addDays(wkStart(t), -7); rh.textContent = wd === 6 ? "Wochenrückblick: Vorabinfo ansehen ›" : "Wochenrückblick der letzten Woche ansehen ›"; rh.onclick = () => { curWeek = m; location.hash = "#woche"; renderWeek(); }; } }
 
     // plan chips
-    const plan = plans[mon];
+    const plan = plans[mondayOf(curDay)]; // meal plans stay Mon–Sun
     const pday = plan && (plan.days || []).find((x) => x.date === curDay);
     const wrap = $("planChipsWrap"), chips = $("planChips"); chips.innerHTML = "";
     if (pday && (pday.meals || []).length) {
@@ -1187,12 +1191,12 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
   }
   const firstMon = () => mondayOf([Object.keys(days).filter((d) => hasData(days[d])).sort()[0], S.startDate, todayStr()].filter(Boolean).sort()[0]);
   $("dayName").onclick = () => {
-    const mon = mondayOf(curDay), t = todayStr(), items = [];
+    const mon = wkStart(curDay), t = todayStr(), items = [];
     for (let i = 0; i < 7; i++) { const x = addDays(mon, i), d = dayDoc(x); items.push({ v: x, on: x === curDay, label: `${WDL[weekday(x)]}, ${dm(x)}${x === t ? " · heute" : ""}`, info: hasData(d) ? `${fmt(intake(d))} kcal · ${signed(intake(d) - burn(d))}` : (x > t ? "" : "offen") }); }
-    if (mon !== mondayOf(t)) items.push({ v: t, label: "Zu heute springen", info: "" });
+    if (mon !== wkStart(t)) items.push({ v: t, label: "Zu heute springen", info: "" });
     openPicker("dayName", "dayPicker", items, (v) => { curDay = v; endEdit(); renderDay(); });
   };
-  $("weekName").onclick = () => openPicker("weekName", "weekPicker", weekList(firstMon(), mondayOf(todayStr()), curWeek, (m) => { const st = weekStats(m); return st.n ? `${signed(r5(st.sum))} kcal` : ""; }), (v) => { curWeek = v; renderWeek(); });
+  $("weekName").onclick = () => openPicker("weekName", "weekPicker", weekList(wkStart(firstMon()), wkStart(todayStr()), curWeek, (m) => { const st = weekStats(m); return st.n ? `${signed(r5(st.sum))} kcal` : ""; }), (v) => { curWeek = v; renderWeek(); });
   $("planName").onclick = () => {
     const ks = Object.keys(plans).sort(), to = [ks[ks.length - 1], addDays(mondayOf(todayStr()), 7)].filter(Boolean).sort().pop();
     openPicker("planName", "planPicker", weekList([ks[0], firstMon()].filter(Boolean).sort()[0], to, curPlan, (m) => plans[m] ? "Plan" : "–"), (v) => { curPlan = v; openRecipe = null; renderPlan(); });
@@ -1259,7 +1263,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     return { bal: (d.event ? S.eventKcal : S.kcalTarget) - out, out };
   }
   function weekTargets(date) {
-    const mon = mondayOf(date), n = weekday(date) + 1, d = dayDoc(date), today = stepsOf(d);
+    const mon = wkStart(date), n = wkPos(date) + 1, d = dayDoc(date), today = stepsOf(d);
     const r = { n, left: 7 - n + 1 };
     // steps: every day of the week so far counts, days without steps as 0
     let goalSum = 0, before = 0, weekGoal = 0;
@@ -1381,7 +1385,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
       let extra = "";
       if (s.key === "steps") {
         const g = stepGoalFor(todayStr());
-        if (g && g.full > g.min) { const mon = mondayOf(todayStr()); let n = 0; for (let i = 0; i < 7; i++) { const d = days[addDays(mon, i)]; if (d && stepsOf(d) >= g.full) n++; } extra = `<div class="small muted">Diese Woche ${n} von 5 Tagen mit ${fmt(g.full)}</div>`; }
+        if (g && g.full > g.min) { const mon = wkStart(todayStr()); let n = 0; for (let i = 0; i < 7; i++) { const d = days[addDays(mon, i)]; if (d && stepsOf(d) >= g.full) n++; } extra = `<div class="small muted">Diese Woche ${n} von 5 Tagen mit ${fmt(g.full)}</div>`; }
         else if (g) extra = `<div class="small muted">Ziel ${fmt(g.min)} Schritte</div>`;
       }
       return `<div class="tile"><div class="label">${s.label}</div><div class="big num">${tage(r.cur)}</div><div class="small muted">in Folge · Rekord ${tage(r.best)}</div>${extra}</div>`;
@@ -1435,8 +1439,8 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
       rows.push({ date, d, kin: a, out: b, bal: a - b, pr: protein(d) });
       sum += a - b; kin += a; out += b; pr += protein(d); n++;
     }
-    const wStart = days[addDays(mon, 1)] && days[addDays(mon, 1)].weight;
-    const wEnd = days[addDays(mon, 8)] && days[addDays(mon, 8)].weight;
+    const wStart = days[mon] && days[mon].weight;
+    const wEnd = days[addDays(mon, 7)] && days[addDays(mon, 7)].weight;
     return { rows, sum, n, avg: n ? { kin: kin / n, out: out / n, bal: sum / n, pr: pr / n } : null, expected: sum / S.kcalPerKg, wStart, wEnd };
   }
   const r5 = (x) => Math.round(x / 5) * 5;
@@ -1447,6 +1451,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     return p.join(" + ") || "–";
   }
   function renderWeek() {
+    curWeek = wkStart(curWeek); // the weigh day may have changed
     const wn = weekNo(curWeek);
     $("weekName").textContent = `${wn >= 1 ? "Woche " + wn : "Vor dem Start"} · ${dm(curWeek)}–${dm(addDays(curWeek, 6))}`;
     const st = weekStats(curWeek);
@@ -1468,10 +1473,10 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
       <div class="fields">
         <div><div class="label">Summe Bilanz</div><div class="num" style="font-size:20px">${signed(r5(st.sum))} kcal</div><div class="small muted">${st.n} von 7 Tagen erfasst</div></div>
         <div><div class="label">Erwartet</div><div class="num" style="font-size:20px">${signedKg(st.expected)}</div><div class="small muted">Summe / ${fmt(S.kcalPerKg)} kcal pro kg</div></div>
-        <div><div class="label">Tatsächlich (Di → Di)</div><div class="num" style="font-size:20px">${actual == null ? "offen" : signedKg(actual)}</div><div class="small muted">${st.wStart ? fmt(st.wStart, 1) : "?"} → ${st.wEnd ? fmt(st.wEnd, 1) : "Di " + dm(addDays(curWeek, 8))} kg</div></div>
+        <div><div class="label">Tatsächlich (${WD[S.weighDay ?? 1]} → ${WD[S.weighDay ?? 1]})</div><div class="num" style="font-size:20px">${actual == null ? "offen" : signedKg(actual)}</div><div class="small muted">${st.wStart ? fmt(st.wStart, 1) : "?"} → ${st.wEnd ? fmt(st.wEnd, 1) : "Di " + dm(addDays(curWeek, 8))} kg</div></div>
       </div>`;
   }
-  // ---- weekly review: preview on the week's Sunday (Mon–Sat), complete from Monday on ----
+  // ---- weekly review: preview on the week's last day (without it), complete from the next weigh day on ----
   function weekReview(mon) {
     const today = todayStr(), sun = addDays(mon, 6);
     if (today < sun) return null;
@@ -1487,7 +1492,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     if (pre && !logged(dayDoc(sun))) r.withSun = r.sum + sollBal(sun).bal;
     const st = weekStats(mon); r.wStart = st.wStart; r.wEnd = st.wEnd;
     // pace over the last two weeks of weigh-ins, for the adjustment rules
-    const ws = weighIns().filter((w) => w.date <= addDays(mon, 8));
+    const ws = weighIns().filter((w) => w.date <= addDays(mon, 7));
     const w2 = ws.filter((w) => w.date >= addDays(ws.length ? ws[ws.length - 1].date : today, -14));
     if (w2.length >= 2 && w2[w2.length - 1].date > w2[0].date) r.pace = (w2[0].weight - w2[w2.length - 1].weight) / ((toUTC(w2[w2.length - 1].date) - toUTC(w2[0].date)) / (7 * 864e5));
     r.lastW = ws.length ? ws[ws.length - 1] : { date: S.startWeightDate, weight: S.startWeight };
@@ -1501,13 +1506,14 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     $("weekReviewHead").textContent = r.pre ? "Wochenrückblick (Vorabinfo)" : "Wochenrückblick";
     const k = (v) => `<b class="k">${v}</b>`, tg = (c) => `${c} von ${r.n}`;
     const exp = r.sum / S.kcalPerKg, expSun = r.withSun != null ? r.withSun / S.kcalPerKg : null;
-    let h = `<p>${r.pre ? `Montag bis Samstag, der Sonntag läuft noch. Komplett ab Montag.` : `${r.n} von 7 Tagen erfasst.`}</p>`;
+    const wdN = WDL[S.weighDay ?? 1], lastN = WDL[(weekday(r.mon) + 6) % 7];
+    let h = `<p>${r.pre ? `${WDL[weekday(r.mon)]} bis ${WDL[(weekday(r.mon) + 5) % 7]}, der ${lastN} läuft noch. Komplett ab ${wdN}.` : `${r.n} von 7 Tagen erfasst.`}</p>`;
     h += `<p><b>Ernährung:</b> im Schnitt ${k(fmt(r5(r.kin)) + " kcal")} und ${k(fmt(Math.round(r.pr)) + " g")} Eiweiß. Im Kalorienrahmen an ${tg(r.inKcal)} Tagen, Eiweißziel ${fmt(S.proteinTarget)} g an ${tg(r.protOk)}.</p>`;
     if (r.goalSteps) h += `<p><b>Bewegung:</b> im Schnitt ${k(fmt(Math.round(r.steps / 100) * 100))} Schritte (Ziel ${fmt(Math.round(r.goalSteps / 100) * 100)}), volles Schrittziel an ${tg(r.stepOk)} Tagen.</p>`;
-    h += `<p><b>Bilanz:</b> ${k(signed(r5(r.sum)) + " kcal")}, das sind etwa ${k(signedKg(exp))}${expSun != null ? `. Mit einem Sonntag nach Plan rund ${signedKg(expSun)}` : ""}.</p>`;
-    const tue = addDays(r.mon, 8);
-    if (r.wStart && r.wEnd) { const act = r.wEnd - r.wStart; h += `<p><b>Gewicht (Di → Di):</b> ${fmt(r.wStart, 1)} → ${fmt(r.wEnd, 1)} kg, also ${k(signedKg(act))} gegenüber ${signedKg(exp)} erwartet${Math.abs(act - exp) >= 0.5 ? " – einzelne Wiegungen schwanken stark (Wasser), aussagekräftig ist der Trend über zwei Wochen" : ""}.</p>`; }
-    else h += `<p><b>Gewicht:</b> Vergleich nach dem Wiegen am Di ${dm(tue)}${r.wStart ? ` (Start ${fmt(r.wStart, 1)} kg)` : ""}.</p>`;
+    h += `<p><b>Bilanz:</b> ${k(signed(r5(r.sum)) + " kcal")}, das sind etwa ${k(signedKg(exp))}${expSun != null ? `. Mit dem ${lastN} nach Plan rund ${signedKg(expSun)}` : ""}.</p>`;
+    const tue = addDays(r.mon, 7), wdS = WD[S.weighDay ?? 1];
+    if (r.wStart && r.wEnd) { const act = r.wEnd - r.wStart; h += `<p><b>Gewicht (${wdS} → ${wdS}):</b> ${fmt(r.wStart, 1)} → ${fmt(r.wEnd, 1)} kg, also ${k(signedKg(act))} gegenüber ${signedKg(exp)} erwartet${Math.abs(act - exp) >= 0.5 ? " – einzelne Wiegungen schwanken stark (Wasser), aussagekräftig ist der Trend über zwei Wochen" : ""}.</p>`; }
+    else h += `<p><b>Gewicht:</b> Vergleich nach dem Wiegen am ${wdS} ${dm(tue)}${r.wStart ? ` (Start ${fmt(r.wStart, 1)} kg)` : ""}.</p>`;
     if (r.ms) h += `<p><b>Zwischenziel:</b> ${fmt(r.ms.kg, 1)} kg bis ${dm(r.ms.date)}, noch ${k(fmt(r.lastW.weight - r.ms.kg, 1) + " kg")}.</p>`;
     if (r.f.eta) { const wk = Math.round((toUTC(S.goalDate) - toUTC(r.f.eta)) / (7 * 864e5)); h += `<p><b>Prognose:</b> ${fmt(S.goalWeight, 1)} kg etwa am ${k(dm(r.f.eta) + r.f.eta.slice(0, 4))}${wk > 0 ? `, ${wk} ${wk === 1 ? "Woche" : "Wochen"} vor der Deadline` : wk < 0 ? `, ${-wk} ${wk === -1 ? "Woche" : "Wochen"} nach der Deadline` : ""}.</p>`; }
     let rec;
@@ -1525,8 +1531,8 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
   function renderHistory() {
     const MS = milestones();
     // all weeks table
-    const first = mondayOf(Object.keys(days).sort()[0] || S.startDate || todayStr());
-    const lastMon = mondayOf(todayStr());
+    const first = wkStart(Object.keys(days).sort()[0] || S.startDate || todayStr());
+    const lastMon = wkStart(todayStr());
     let h = `<thead><tr><th>Woche</th><th>Summe</th><th>Erwartet</th><th>Tatsächlich</th><th>Gewicht</th></tr></thead><tbody>`;
     let any = false;
     for (let m = lastMon; m >= first; m = addDays(m, -7)) {
@@ -2258,8 +2264,8 @@ Antworte nur mit JSON in genau dieser Form:
   $("nextPlan").onclick = () => { closePickers(); curPlan = addDays(curPlan, 7); openRecipe = null; renderPlan(); };
 
   // ---- profile ----
-  const PF = { pName: "name", pSex: "sex", pAge: "age", pHeight: "heightCm", pStartW: "startWeight", pStartD: "startWeightDate", pGoalW: "goalWeight", pGoalD: "goalDate", pKcal: "kcalTarget", pProt: "proteinTarget", pProtOpt: "proteinOptimum", pIncline: "inclinePct", pSpeed: "speedKmh", pHints: "estimateHints" };
-  const NUMS = ["age", "heightCm", "startWeight", "goalWeight", "kcalTarget", "proteinTarget", "proteinOptimum", "inclinePct", "speedKmh"];
+  const PF = { pName: "name", pSex: "sex", pAge: "age", pHeight: "heightCm", pStartW: "startWeight", pStartD: "startWeightDate", pGoalW: "goalWeight", pGoalD: "goalDate", pKcal: "kcalTarget", pProt: "proteinTarget", pProtOpt: "proteinOptimum", pIncline: "inclinePct", pSpeed: "speedKmh", pWeighDay: "weighDay", pHints: "estimateHints" };
+  const NUMS = ["age", "heightCm", "startWeight", "goalWeight", "kcalTarget", "proteinTarget", "proteinOptimum", "inclinePct", "speedKmh", "weighDay"];
   function readForm() {
     const p = {};
     for (const [id, k] of Object.entries(PF)) { const v = $(id).value.trim(); p[k] = NUMS.includes(k) ? (v === "" ? null : Number(v)) : v; }
@@ -2277,7 +2283,7 @@ Antworte nur mit JSON in genau dieser Form:
   }
   Object.keys(PF).concat(["pRail"]).forEach((id) => $(id).addEventListener("input", calcPreview));
   function fillForm() {
-    for (const [id, k] of Object.entries(PF)) if (document.activeElement !== $(id)) $(id).value = S[k] ?? (id === "pIncline" ? 9 : id === "pSpeed" ? 3.5 : id === "pStartD" ? todayStr() : "");
+    for (const [id, k] of Object.entries(PF)) if (document.activeElement !== $(id)) $(id).value = S[k] ?? (id === "pIncline" ? 9 : id === "pSpeed" ? 3.5 : id === "pWeighDay" ? 1 : id === "pStartD" ? todayStr() : "");
     $("pRail").checked = !!S.handrail;
     $("profilTitle").textContent = hasProfile ? "Dein Profil" : "Willkommen! Lege zuerst dein Profil an";
     calcPreview();
