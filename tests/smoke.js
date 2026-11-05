@@ -128,10 +128,10 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const shop = await pg.textContent("#shopBox");
   check(/Hähnchenbrust/.test(shop) && /500 g/.test(shop), "shopping list doubles cooked dish");
   check(/Wahrscheinlich schon im Haushalt/.test(shop) && /Salz/.test(shop), "pantry items listed separately");
-  check(!/Schöpfer|Buffetsalat|\)(?<!\(Saft\))/.test(shop.split("Wahrscheinlich")[0]) && /Whey/.test(shop), "shopping list skips canteen and parses brackets");
+  check(!/Schöpfer|Buffetsalat|\)/.test(shop.split("Wahrscheinlich")[0]) && /Whey/.test(shop), "shopping list skips canteen and parses brackets");
   const buy = shop.split("Wahrscheinlich")[0], have = shop.split("Wahrscheinlich")[1] || "";
   check(/Eier9 Stk\./.test(buy) && !/Eiklar/.test(buy), "egg white counts as eggs, rounded up");
-  check(/Limette \(Saft\)1 Stk\./.test(buy) && !/Limettensaft/.test(buy), "lime and lime juice merge, no juice line");
+  check(/Limette1 Stk\./.test(buy) && !/Limettensaft/.test(buy), "lime and lime juice merge, no juice line");
   check((buy.match(/Hähnchenbrust/g) || []).length === 1 && !/Gegrillte/.test(buy), "cooking words do not split items");
   check(!/Bohnen|Schmand/.test(buy) && /Bohnen/.test(have) && /Schmand/.test(have), "stock and leftover items go to the household box");
   check(/Reispfanne \(Mi, schon gekocht\)/.test(shop) && !/Reis\d/.test(buy), "already cooked plan meal is skipped");
