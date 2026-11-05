@@ -72,9 +72,17 @@ public class ReminderReceiver extends BroadcastReceiver {
             at.set(Calendar.SECOND, 0);
             at.set(Calendar.MILLISECOND, 0);
             if (at.getTimeInMillis() <= System.currentTimeMillis() + 1000) at.add(Calendar.DAY_OF_YEAR, 1);
-            if ("weigh".equals(kind)) while (at.get(Calendar.DAY_OF_WEEK) != Calendar.TUESDAY) at.add(Calendar.DAY_OF_YEAR, 1);
+            if ("weigh".equals(kind)) { int wd = weighCal(c); while (at.get(Calendar.DAY_OF_WEEK) != wd) at.add(Calendar.DAY_OF_YEAR, 1); }
             am.setWindow(AlarmManager.RTC_WAKEUP, at.getTimeInMillis(), 10 * 60 * 1000, pi);
         }
+    }
+
+    // weigh day from the page: 0 = Monday … 6 = Sunday (default Tuesday) → Calendar.DAY_OF_WEEK (Sunday = 1)
+    static final String[] DAY_NAMES = {"Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"};
+    static int weighCal(JSONObject c) {
+        int d = c == null ? 1 : c.optInt("day", 1);
+        if (d < 0 || d > 6) d = 1;
+        return (d + 1) % 7 + 1;
     }
 
     private static void maybeNotify(Context ctx, String kind) {
@@ -82,9 +90,11 @@ public class ReminderReceiver extends BroadcastReceiver {
         String t = today();
         String title, text;
         if ("weigh".equals(kind)) {
-            if (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) != Calendar.TUESDAY || t.equals(p.getString("weighed", ""))) return;
+            JSONObject wc = config(ctx).optJSONObject("weigh");
+            int wd = weighCal(wc);
+            if (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) != wd || t.equals(p.getString("weighed", ""))) return;
             title = "Wiegetag";
-            text = "Heute ist Dienstag: einmal nüchtern wiegen und eintragen.";
+            text = "Heute ist " + DAY_NAMES[wd - 1] + ": einmal nüchtern wiegen und eintragen.";
         } else {
             if (t.equals(p.getString("steps", ""))) return;
             title = "Schritte eintragen";

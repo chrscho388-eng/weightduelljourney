@@ -253,8 +253,9 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 .shop li input { width: auto; }
 .shop li .amt { font-family: var(--font-data); font-size: 14px; white-space: nowrap; }
 .shop li.done .nm, .shop li.done .amt { text-decoration: line-through; color: var(--muted); }
-.remrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
-.remrow input[type=checkbox] { width: auto; }
+.remrow { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-top: 10px; }
+.remrow input[type=checkbox] { width: auto; margin: 0; }
+.remrow label { margin: 0; }
 .remrow input[type=time] { width: auto; padding: 4px 6px; }
 .toast { position: fixed; left: 16px; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 50; display: flex; gap: 12px; align-items: center; justify-content: space-between; background: var(--fg); color: var(--bg); padding: 10px 14px; border-radius: 10px; font-size: 14px; max-width: 560px; margin: 0 auto; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
 .toast[hidden] { display: none; }
@@ -563,8 +564,8 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="status small" id="updStatus"></div>
       <div class="panel" id="remBox" hidden>
         <div class="label">Erinnerungen</div>
-        <label class="small remrow"><input type="checkbox" id="remWeigh"> Dienstag ans Wiegen erinnern um <input type="time" id="remWeighT" value="07:00"></label>
-        <label class="small remrow"><input type="checkbox" id="remSteps"> An die Schritte erinnern, falls noch keine eingetragen, um <input type="time" id="remStepsT" value="20:30"></label>
+        <div class="small remrow"><input type="checkbox" id="remWeigh"><label for="remWeigh">Wiegen (<span id="remWeighDay">Dienstag</span>)</label><input type="time" id="remWeighT" value="07:00" aria-label="Uhrzeit Wiege-Erinnerung"></div>
+        <div class="small remrow"><input type="checkbox" id="remSteps"><label for="remSteps">Schritte, falls noch keine eingetragen</label><input type="time" id="remStepsT" value="20:30" aria-label="Uhrzeit Schritte-Erinnerung"></div>
         <p class="small muted" style="margin:6px 0 0">Die Erinnerung kommt nur, wenn Gewicht bzw. Schritte für den Tag noch fehlen.</p>
       </div>
       <div class="panel">
@@ -2314,11 +2315,16 @@ Antworte nur mit JSON in genau dieser Form:
     const w = cfg.weigh || { on: false, time: "07:00" }, st = cfg.steps || { on: false, time: "20:30" };
     $("remWeigh").checked = !!w.on; $("remWeighT").value = w.time; $("remSteps").checked = !!st.on; $("remStepsT").value = st.time;
     const save = () => {
-      const c = { weigh: { on: $("remWeigh").checked, time: $("remWeighT").value || "07:00" }, steps: { on: $("remSteps").checked, time: $("remStepsT").value || "20:30" } };
+      const day = S.weighDay ?? 1; remDay = day; $("remWeighDay").textContent = WDL[day];
+      const c = { weigh: { on: $("remWeigh").checked, time: $("remWeighT").value || "07:00", day }, steps: { on: $("remSteps").checked, time: $("remStepsT").value || "20:30" } };
       lsSet(LS + "reminders", JSON.stringify(c)); try { A.setReminders(JSON.stringify(c)); } catch (e) {}
     };
     ["remWeigh", "remWeighT", "remSteps", "remStepsT"].forEach((id) => $(id).onchange = save);
+    remSave = save; $("remWeighDay").textContent = WDL[S.weighDay ?? 1];
   }
+  // the weigh reminder follows the weigh day from the profile: resend the settings when it changes
+  let remSave = null, remDay = null;
+  function syncRemDay() { if (remSave && remDay !== (S.weighDay ?? 1)) remSave(); }
   let dayStateLast = "";
   function reportToday() {
     const A = window.WeightplanAndroid;
@@ -2402,7 +2408,7 @@ Antworte nur mit JSON in genau dieser Form:
       hdrMsg(e && e.code === "not_granted" ? "Der Sync braucht deine Freigabe für Claude Code Remote. Tippe erneut und erlaube den Zugriff." : "Der Abgleich ließ sich nicht starten. Tippe später erneut auf Sync.", true);
     } finally { setTimeout(() => { b.disabled = false; }, 20000); }
   };
-  function renderAll() { reportToday(); updateSyncBtn(); renderTop(); if (hasProfile) { renderDay(); renderWeek(); renderHistory(); renderInsights(); renderExpChart(); renderDaily(); renderPlan(); } }
+  function renderAll() { reportToday(); updateSyncBtn(); syncRemDay(); renderTop(); if (hasProfile) { renderDay(); renderWeek(); renderHistory(); renderInsights(); renderExpChart(); renderDaily(); renderPlan(); } }
 
   // ---- standalone mode (outside claude.ai, e.g. GitHub Pages): browser storage + own API key ----
   const STANDALONE = !(window.claude && typeof window.claude.use === "function");

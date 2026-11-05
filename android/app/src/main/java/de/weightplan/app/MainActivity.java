@@ -50,7 +50,7 @@ public class MainActivity extends Activity {
      * Version of the native shell (Java code, bridge, manifest). Raise it whenever something here changes:
      * releases with a higher number need a real APK install; all others only swap the page (no installer).
      */
-    static final int NATIVE = 3;
+    static final int NATIVE = 4;
 
     private WebView webView;
     private ValueCallback<Uri[]> pendingFileCallback;
