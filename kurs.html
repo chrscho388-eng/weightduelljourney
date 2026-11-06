@@ -281,7 +281,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
 <div class="wrap">
   <header class="top">
     <div class="brand"><span id="brandName">Weightplan</span></div>
-    <div class="topright"><div class="top-meta" id="topMeta"><div class="tm2">lädt …</div></div><button class="syncbtn" type="button" id="syncHdr" hidden>⟳ Sync</button></div>
+    <div class="topright"><div class="top-meta" id="topMeta"><div class="tm2">lädt …</div></div><button class="syncbtn" type="button" id="syncHdr" hidden>⟳ Sync</button><div class="small err" id="unsynced" hidden></div></div>
   </header>
   <div class="syncmsg" id="syncHdrMsg" hidden></div>
   <div class="toast" id="toast" role="status" hidden><span id="toastText"></span><button type="button" id="toastUndo">Rückgängig</button></div>
@@ -616,7 +616,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     try { theme ? localStorage.setItem("kurs:theme", theme) : localStorage.removeItem("kurs:theme"); } catch (e) {}
     applyTheme(theme);
   });
-  const CHANGELOG = [{"v": "3.56", "d": "05.11.", "items": ["Einkaufsliste: Brüche wie ½ werden gelesen, Saft und Schale zählen zur Frucht, Eiklar wird in ganze Eier umgerechnet, Zubereitungswörter (gegrillt, gewürfelt …) trennen Posten nicht mehr, Stückzahlen in halben Stücken", "Einkaufsliste: Zutaten aus Vorrat oder Resten stehen im Kasten „Wahrscheinlich schon im Haushalt“, schon gekochte Gerichte und Rest-Tage tragen nichts mehr bei", "Rezepte und Pläne: Zutaten mit eigenem Hinweis und „Vorrat/Rest“-Kennzeichen, Eiklar nie einzeln"]}, {"v": "3.55", "d": "05.11.", "items": ["Schritte nach Steigung: 0 % plus eigene Steigungen aus dem Profil, je ein Feld", "Wiegetag im Profil einstellbar; Woche, Bilanz, Wochenziel und Rückblick laufen vom Wiegetag bis zum Vortag des nächsten (Pläne bleiben Mo–So)", "Korrektur: „Automatisch“ erkennt den Dunkelmodus jetzt auch in der Handy-App (neue APK nötig)", "Korrektur: Erinnerungen sauber ausgerichtet, Wiege-Erinnerung am eingestellten Wiegetag"]}, {"v": "3.54", "d": "05.11.", "items": ["Web-App startet beim Öffnen von selbst den Abgleich mit der Handy-App (höchstens alle 2 Stunden)", "Korrektur: Hinweise nennen keinen stündlichen Abgleich mehr"]}, {"v": "3.53", "d": "01.11.", "items": ["Korrektur: Rezept ändern passt jetzt auch Titel, Zutatenzeile, kcal und Eiweiß der Mahlzeit an, nicht nur das Rezept"]}, {"v": "3.52", "d": "01.11.", "items": ["Rezepte: Umschalter „1 Person / 2 Personen“ zeigt die Zutatenmengen für zwei (bei Topf-Gerichten bleibt der ganze Topf), die Wahl wird gemerkt"]}, {"v": "3.51", "d": "01.11.", "items": ["Profil: „Funktionen der App“ neu geschrieben, als verständliche Übersicht für neue Nutzer"]}, {"v": "3.50", "d": "01.11.", "items": ["Profil: Übersicht „Funktionen der App“"]}, {"v": "3.49", "d": "01.11.", "items": ["Schnellauswahl: Tippen auf den Tag (Heute), die Woche (Woche) oder die Planwoche (Plan) klappt eine Liste aller Tage der Woche bzw. aller Wochen auf"]}, {"v": "3.48", "d": "01.11.", "items": ["Woche: Wochenrückblick mit Ernährung, Bewegung, Bilanz, erwarteter und gewogener Veränderung, Zwischenziel, Prognose und Empfehlung – sonntags als Vorabinfo (Mo–Sa), ab Montag komplett; Hinweis dazu im Heute-Tab am Sonntag und Montag"]}, {"v": "3.47", "d": "31.10.", "items": ["Korrektur Wochenziel: Soll-Defizit steigt nicht mehr mit Schritten über dem Ziel", "Wochenziel: „Ist-Schnitt bis gestern“, neue Zeile „Heute bisher“, „Spielraum“ heißt jetzt „Puffer zum Wochen-Soll“, mit Erklärung der Rechnung"]}, {"v": "3.46", "d": "31.10.", "items": ["Heute: Wochenziel-Kasten – wie viele Schritte heute nötig sind, damit der Wochenschnitt das Schrittziel erreicht (auch verteilt auf die Resttage)", "Heute: Soll-Defizit pro Tag aus Kalorien- und Schrittziel, Ist-Schnitt der Woche und das Defizit, das heute nötig ist, um den Wochenschnitt einzuholen, samt „heute noch essen“"]}, , {"v": "3.45", "d": "31.10.", "items": ["Eiweiß: Mindestziel plus optionales Optimum (Profil), Anzeige „von 150 g (optimal 180 g)“ mit Markierung im Balken; Plan-Anpassungen planen auf das Optimum hin"]}, {"v": "3.44", "d": "31.10.", "items": ["Echte App: Updates, die nur die App-Seite betreffen (fast alle), lädt die App selbst ohne Installation und ohne Sicherheitsabfragen – „Jetzt neu laden“ oder beim nächsten Start", "Echte App: installiert keine APKs mehr selbst (Play Protect hatte das als schädlich markiert); seltene Updates der Android-Hülle über „Herunterladen“ im Browser"]}, {"v": "3.43", "d": "31.10.", "items": ["Fotos und Menübilder liegen nicht mehr in den Daten, sondern im Foto-Speicher der App und als eigene Dateien im Daten-Repo – kleinere Daten, schnellerer Sync, kein voller Speicher mehr", "Sync: Mahlzeiten eines Tages werden einzeln zusammengeführt, Einträge vom Handy und aus der Web-App gehen nicht mehr verloren", "Heute: Löschen mit „Rückgängig“", "Echte App: Erinnerungen an den Wiegetag und an die Schritte (Profil)"]}, {"v": "3.42", "d": "31.10.", "items": ["Echte App: sucht selbst nach Updates auf GitHub (beim Start, höchstens alle 3 Stunden, oder im Profil per „Nach Update suchen“) und installiert sie nach einer Bestätigung"]}, {"v": "3.41", "d": "31.10.", "items": ["Korrektur Plan: mehrere Änderungswünsche über Claude werden gesammelt statt überschrieben und alle beim nächsten Abgleich umgesetzt"]}, {"v": "3.40", "d": "31.10.", "items": ["Heute: Eintrag antippen zum Anpassen – Menge (z. B. 120 statt 100 g Whey), Portion in %, einzelne Zutaten weglassen oder Änderung beschreiben und neu schätzen bzw. an Claude senden", "Plan: Feld „Plan ändern“ ganz oben, mit demselben Umschalter wie Heute (Jetzt berechnen oder über Claude)", "Einkaufsliste: abgehakte Einträge gesammelt im aufklappbaren Bereich „Abgehakt“"]}, {"v": "3.39", "d": "30.10.", "items": ["Heute (echte App mit API-Schlüssel): Umschalter „Direkt schätzen“ oder „Über Claude (Abgleich)“"]}, {"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
+  const CHANGELOG = [{"v": "3.57", "d": "06.11.", "items": ["Datensicherheit: Ein geschätzter, noch nicht übernommener Eintrag bleibt nach einem Neustart erhalten und kann übernommen werden", "Datensicherheit: Speichern überschreibt nie Einträge, die schon im Speicher liegen; jeder Eintrag wird zusätzlich in einem Journal auf dem Gerät festgehalten", "Datensicherheit: Upload sofort nach dem Eintragen, bei Fehlern automatische Wiederholung; Warnung „Einträge noch nicht hochgeladen“ in der Kopfzeile; Sicherung eines Tages, bevor der Abgleich ihn ändert, und Warnung, wenn der Abgleich Einträge entfernt"]}, {"v": "3.56", "d": "05.11.", "items": ["Einkaufsliste: Brüche wie ½ werden gelesen, Saft und Schale zählen zur Frucht, Eiklar wird in ganze Eier umgerechnet, Zubereitungswörter (gegrillt, gewürfelt …) trennen Posten nicht mehr, Stückzahlen in halben Stücken", "Einkaufsliste: Zutaten aus Vorrat oder Resten stehen im Kasten „Wahrscheinlich schon im Haushalt“, schon gekochte Gerichte und Rest-Tage tragen nichts mehr bei", "Rezepte und Pläne: Zutaten mit eigenem Hinweis und „Vorrat/Rest“-Kennzeichen, Eiklar nie einzeln"]}, {"v": "3.55", "d": "05.11.", "items": ["Schritte nach Steigung: 0 % plus eigene Steigungen aus dem Profil, je ein Feld", "Wiegetag im Profil einstellbar; Woche, Bilanz, Wochenziel und Rückblick laufen vom Wiegetag bis zum Vortag des nächsten (Pläne bleiben Mo–So)", "Korrektur: „Automatisch“ erkennt den Dunkelmodus jetzt auch in der Handy-App (neue APK nötig)", "Korrektur: Erinnerungen sauber ausgerichtet, Wiege-Erinnerung am eingestellten Wiegetag"]}, {"v": "3.54", "d": "05.11.", "items": ["Web-App startet beim Öffnen von selbst den Abgleich mit der Handy-App (höchstens alle 2 Stunden)", "Korrektur: Hinweise nennen keinen stündlichen Abgleich mehr"]}, {"v": "3.53", "d": "01.11.", "items": ["Korrektur: Rezept ändern passt jetzt auch Titel, Zutatenzeile, kcal und Eiweiß der Mahlzeit an, nicht nur das Rezept"]}, {"v": "3.52", "d": "01.11.", "items": ["Rezepte: Umschalter „1 Person / 2 Personen“ zeigt die Zutatenmengen für zwei (bei Topf-Gerichten bleibt der ganze Topf), die Wahl wird gemerkt"]}, {"v": "3.51", "d": "01.11.", "items": ["Profil: „Funktionen der App“ neu geschrieben, als verständliche Übersicht für neue Nutzer"]}, {"v": "3.50", "d": "01.11.", "items": ["Profil: Übersicht „Funktionen der App“"]}, {"v": "3.49", "d": "01.11.", "items": ["Schnellauswahl: Tippen auf den Tag (Heute), die Woche (Woche) oder die Planwoche (Plan) klappt eine Liste aller Tage der Woche bzw. aller Wochen auf"]}, {"v": "3.48", "d": "01.11.", "items": ["Woche: Wochenrückblick mit Ernährung, Bewegung, Bilanz, erwarteter und gewogener Veränderung, Zwischenziel, Prognose und Empfehlung – sonntags als Vorabinfo (Mo–Sa), ab Montag komplett; Hinweis dazu im Heute-Tab am Sonntag und Montag"]}, {"v": "3.47", "d": "31.10.", "items": ["Korrektur Wochenziel: Soll-Defizit steigt nicht mehr mit Schritten über dem Ziel", "Wochenziel: „Ist-Schnitt bis gestern“, neue Zeile „Heute bisher“, „Spielraum“ heißt jetzt „Puffer zum Wochen-Soll“, mit Erklärung der Rechnung"]}, {"v": "3.46", "d": "31.10.", "items": ["Heute: Wochenziel-Kasten – wie viele Schritte heute nötig sind, damit der Wochenschnitt das Schrittziel erreicht (auch verteilt auf die Resttage)", "Heute: Soll-Defizit pro Tag aus Kalorien- und Schrittziel, Ist-Schnitt der Woche und das Defizit, das heute nötig ist, um den Wochenschnitt einzuholen, samt „heute noch essen“"]}, , {"v": "3.45", "d": "31.10.", "items": ["Eiweiß: Mindestziel plus optionales Optimum (Profil), Anzeige „von 150 g (optimal 180 g)“ mit Markierung im Balken; Plan-Anpassungen planen auf das Optimum hin"]}, {"v": "3.44", "d": "31.10.", "items": ["Echte App: Updates, die nur die App-Seite betreffen (fast alle), lädt die App selbst ohne Installation und ohne Sicherheitsabfragen – „Jetzt neu laden“ oder beim nächsten Start", "Echte App: installiert keine APKs mehr selbst (Play Protect hatte das als schädlich markiert); seltene Updates der Android-Hülle über „Herunterladen“ im Browser"]}, {"v": "3.43", "d": "31.10.", "items": ["Fotos und Menübilder liegen nicht mehr in den Daten, sondern im Foto-Speicher der App und als eigene Dateien im Daten-Repo – kleinere Daten, schnellerer Sync, kein voller Speicher mehr", "Sync: Mahlzeiten eines Tages werden einzeln zusammengeführt, Einträge vom Handy und aus der Web-App gehen nicht mehr verloren", "Heute: Löschen mit „Rückgängig“", "Echte App: Erinnerungen an den Wiegetag und an die Schritte (Profil)"]}, {"v": "3.42", "d": "31.10.", "items": ["Echte App: sucht selbst nach Updates auf GitHub (beim Start, höchstens alle 3 Stunden, oder im Profil per „Nach Update suchen“) und installiert sie nach einer Bestätigung"]}, {"v": "3.41", "d": "31.10.", "items": ["Korrektur Plan: mehrere Änderungswünsche über Claude werden gesammelt statt überschrieben und alle beim nächsten Abgleich umgesetzt"]}, {"v": "3.40", "d": "31.10.", "items": ["Heute: Eintrag antippen zum Anpassen – Menge (z. B. 120 statt 100 g Whey), Portion in %, einzelne Zutaten weglassen oder Änderung beschreiben und neu schätzen bzw. an Claude senden", "Plan: Feld „Plan ändern“ ganz oben, mit demselben Umschalter wie Heute (Jetzt berechnen oder über Claude)", "Einkaufsliste: abgehakte Einträge gesammelt im aufklappbaren Bereich „Abgehakt“"]}, {"v": "3.39", "d": "30.10.", "items": ["Heute (echte App mit API-Schlüssel): Umschalter „Direkt schätzen“ oder „Über Claude (Abgleich)“"]}, {"v": "3.38", "d": "30.10.", "items": ["Heute: nur noch zwei Knöpfe – „Foto hinzufügen“ und „Schätzen“ (Web-App, sofort) bzw. „An Claude senden“ (echte App, beim Abgleich); keine „später“-Knöpfe mehr in der Web-App", "Heute: mehrere Fotos pro Mahlzeit (z. B. Gericht und Nährwerttabelle)"]}, {"v": "3.37", "d": "29.10.", "items": ["Korrektur Einkaufsliste: Kantinen-Essen nicht mehr gelistet, keine abgeschnittenen Klammern oder doppelten Einträge wie „Skyr)“"]}, {"v": "3.36", "d": "29.10.", "items": ["Profil: Darstellung Automatisch, Hell oder Dunkel (Dark Mode)"]}, {"v": "3.35", "d": "29.10.", "items": ["Plan: Einkaufsliste immer nur für Gerichte ab heute"]}, {"v": "3.34", "d": "29.10.", "items": ["Heute: Gewichtsfeld nur am Wiegetag (Dienstag), sonst per Link „außerplanmäßig wiegen“"]}, {"v": "3.33", "d": "29.10.", "items": ["Profil: Änderungen je Version (dieses Changelog)"]}, {"v": "3.32", "d": "29.10.", "items": ["Kaffee: eigene Tassengröße je Tagesart (kleiner Cappuccino im Büro, halbe kcal)"]}, {"v": "3.31", "d": "29.10.", "items": ["Heute: Foto für später erst anhängen, Text anpassen, dann gemeinsam absenden"]}, {"v": "3.30", "d": "29.10.", "items": ["Heute: Plan-Mahlzeit erst ins Eingabefeld übernehmen, dann eintragen"]}, {"v": "3.29", "d": "29.10.", "items": ["Bilder per Strg+V einfügen: Plan-Tab Kantinen-Menü, Heute Essensfoto"]}, {"v": "3.28", "d": "29.10.", "items": ["Plan: Tage einklappbar, vergangene Tage starten zugeklappt"]}, {"v": "3.27", "d": "28.10.", "items": ["Plan: Kantinen-Menü als Foto hochladen, Claude plant die Bürotage"]}, {"v": "3.26", "d": "28.10.", "items": ["Verlauf: Schritte-Diagramm (flach und mit Steigung, Ziel und Mindestziel)"]}, {"v": "3.25", "d": "28.10.", "items": ["Korrektur: Kaffee-Eintrag erst nach dem Laden der Tage (überschrieb sonst Einträge)"]}, {"v": "3.24", "d": "28.10.", "items": ["Dauerhafte Wünsche als Liste (hinzufügen, entfernen)"]}, {"v": "3.23", "d": "28.10.", "items": ["Dauerhafte Wünsche für alle Pläne"]}, {"v": "3.22", "d": "28.10.", "items": ["Kopfzeile aufgeräumt, Plan anpassen auch später über Claude"]}, {"v": "3.21", "d": "28.10.", "items": ["Korrektur: abgeschnittene Seite repariert, Test vor jedem Build"]}, {"v": "3.20", "d": "28.10.", "items": ["Textfeld nach dem Absenden leeren"]}, {"v": "3.19", "d": "28.10.", "items": ["Schätzung berücksichtigt die letzten Tage und den Wochenplan"]}, {"v": "3.18", "d": "28.10.", "items": ["Verlauf: Prognose, Trend, Erwartet vs. gewogen, Serien", "Heute: Favoriten", "Plan: Einkaufsliste"]}, {"v": "3.17", "d": "28.10.", "items": ["Rezepte per Wunsch ändern (jetzt oder später)"]}, {"v": "3.16", "d": "28.10.", "items": ["Rezepte nur für echte Gerichte"]}, {"v": "3.15", "d": "28.10.", "items": ["Kaffee: Eiweiß aus der Milch mitzählen"]}, {"v": "3.14", "d": "28.10.", "items": ["Schätzung und Rezepte: jetzt oder später über Claude"]}, {"v": "3.13", "d": "28.10.", "items": ["Ohne API-Schlüssel: Foto-Schätzung und Rezepte als Anfrage an Claude beim Abgleich"]}, {"v": "3.10–3.12", "d": "28.10.", "items": ["Versionsnummer im APK-Namen, im Release und im Profil"]}, {"v": "3.9", "d": "28.10.", "items": ["Kaffee automatisch je Tagesart eintragen, Tagesart aus dem Wochenplan"]}, {"v": "3.8", "d": "28.10.", "items": ["Plan-Tab: Hinweise pro Woche"]}, {"v": "3.6", "d": "28.10.", "items": ["Rezept per Tippen auf die Mahlzeit"]}, {"v": "3.5", "d": "28.10.", "items": ["Neue App-Icons (echte App grün, Web-App orange)"]}, {"v": "3.3", "d": "27.10.", "items": ["Rezepte, Wochen aus dem Verlauf öffnen, Sync-Knopf, Web-APK, Updates ohne Neuinstallation"]}, {"v": "3.2", "d": "27.10.", "items": ["Echte Android-App mit GitHub-Sync"]}, {"v": "3.1", "d": "27.10.", "items": ["Erste Android-App"]}];
   function renderChangelog() {
     const el = $("changelog"); if (!el) return;
     el.innerHTML = CHANGELOG.map((c) => '<div class="ver"><b>' + esc(c.v) + '</b> <span class="muted">' + esc(c.d) + '</span><ul>' + c.items.map((i) => "<li>" + esc(i) + "</li>").join("") + "</ul></div>").join("");
@@ -724,16 +724,37 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   // ---- writes: one at a time per doc ----
   const chains = {};
   function saveDay(date, mutate) {
+    const had = new Set((dayDoc(date).meals || []).map((m) => m.id));
     const doc = JSON.parse(JSON.stringify(dayDoc(date)));
     mutate(doc);
     doc.date = date;
     doc.updatedAt = new Date().toISOString();
+    (doc.meals || []).filter((m) => !had.has(m.id)).forEach((m) => journal("add", { date, id: m.id, label: String(m.label).slice(0, 120), kcal: m.kcal, protein: m.protein }));
     days[date] = doc;
     renderAll();
     if (!base) { setStatus("saveStatus", "Nicht gespeichert: Speicher nicht erreichbar.", true); return; }
-    chains[date] = (chains[date] || Promise.resolve()).then(() => base.collection("days").doc(date).set(doc))
+    const put = async () => {
+      // never write over what is stored right now: meals that exist there but not in this copy stay (only "removed" deletes)
+      let out = doc;
+      try {
+        const st = (await base.collection("days").doc(date).get()).data();
+        if (st && Array.isArray(st.meals)) {
+          const have = new Set((doc.meals || []).map((m) => m.id)), gone = new Set(doc.removed || []);
+          const extra = st.meals.filter((m) => m.id !== "coffee" && !have.has(m.id) && !gone.has(m.id));
+          if (extra.length) { out = { ...doc, meals: [...(doc.meals || []), ...extra] }; days[date] = out; journal("keep", { date, n: extra.length }); renderAll(); }
+        }
+      } catch (e) {}
+      await base.collection("days").doc(date).set(out);
+    };
+    chains[date] = (chains[date] || Promise.resolve()).then(put)
       .then(() => setStatus("saveStatus", "Gespeichert"))
-      .catch((e) => { if (e && e.code === "invalid_argument") $("roNotice").hidden = false; setStatus("saveStatus", "Speichern fehlgeschlagen (" + (e && e.code || "Fehler") + ").", true); });
+      .catch(async (e) => {
+        if (e && e.code === "invalid_argument") $("roNotice").hidden = false;
+        journal("fail", { date, code: e && e.code });
+        setStatus("saveStatus", "Speichern fehlgeschlagen (" + (e && e.code || "Fehler") + "). Neuer Versuch folgt.", true);
+        await new Promise((r) => setTimeout(r, 3000));
+        try { await put(); setStatus("saveStatus", "Gespeichert"); } catch (e2) { setStatus("saveStatus", "NICHT gespeichert (" + (e2 && e2.code || "Fehler") + "). Bitte den Eintrag noch einmal machen.", true); }
+      });
   }
   // delete a meal, remember it for the merge and offer a short undo
   let undoT = null;
@@ -1001,10 +1022,11 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     $("askHint").hidden = direct || !rq;
     pasteHintUpd(); renderAttach();
   }
-  function addMeals(items) {
-    saveDay(curDay, (doc) => {
+  function addMeals(items, date) {
+    const day = date || curDay;
+    saveDay(day, (doc) => {
       doc.meals = doc.meals || [];
-      if (!doc.dayType) doc.dayType = defaultType(curDay);
+      if (!doc.dayType) doc.dayType = defaultType(day);
       items.forEach((it) => doc.meals.push({ id: uid(), label: String(it.label).slice(0, 300), kcal: Math.round(Number(it.kcal) || 0), protein: Math.round(Number(it.protein) || 0), ...(it.fromPlan ? { fromPlan: it.fromPlan } : {}), ...(it.photo ? { photo: it.photo } : {}), ...(it.seen ? { seen: String(it.seen).slice(0, 600) } : {}), ...(it.parts && it.parts.length ? { parts: it.parts } : {}) }));
     });
   }
@@ -1150,6 +1172,32 @@ parts: die wichtigsten Bestandteile des Postens mit geschätzter Menge in Gramm;
 
 ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste, \"wie gestern\", Anteile eines Topfes):\n" + ctx + "\n\n" : ""}Mahlzeit: ${text || "(siehe Bild)"}`;
   }
+  let pendingDay = null, pendingNote = "";
+  // the estimate waits here until "Übernehmen"; it is kept on the device so a restart cannot lose it
+  function savePreview() {
+    try { if (pendingEst && pendingEst.length) localStorage.setItem("kurs:pendingEst", JSON.stringify({ items: pendingEst, note: pendingNote, day: pendingDay })); else localStorage.removeItem("kurs:pendingEst"); } catch (e) {}
+  }
+  function showPreview(p) {
+    const items = p.items; pendingEst = items; pendingDay = p.day || curDay; pendingNote = p.note || "";
+    const photo = items[0] && items[0].photo || null, seen = items[0] && items[0].seen || "";
+    $("estSeenBox").hidden = !(photo || seen);
+    $("estPhoto").hidden = !photo; if (photo) $("estPhoto").src = photo;
+    $("estSeen").textContent = seen ? "Das sehe ich: " + seen : "";
+    const ul = $("estList"); ul.innerHTML = "";
+    items.forEach((it, i) => {
+      const li = document.createElement("li");
+      const nm = document.createElement("div"); nm.className = "mname"; nm.textContent = it.label;
+      const v = document.createElement("div"); v.className = "mv"; v.textContent = `${fmt(it.kcal)} kcal\n${fmt(it.protein)} g Eiweiß`;
+      const x = document.createElement("button"); x.className = "x"; x.textContent = "×"; x.setAttribute("aria-label", "Posten entfernen");
+      x.onclick = () => { pendingEst.splice(i, 1); li.remove(); if (!pendingEst.length) $("estPreview").hidden = true; savePreview(); };
+      li.append(nm, v, x);
+      if (it.parts && it.parts.length) { const w = document.createElement("div"); w.className = "mdet"; w.append(partsTable(it.parts)); li.append(w); }
+      ul.append(li);
+    });
+    const tk = items.reduce((a, x) => a + x.kcal, 0), tp = items.reduce((a, x) => a + x.protein, 0);
+    $("estNote").textContent = `Zusammen ${fmt(tk)} kcal und ${fmt(tp)} g Eiweiß.` + (pendingNote ? " Annahme: " + pendingNote : "");
+    $("estPreview").hidden = false; savePreview();
+  }
   async function runEstimate(images) {
     const text = $("mealText").value.trim();
     if (!text && !images.length) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast, oder füge ein Foto hinzu.", true); return false; }
@@ -1164,25 +1212,10 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
       const seen = res && res.seen ? String(res.seen).slice(0, 600) : "";
       const photo = image ? await thumb(image) : null;
       if (photo || seen) { items[0].photo = photo; items[0].seen = seen; }
-      pendingEst = items;
       if ($("mealText").value.trim() === text) $("mealText").value = ""; // sent: clear for the next entry
-      $("estSeenBox").hidden = !(photo || seen);
-      $("estPhoto").hidden = !photo; if (photo) $("estPhoto").src = photo;
-      $("estSeen").textContent = seen ? "Das sehe ich: " + seen : "";
-      const ul = $("estList"); ul.innerHTML = "";
-      items.forEach((it, i) => {
-        const li = document.createElement("li");
-        const nm = document.createElement("div"); nm.className = "mname"; nm.textContent = it.label;
-        const v = document.createElement("div"); v.className = "mv"; v.textContent = `${fmt(it.kcal)} kcal\n${fmt(it.protein)} g Eiweiß`;
-        const x = document.createElement("button"); x.className = "x"; x.textContent = "×"; x.setAttribute("aria-label", "Posten entfernen");
-        x.onclick = () => { pendingEst.splice(i, 1); li.remove(); if (!pendingEst.length) $("estPreview").hidden = true; };
-        li.append(nm, v, x);
-        if (it.parts && it.parts.length) { const w = document.createElement("div"); w.className = "mdet"; w.append(partsTable(it.parts)); li.append(w); }
-        ul.append(li);
-      });
-      const tk = items.reduce((a, x) => a + x.kcal, 0), tp = items.reduce((a, x) => a + x.protein, 0);
-      $("estNote").textContent = `Zusammen ${fmt(tk)} kcal und ${fmt(tp)} g Eiweiß.` + (res.note ? " Annahme: " + res.note : "");
-      $("estPreview").hidden = false; setStatus("estStatus", "Prüfen und übernehmen. Einzelne Posten kannst du nach dem Übernehmen antippen und anpassen.");
+      journal("estimate", { date: curDay, items: items.map((x) => ({ label: String(x.label).slice(0, 120), kcal: x.kcal, protein: x.protein })) });
+      showPreview({ items, note: res.note ? String(res.note) : "", day: curDay });
+      setStatus("estStatus", "Prüfen und übernehmen. Einzelne Posten kannst du nach dem Übernehmen antippen und anpassen.");
       return true;
     } catch (e) {
       const c = e && e.code;
@@ -1194,8 +1227,8 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     } finally { $("sendBtn").disabled = false; }
     return false;
   }
-  $("estAccept").onclick = () => { if (pendingEst && pendingEst.length) addMeals(pendingEst); pendingEst = null; $("estPreview").hidden = true; $("estSeenBox").hidden = true; $("mealText").value = ""; setStatus("estStatus", "Eingetragen."); };
-  $("estDiscard").onclick = () => { pendingEst = null; $("estPreview").hidden = true; $("estSeenBox").hidden = true; setStatus("estStatus", ""); };
+  $("estAccept").onclick = () => { if (pendingEst && pendingEst.length) addMeals(pendingEst, pendingDay); pendingEst = null; savePreview(); $("estPreview").hidden = true; $("estSeenBox").hidden = true; $("mealText").value = ""; setStatus("estStatus", "Eingetragen."); };
+  $("estDiscard").onclick = () => { pendingEst = null; savePreview(); $("estPreview").hidden = true; $("estSeenBox").hidden = true; setStatus("estStatus", ""); };
 
   // ---- day inputs ----
   const numOrNull = (v) => v === "" ? null : Number(v);
@@ -2492,6 +2525,13 @@ Antworte nur mit JSON in genau dieser Form:
   // ---- standalone mode (outside claude.ai, e.g. GitHub Pages): browser storage + own API key ----
   const STANDALONE = !(window.claude && typeof window.claude.use === "function");
   const LS = "kurs:";
+  // append-only local journal of every entry (last 200) and backups of days the sync is about to replace
+  function journal(kind, o) {
+    try { let j = []; try { j = JSON.parse(localStorage.getItem("kurs:journal") || "[]"); } catch (e) {} j.push({ t: new Date().toISOString(), kind, ...o }); localStorage.setItem("kurs:journal", JSON.stringify(j.slice(-200))); } catch (e) {}
+  }
+  function backupDoc(k, v) {
+    try { let b = []; try { b = JSON.parse(localStorage.getItem("kurs:backups") || "[]"); } catch (e) {} b.push({ t: new Date().toISOString(), k, v }); b = b.slice(-30); while (JSON.stringify(b).length > 400000 && b.length > 1) b.shift(); localStorage.setItem("kurs:backups", JSON.stringify(b)); } catch (e) {}
+  }
   const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
   // ---- photos live outside the documents (real app): IndexedDB on the device, photos/<id>.jpg in the data repo ----
@@ -2633,7 +2673,15 @@ Antworte nur mit JSON in genau dieser Form:
   const SYNC_FILE = "weightplan.json", USER_ROOT = "data/users/local/";
   let syncTimer = null, syncing = false, syncAgain = false;
   const syncCfg = () => { const r = lsGet(LS + "syncRepo"), t = lsGet(LS + "syncToken"); return r && t ? { repo: r, token: t } : null; };
-  function onLocalWrite() { if (!STANDALONE || !syncCfg() || applyingRemote) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 2500); }
+  let writeSeq = 0, retryT = null, retryN = 0, syncWarn = "";
+  function onLocalWrite() { if (!STANDALONE || !syncCfg() || applyingRemote) return; writeSeq++; if (!lsGet(LS + "dirtyAt")) lsSet(LS + "dirtyAt", new Date().toISOString()); clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 800); }
+  // visible warning: entries not yet on GitHub (more than 20 s) or entries the sync removed
+  function updateUnsynced() {
+    const el = $("unsynced"); if (!el) return;
+    const d = STANDALONE && syncCfg() ? lsGet(LS + "dirtyAt") : null, late = d && Date.now() - Date.parse(d) > 20000;
+    el.hidden = !(late || syncWarn); el.textContent = syncWarn ? "⚠ " + syncWarn : late ? "⚠ Einträge noch nicht hochgeladen" : "";
+  }
+  setInterval(updateUnsynced, 5000);
   let applyingRemote = false;
   const b64enc = (str) => { const bytes = new TextEncoder().encode(str); let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); };
   const b64dec = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0)));
@@ -2677,7 +2725,7 @@ Antworte nur mit JSON in genau dieser Form:
     const cfg = syncCfg(); if (!cfg) return;
     if (syncing) { syncAgain = true; return; }
     const say = (t, err) => { setStatus("syncStatus", t, err); if (manual === true) hdrMsg(t, err); };
-    syncing = true; say("Synchronisiere …");
+    syncing = true; say("Synchronisiere …"); const seq0 = writeSeq;
     try {
       for (let attempt = 0; attempt < 2; attempt++) {
         let sha = null, remote = {};
@@ -2700,7 +2748,11 @@ Antworte nur mit JSON in genau dieser Form:
           if (!same(a)) localChanged = true;
           if (!same(b)) remoteChanged = true;
         });
+        const dropped = [];
+        Object.entries(merged).forEach(([k, v]) => { if (k.startsWith("profile/days/") && local[k]) { const ids = new Set((v.meals || []).map((m) => m.id)); (local[k].meals || []).forEach((m) => { if (!ids.has(m.id)) dropped.push(k.slice(-10) + " " + String(m.label).slice(0, 40)); }); } });
+        if (dropped.length) { journal("drop", { items: dropped.slice(0, 10) }); syncWarn = "Abgleich hat " + dropped.length + " Eintrag/Einträge entfernt: " + dropped.slice(0, 3).join("; "); } else syncWarn = "";
         if (localChanged) {
+          Object.keys(merged).forEach((k) => { if (k.startsWith("profile/days/") && local[k] && JSON.stringify(merged[k]) !== JSON.stringify(local[k])) backupDoc(k, local[k]); });
           applyingRemote = true;
           Object.entries(merged).forEach(([k, v]) => { if (JSON.stringify(v) !== JSON.stringify(local[k])) lsSet(LS + USER_ROOT + k, JSON.stringify(v)); });
           applyingRemote = false;
@@ -2714,11 +2766,13 @@ Antworte nur mit JSON in genau dieser Form:
           if (!w.ok) throw "Hochladen fehlgeschlagen (" + w.status + ").";
         }
         lsSet(LS + "syncLast", new Date().toISOString());
+        if (writeSeq === seq0) { try { localStorage.removeItem(LS + "dirtyAt"); } catch (e) {} } retryN = 0; updateUnsynced();
         say("Synchronisiert um " + new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + ".");
         break;
       }
     } catch (e) {
       say(typeof e === "string" ? e : "Keine Verbindung zu GitHub. Deine Einträge sind lokal gespeichert und werden später übertragen.", true);
+      clearTimeout(retryT); retryN = Math.min(retryN + 1, 5); retryT = setTimeout(syncNow, Math.min(300000, 10000 * 2 ** (retryN - 1))); updateUnsynced();
     } finally {
       syncing = false;
       if (syncAgain) { syncAgain = false; setTimeout(syncNow, 500); }
@@ -2785,6 +2839,7 @@ Antworte nur mit JSON in genau dieser Form:
   // ---- boot ----
   $("pStartD").value = todayStr();
   route(); renderAll();
+  try { const p = JSON.parse(lsGet("kurs:pendingEst") || "null"); if (p && Array.isArray(p.items) && p.items.length) { showPreview(p); setStatus("estStatus", "Nicht übernommener Eintrag wiederhergestellt. Prüfen und übernehmen."); } } catch (e) {}
   (async () => {
     if (STANDALONE && await photoInit()) photoMigrate();
     db = await use("db");

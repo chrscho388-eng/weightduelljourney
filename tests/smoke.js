@@ -341,6 +341,25 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(JSON.stringify(pf.inclines) === "[5,9]" && pf.inclinePct === 9, "incline list saved, legacy incline kept");
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   check(await pg.$("#steps_5"), "new incline gets its own step field");
+  // data safety (3.57): journal, stale in-memory copy, restored preview
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  const jr = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:journal") || "[]"));
+  check(jr.some((x) => x.kind === "add" && /Testessen/.test(x.label)), "journal records every added entry");
+  await pg.evaluate(() => { const k = "kurs:data/users/local/profile/days/2026-11-04", d = JSON.parse(localStorage.getItem(k)); d.meals.push({ id: "zz1", label: "Nur im Speicher", kcal: 111, protein: 7 }); localStorage.setItem(k, JSON.stringify(d)); });
+  await pg.fill("#mealText", "Neuer Eintrag"); await pg.fill("#manKcal", "50"); await pg.fill("#manProt", "1"); await pg.click("#manAdd"); await pg.waitForTimeout(500);
+  const stored = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")).meals.map((m) => m.label));
+  check(stored.includes("Nur im Speicher") && stored.includes("Neuer Eintrag"), "saving never drops an entry that exists only in storage");
+  await pg.evaluate(() => localStorage.setItem("kurs:pendingEst", JSON.stringify({ items: [{ label: "Wiederhergestellt Juit", kcal: 640, protein: 30 }], note: "", day: "2026-11-04" })));
+  await pg.reload(); await pg.waitForTimeout(1200);
+  check(await pg.$eval("#estPreview", (e) => !e.hidden) && /Wiederhergestellt Juit/.test(await pg.textContent("#estList")), "unaccepted estimate survives a restart");
+  await pg.click("#estAccept"); await pg.waitForTimeout(500);
+  const acc = await pg.evaluate(() => [JSON.parse(localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")).meals.map((m) => m.label), localStorage.getItem("kurs:pendingEst")]);
+  check(acc[0].includes("Wiederhergestellt Juit") && acc[1] === null, "restored estimate is saved on accept and the copy is removed");
+  // failed upload: the entry stays marked as not uploaded
+  await pg.evaluate(() => { localStorage.setItem("kurs:syncRepo", "x/y"); localStorage.setItem("kurs:syncToken", "t"); });
+  await pg.reload(); await pg.waitForTimeout(1500);
+  await pg.fill("#mealText", "Offline Eintrag"); await pg.fill("#manKcal", "20"); await pg.fill("#manProt", "1"); await pg.click("#manAdd"); await pg.waitForTimeout(2500);
+  check(await pg.evaluate(() => !!localStorage.getItem("kurs:dirtyAt")), "entry stays marked as not uploaded after a failed upload");
   check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
   await b.close();
   if (fails.length) { console.log(`\n${fails.length} check(s) failed`); process.exit(1); }
