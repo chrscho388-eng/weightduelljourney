@@ -22,7 +22,7 @@
       else if (kind === "permission") { show("Erlaube Weightplan einmalig, Apps zu installieren, und geh dann zurück. Die Installation startet danach von selbst."); $("updInstall").disabled = false; }
       else if (kind === "browser") { show("Die APK wird im Browser geladen. Öffne sie danach aus den Downloads und tippe auf „Aktualisieren“."); $("updInstall").disabled = false; }
       else if (kind === "installing") { show(`Bestätige im Android-Fenster „Aktualisieren“. Danach startet Weightplan ${latest}.`); $("updInstall").disabled = false; }
-      else if (kind === "error") { $("updInstall").disabled = false; if (manual || !$("updBanner").hidden) { setStatus("updStatus", val, true); if (!$("updBanner").hidden) show(val); } }
+      else if (kind === "error") { if (/\(404\)/.test(val)) val = "Das Update wird gerade veröffentlicht. Versuch es in ein bis zwei Minuten noch einmal."; $("updInstall").disabled = false; if (manual || !$("updBanner").hidden) { setStatus("updStatus", val, true); if (!$("updBanner").hidden) show(val); } }
       manual = false;
     };
     const check = (m) => { manual = m; try { lsSet(LS + "updLast", String(Date.now())); A.checkUpdate(); } catch (e) {} };

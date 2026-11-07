@@ -109,7 +109,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest --yes --cleanup-tag || true
-          gh release create latest Weightplan.apk "Weightplan-3.${GITHUB_RUN_NUMBER}.apk" "Weightplan-Web-2.${GITHUB_RUN_NUMBER}.apk" Weightplan-page.html update.json \
-            --title "Weightplan 3.${GITHUB_RUN_NUMBER} (Web 2.${GITHUB_RUN_NUMBER})" \
-            --notes "Automatisch gebaut aus ${GITHUB_SHA::7}. Weightplan.apk ist immer die neueste eigenständige App (gleich wie Weightplan-3.x), Weightplan-Web-2.x öffnet die claude.ai-Version. Anleitung in der README."
+          N="${GITHUB_RUN_NUMBER}"
+          TITLE="Weightplan 3.${N} (Web 2.${N})"
+          NOTES="Automatisch gebaut aus ${GITHUB_SHA::7}. Weightplan.apk ist immer die neueste eigenständige App (gleich wie Weightplan-3.x), Weightplan-Web-2.x öffnet die claude.ai-Version. Anleitung in der README."
+          if gh release view latest >/dev/null 2>&1; then
+            # replace the files inside the existing release, so update.json never disappears (no 404 window); update.json goes last
+            gh release upload latest Weightplan.apk "Weightplan-3.${N}.apk" "Weightplan-Web-2.${N}.apk" Weightplan-page.html --clobber
+            gh release upload latest update.json --clobber
+            for a in $(gh release view latest --json assets -q '.assets[].name'); do
+              case "$a" in
+                Weightplan-3.*.apk|Weightplan-Web-2.*.apk) [ "$a" = "Weightplan-3.${N}.apk" ] || [ "$a" = "Weightplan-Web-2.${N}.apk" ] || gh release delete-asset latest "$a" --yes ;;
+              esac
+            done
+            gh release edit latest --title "$TITLE" --notes "$NOTES"
+          else
+            gh release create latest Weightplan.apk "Weightplan-3.${N}.apk" "Weightplan-Web-2.${N}.apk" Weightplan-page.html update.json --title "$TITLE" --notes "$NOTES"
+          fi

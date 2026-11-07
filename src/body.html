@@ -315,10 +315,11 @@
       <p class="small muted" style="margin:4px 0 0">Standardliste: Salz, Pfeffer, Öl, Essig, Gewürze, Brühe, Zucker, Mehl, Knoblauch und ähnliche. Diese Dinge landen im Kasten „Wahrscheinlich schon im Haushalt“ statt auf der Einkaufsliste.</p>
       <div class="field" style="margin-top:10px"><label class="label" for="pEggG">Gramm Eiklar je Ei</label><input id="pEggG" type="number" inputmode="numeric" min="20" max="50" placeholder="33"></div>
     </details>
-    <details class="panel changelog"><summary>Schätzung</summary>
-      <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für Schätzung und Plan</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal; kein Rind; esse mit Partnerin; schnelle Gerichte"></textarea></div>
+    <details class="panel changelog"><summary>Hinweise für Claude</summary>
+      <p class="small muted" style="margin:10px 0 6px">Was Claude bei Schätzungen, Rezepten und Wochenplänen immer beachten soll, zum Beispiel Marken, No-Gos oder wer mitisst.</p>
+      <div class="field"><textarea id="pHints" rows="7" aria-label="Hinweise für Claude" placeholder="z. B. Kokosmilch immer normal; kein Rind; esse mit Partnerin; schnelle Gerichte"></textarea></div>
     </details>
-    <details class="panel changelog"><summary>Erweitert</summary>
+    <details class="panel changelog"><summary>Berechnung</summary>
       <div class="fields" style="margin-top:10px">
         <div class="field"><label class="label" for="pEvent">Event-Tag Rahmen (kcal)</label><input id="pEvent" type="number" inputmode="numeric" step="50" min="1500" max="6000" placeholder="3000"></div>
         <div class="field"><label class="label" for="pKcalKg">kcal je kg Körpergewicht</label><input id="pKcalKg" type="number" inputmode="numeric" step="100" min="3000" max="10000" placeholder="7000"></div>
@@ -327,25 +328,17 @@
       <p class="small muted" style="margin:6px 0 0">Event-Tag: Obergrenze an freien Tagen. kcal je kg: Umrechnung zwischen Bilanz und Gewicht (Standard 7.000). Grundbedarf: leer lassen, dann rechnet die App ihn aus Größe, Gewicht und Alter (<span id="pBaseAuto">–</span> kcal).</p>
     </details>
     <details class="panel changelog"><summary>Darstellung</summary>
-    <div class="panel"><div class="label">Darstellung</div><div class="chips" id="themeChips" role="group" aria-label="Darstellung" style="margin-top:8px"><button type="button" class="chip" data-theme-set="auto">Automatisch</button><button type="button" class="chip" data-theme-set="light">Hell</button><button type="button" class="chip" data-theme-set="dark">Dunkel</button></div><p class="small muted" style="margin:8px 0 0">Automatisch folgt der Einstellung des Geräts.</p></div>
+      <div class="chips" id="themeChips" role="group" aria-label="Darstellung" style="margin-top:10px"><button type="button" class="chip" data-theme-set="auto">Automatisch</button><button type="button" class="chip" data-theme-set="light">Hell</button><button type="button" class="chip" data-theme-set="dark">Dunkel</button></div>
+      <p class="small muted" style="margin:8px 0 0">Automatisch folgt der Einstellung des Geräts.</p>
     </details>
-    <details class="panel changelog" id="setSyncBox"><summary>Abgleich</summary>
-      <label class="small" id="autoSyncWrap" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pAutoSync" style="width:auto"> Stündlicher Abgleich mit der Handy-App (Claude, 07–23 Uhr)</label>
-    </details>
-    <div class="btnrow"><button class="btn" type="button" id="pSave2">Einstellungen speichern</button></div>
-    <div class="status" id="pStatus2"></div>
-    <div id="localBox" hidden>
-      <h2>Diese Version</h2>
-      <p class="small muted" id="appVersion" hidden></p>
-      <div class="btnrow" id="updRow" hidden style="margin:0 0 12px"><button class="btn ghost" type="button" id="updCheck">Nach Update suchen</button></div>
-      <div class="status small" id="updStatus"></div>
-      <div class="panel" id="remBox" hidden>
-        <div class="label">Erinnerungen</div>
+    <details class="panel changelog" id="remBox" hidden><summary>Erinnerungen</summary>
         <div class="small remrow"><input type="checkbox" id="remWeigh"><label for="remWeigh">Wiegen (<span id="remWeighDay">Dienstag</span>)</label><input type="time" id="remWeighT" value="07:00" aria-label="Uhrzeit Wiege-Erinnerung"></div>
         <div class="small remrow"><input type="checkbox" id="remSteps"><label for="remSteps">Schritte, falls noch keine eingetragen</label><input type="time" id="remStepsT" value="20:30" aria-label="Uhrzeit Schritte-Erinnerung"></div>
         <p class="small muted" style="margin:6px 0 0">Die Erinnerung kommt nur, wenn Gewicht bzw. Schritte für den Tag noch fehlen.</p>
-      </div>
-      <div class="panel">
+    </details>
+    <details class="panel changelog" id="setSyncBox"><summary>Abgleich und Daten</summary>
+      <label class="small" id="autoSyncWrap" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pAutoSync" style="width:auto"> Stündlicher Abgleich mit der Handy-App (Claude, 07–23 Uhr)</label>
+      <div id="dataBox" hidden>
         <p class="small" style="margin:0 0 10px">Deine Daten liegen nur auf diesem Gerät. Sichere sie ab und zu als Datei, besonders bevor du Browserdaten löschst oder das Gerät wechselst.</p>
         <div class="btnrow" style="margin-top:0"><button class="btn ghost" type="button" id="exportBtn">Daten sichern</button><label class="btn ghost">Daten laden<input type="file" id="importInput" accept="application/json,.json" hidden></label></div>
         <div class="status" id="ioStatus"></div>
@@ -362,6 +355,14 @@
         <div class="btnrow"><button class="btn ghost" type="button" id="syncSave">Verbinden und synchronisieren</button><button class="btn ghost" type="button" id="syncNowBtn">Jetzt synchronisieren</button><button class="btn ghost" type="button" id="syncOff">Trennen</button></div>
         <div class="status" id="syncStatus"></div>
       </div>
+    </details>
+    <details class="panel changelog" id="verBox" hidden><summary>Version und Update</summary>
+      <p class="small muted" id="appVersion" hidden style="margin-top:10px"></p>
+      <div class="btnrow" id="updRow" hidden style="margin:10px 0 0"><button class="btn ghost" type="button" id="updCheck">Nach Update suchen</button></div>
+      <div class="status small" id="updStatus"></div>
+    </details>
+    <div class="btnrow"><button class="btn" type="button" id="pSave2">Einstellungen speichern</button></div>
+    <div class="status" id="pStatus2"></div>
     <p class="small muted">Änderungen an Werten wirken sofort auf die Berechnungen. Bereits eingetragene Einträge bleiben unverändert.</p>
   </section>
 </div>

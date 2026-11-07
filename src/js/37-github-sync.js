@@ -124,7 +124,7 @@
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncNow(); });
     setInterval(syncNow, 5 * 60 * 1000);
     setTimeout(syncNow, 800);
-    $("localBox").hidden = false;
+    $("dataBox").hidden = false; $("verBox").hidden = false;
     try { const v = window.WeightplanAndroid && window.WeightplanAndroid.getVersion ? window.WeightplanAndroid.getVersion() : ""; if (v) { $("appVersion").textContent = "App-Version " + v; $("appVersion").hidden = false; } } catch (e) {}
     initUpdates(); initReminders();
     $("profilIntro").textContent = "Deine Angaben und Einträge bleiben auf diesem Gerät. Niemand sonst sieht sie.";

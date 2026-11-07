@@ -334,6 +334,7 @@ const groups = [
   check(!(await pg.isVisible("#updBanner")), "'Später' hides the banner for that version");
   await openSettings(); await pg.click("#updCheck"); await pg.waitForTimeout(300);
   check(await pg.isVisible("#remBox"), "reminder settings shown in the real app");
+  check(await pg.evaluate(() => [...document.querySelectorAll("#view-einstellungen > details")].filter((d) => !d.hidden).every((d) => { d.open = true; return [...d.children].some((c) => c.tagName !== "SUMMARY" && c.getBoundingClientRect().height > 0); })), "no settings box is empty in the real app");
   await pg.check("#remSteps"); await pg.fill("#remStepsT", "21:15"); await pg.dispatchEvent("#remStepsT", "change"); await pg.waitForTimeout(100);
   const rem = JSON.parse(await pg.evaluate(() => window.__rem || "{}"));
   check(rem.steps && rem.steps.on === true && rem.steps.time === "21:15" && rem.weigh && rem.weigh.on === false, "reminder settings sent to the app");
@@ -343,6 +344,8 @@ const groups = [
   check(/3\.98 ist geladen/.test(await pg.textContent("#updText")) && (await pg.textContent("#updInstall")) === "Jetzt neu laden", "page-only update offers a reload instead of an install");
   await pg.click("#updInstall"); await pg.waitForTimeout(800);
   check(await pg.evaluate(() => window.__reloaded) === 1, "reload button reloads the page");
+  await pg.evaluate(() => window.__wpUpdate("error", "Keine Update-Info gefunden (404)."));
+  check(/gerade veröffentlicht/.test(await pg.textContent("#updStatus")), "404 on the update check gets a clear message");
   // steps per incline: 0 % plus the profile's inclines, legacy fields stay filled
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   check(await pg.$("#steps_0") && await pg.$("#steps_9"), "step fields for 0 % and the profile incline");
