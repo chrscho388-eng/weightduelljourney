@@ -355,6 +355,13 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("#estAccept"); await pg.waitForTimeout(500);
   const acc = await pg.evaluate(() => [JSON.parse(localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")).meals.map((m) => m.label), localStorage.getItem("kurs:pendingEst")]);
   check(acc[0].includes("Wiederhergestellt Juit") && acc[1] === null, "restored estimate is saved on accept and the copy is removed");
+  // drafts survive a restart (3.58)
+  await pg.fill("#mealText", "Entwurf bleibt"); await pg.fill("#manKcal", "123"); await pg.waitForTimeout(100);
+  await pg.reload(); await pg.waitForTimeout(1200);
+  check((await pg.inputValue("#mealText")) === "Entwurf bleibt" && (await pg.inputValue("#manKcal")) === "123", "typed draft survives a restart");
+  await pg.fill("#mealText", ""); await pg.fill("#manKcal", ""); await pg.waitForTimeout(100);
+  await pg.reload(); await pg.waitForTimeout(1200);
+  check((await pg.inputValue("#mealText")) === "", "cleared field stays cleared after a restart");
   // failed upload: the entry stays marked as not uploaded
   await pg.evaluate(() => { localStorage.setItem("kurs:syncRepo", "x/y"); localStorage.setItem("kurs:syncToken", "t"); });
   await pg.reload(); await pg.waitForTimeout(1500);
