@@ -11,6 +11,10 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
 const quick = process.argv.includes("--quick");
 const groups = [
   ["A-basis-plan", async ({ pg, errors, openSettings, check }) => {
+    check(!/lädt/.test(await pg.textContent("#topMeta")), "header shows weight, not 'lädt'");
+    check((await pg.textContent("#dayName")).includes("04.11."), "today view shows the date");
+    const tabTops = await pg.$$eval("nav.tabs a", (e) => e.map((x) => Math.round(x.getBoundingClientRect().top)));
+    check(tabTops.length === 6 && new Set(tabTops).size === 1, "all six tabs sit in one row");
   for (const t of ["woche", "verlauf", "plan", "profil", "heute"]) {
     await pg.click(`nav.tabs a[data-tab=${t}]`); await pg.waitForTimeout(150);
     check(await pg.$eval("#view-" + t, (e) => !e.hidden), "tab " + t + " opens");

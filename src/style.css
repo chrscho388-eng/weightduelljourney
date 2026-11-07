@@ -227,11 +227,11 @@ tr.weekrow:hover td { background: var(--accent-soft); }
 /* tabs */
 nav.tabs {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(6, 1fr);
   padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-nav.tabs a { text-align: center; padding: 12px 2px 14px; color: var(--muted); text-decoration: none; font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: .02em; border-top: 3px solid transparent; }
+nav.tabs a { text-align: center; padding: 12px 2px 14px; color: var(--muted); text-decoration: none; font-family: var(--font-display); font-weight: 600; font-size: 14px; letter-spacing: 0; white-space: nowrap; border-top: 3px solid transparent; }
 nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--accent); }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
 .tile { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg); min-width: 0; }
