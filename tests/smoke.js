@@ -365,6 +365,24 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("#stepGoalList > div:last-child button"); await pg.fill("#pFullDays", ""); await pg.click("#pSave2"); await pg.waitForTimeout(400);
   const sg4 = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")));
   check(sg4.stepGoals.length === goals0.length && sg4.stepFullDays === 5, "removing the row and clearing full days restores the standard");
+  // fixed daily entries (3.59)
+  await openSettings();
+  const fxRows = await pg.$$eval("#fixedBox input[type=text]", (e) => e.map((x) => x.value));
+  check(fxRows.includes("Cappuccino"), "existing coffee setting shows up as a fixed entry");
+  const dayMeals = (d) => pg.evaluate((k) => (JSON.parse(localStorage.getItem("kurs:data/users/local/profile/days/" + k) || "{}").meals || []).map((m) => m.label), d);
+  const before04 = await dayMeals("2026-11-04"), before03 = await dayMeals("2026-11-03");
+  await pg.click("#fixedBox button.btn:first-of-type");
+  const lastRow = (await pg.$$("#fixedBox > div.small"))[1];
+  const fi = await lastRow.$$("input"); await fi[0].fill("Skyr Test"); await fi[1].fill("1"); await fi[2].fill("150"); await fi[3].fill("25");
+  await pg.click("#pSave2"); await pg.waitForTimeout(400);
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(600);
+  const after04 = await dayMeals("2026-11-04"), after03 = await dayMeals("2026-11-03");
+  check(after04.filter((x) => x === "Skyr Test").length === 1, "a new fixed entry appears once on today");
+  check(JSON.stringify(after03) === JSON.stringify(before03) && before04.every((x) => after04.includes(x)), "earlier days and existing entries stay untouched");
+  await openSettings();
+  await (await pg.$$("#fixedBox > div.small button.x"))[1].click(); await pg.click("#pSave2"); await pg.waitForTimeout(400);
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(600);
+  check(!(await dayMeals("2026-11-04")).includes("Skyr Test"), "removing a fixed entry removes it from today");
   // data safety (3.57): journal, stale in-memory copy, restored preview
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   const jr = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:journal") || "[]"));
