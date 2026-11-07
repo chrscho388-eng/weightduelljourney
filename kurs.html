@@ -507,20 +507,11 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <div class="field"><label class="label" for="pKcal">kcal pro Tag</label><input id="pKcal" type="number" inputmode="numeric" step="50" min="1200" required></div>
         <div class="field"><label class="label" for="pProt">Eiweiß pro Tag (g)</label><input id="pProt" type="number" inputmode="numeric" step="5" min="40" required></div>
         <div class="field"><label class="label" for="pProtOpt">Eiweiß optimal (g, optional)</label><input id="pProtOpt" type="number" inputmode="numeric" step="5" min="0"></div>
-        <div class="field"><label class="label" for="pInclineAdd">Steigungen für Schritte</label><div class="chips" id="pInclines"></div>
-          <div style="display:flex;gap:6px;margin-top:6px"><input id="pInclineAdd" type="number" inputmode="decimal" step="0.5" min="0.5" max="25" placeholder="z. B. 9" style="width:96px"><button class="btn ghost" type="button" id="pInclineAddBtn">+ Steigung</button></div>
-          <p class="small muted" style="margin:4px 0 0">0 % ist immer dabei. Pro Steigung gibt es ein eigenes Schrittfeld; fehlende Schritte zum Ziel rechnet die App mit der höchsten Steigung.</p></div>
-        <div class="field"><label class="label" for="pSpeed">Tempo (km/h)</label><input id="pSpeed" type="number" inputmode="decimal" step="0.1" min="1" max="8" value="3.5"></div>
-        <div class="field"><label class="label" for="pWeighDay">Wiegetag (morgens; die Woche beginnt mit ihm)</label><select id="pWeighDay"><option value="0">Montag</option><option value="1" selected>Dienstag</option><option value="2">Mittwoch</option><option value="3">Donnerstag</option><option value="4">Freitag</option><option value="5">Samstag</option><option value="6">Sonntag</option></select></div>
       </div>
-      <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pRail" style="width:auto"> Hände beim Gehen locker abgestützt (−5 % Verbrauch)</label>
-      <label class="small" id="autoSyncWrap" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pAutoSync" style="width:auto"> Stündlicher Abgleich mit der Handy-App (Claude, 07–23 Uhr)</label>
-      <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für Schätzung und Plan</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal; kein Rind; esse mit Partnerin; schnelle Gerichte"></textarea></div>
       <div class="small muted" id="pCalc" style="margin-top:10px"></div>
       <div class="btnrow"><button class="btn" type="submit" id="pSave">Profil speichern</button></div>
       <div class="status" id="pStatus"></div>
     </form>
-    <div class="panel"><div class="label">Darstellung</div><div class="chips" id="themeChips" role="group" aria-label="Darstellung" style="margin-top:8px"><button type="button" class="chip" data-theme-set="auto">Automatisch</button><button type="button" class="chip" data-theme-set="light">Hell</button><button type="button" class="chip" data-theme-set="dark">Dunkel</button></div><p class="small muted" style="margin:8px 0 0">Automatisch folgt der Einstellung des Geräts.</p></div>
     <details class="panel changelog features" id="featuresBox"><summary>Funktionen der App</summary><div class="small">
       <p>Weightplan hilft dir, gezielt abzunehmen: Du trägst ein, was du isst und wie viel du gehst, und die App zeigt dir jeden Tag, ob du auf Kurs zu deinem Zielgewicht bist. Claude schätzt dabei die Kalorien für dich und schreibt dir jede Woche einen passenden Essensplan.</p>
       <h4>Heute: dein Tag auf einen Blick</h4><ul>
@@ -560,6 +551,33 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       </ul>
     </div></details>
     <details class="panel changelog" id="changelogBox"><summary>Änderungen je Version</summary><div id="changelog" class="small"></div></details>
+    </div>
+    <p class="small muted">Der Verbrauch ist eine Schätzung: Grundumsatz nach Mifflin-St Jeor mal 1,2 für sitzenden Alltag, dazu Schritte nach der ACSM-Gehformel. Eine Woche Abnehmen entspricht etwa 7.000 kcal Defizit pro kg. Das ersetzt keine ärztliche Beratung.</p>
+  </section>
+  <section id="view-einstellungen" data-view hidden>
+    <h2>Einstellungen</h2>
+    <p class="small muted">Wie die App rechnet und arbeitet. Alle Werte sind vorbelegt; ändere nur, was bei dir anders ist.</p>
+    <details class="panel changelog" open><summary>Gehen und Verbrauch</summary>
+      <div class="fields" style="margin-top:10px">
+        <div class="field"><label class="label" for="pInclineAdd">Steigungen für Schritte</label><div class="chips" id="pInclines"></div>
+          <div style="display:flex;gap:6px;margin-top:6px"><input id="pInclineAdd" type="number" inputmode="decimal" step="0.5" min="0.5" max="25" placeholder="z. B. 9" style="width:96px"><button class="btn ghost" type="button" id="pInclineAddBtn">+ Steigung</button></div>
+          <p class="small muted" style="margin:4px 0 0">0 % ist immer dabei. Pro Steigung gibt es ein eigenes Schrittfeld; fehlende Schritte zum Ziel rechnet die App mit der höchsten Steigung.</p></div>
+        <div class="field"><label class="label" for="pSpeed">Tempo (km/h)</label><input id="pSpeed" type="number" inputmode="decimal" step="0.1" min="1" max="8" value="3.5"></div>
+        <div class="field"><label class="label" for="pWeighDay">Wiegetag (morgens; die Woche beginnt mit ihm)</label><select id="pWeighDay"><option value="0">Montag</option><option value="1" selected>Dienstag</option><option value="2">Mittwoch</option><option value="3">Donnerstag</option><option value="4">Freitag</option><option value="5">Samstag</option><option value="6">Sonntag</option></select></div>
+      </div>
+      <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pRail" style="width:auto"> Hände beim Gehen locker abgestützt (−5 % Verbrauch)</label>
+    </details>
+    <details class="panel changelog"><summary>Schätzung</summary>
+      <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für Schätzung und Plan</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal; kein Rind; esse mit Partnerin; schnelle Gerichte"></textarea></div>
+    </details>
+    <details class="panel changelog"><summary>Darstellung</summary>
+    <div class="panel"><div class="label">Darstellung</div><div class="chips" id="themeChips" role="group" aria-label="Darstellung" style="margin-top:8px"><button type="button" class="chip" data-theme-set="auto">Automatisch</button><button type="button" class="chip" data-theme-set="light">Hell</button><button type="button" class="chip" data-theme-set="dark">Dunkel</button></div><p class="small muted" style="margin:8px 0 0">Automatisch folgt der Einstellung des Geräts.</p></div>
+    </details>
+    <details class="panel changelog" id="setSyncBox"><summary>Abgleich</summary>
+      <label class="small" id="autoSyncWrap" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pAutoSync" style="width:auto"> Stündlicher Abgleich mit der Handy-App (Claude, 07–23 Uhr)</label>
+    </details>
+    <div class="btnrow"><button class="btn" type="button" id="pSave2">Einstellungen speichern</button></div>
+    <div class="status" id="pStatus2"></div>
     <div id="localBox" hidden>
       <h2>Diese Version</h2>
       <p class="small muted" id="appVersion" hidden></p>
@@ -588,8 +606,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
         <div class="btnrow"><button class="btn ghost" type="button" id="syncSave">Verbinden und synchronisieren</button><button class="btn ghost" type="button" id="syncNowBtn">Jetzt synchronisieren</button><button class="btn ghost" type="button" id="syncOff">Trennen</button></div>
         <div class="status" id="syncStatus"></div>
       </div>
-    </div>
-    <p class="small muted">Der Verbrauch ist eine Schätzung: Grundumsatz nach Mifflin-St Jeor mal 1,2 für sitzenden Alltag, dazu Schritte nach der ACSM-Gehformel. Eine Woche Abnehmen entspricht etwa 7.000 kcal Defizit pro kg. Das ersetzt keine ärztliche Beratung.</p>
+    <p class="small muted">Änderungen an Werten wirken sofort auf die Berechnungen. Bereits eingetragene Einträge bleiben unverändert.</p>
   </section>
 </div>
 
@@ -599,6 +616,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   <a href="#verlauf" data-tab="verlauf">Verlauf</a>
   <a href="#plan" data-tab="plan">Plan</a>
   <a href="#profil" data-tab="profil">Profil</a>
+  <a href="#einstellungen" data-tab="einstellungen">Einstell.</a>
 </nav>
 
 <script>
@@ -780,7 +798,7 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
   function setStatus(id, txt, err) { const el = $(id); el.textContent = txt || ""; el.classList.toggle("err", !!err); }
 
   // ---- routing ----
-  const VIEWS = ["heute", "woche", "verlauf", "plan", "profil"];
+  const VIEWS = ["heute", "woche", "verlauf", "plan", "profil", "einstellungen"];
   function route() {
     let v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "heute";
     if (profileKnown && !hasProfile) v = "profil";
@@ -2398,27 +2416,29 @@ Antworte nur mit JSON in genau dieser Form:
     $("profilTitle").textContent = hasProfile ? "Dein Profil" : "Willkommen! Lege zuerst dein Profil an";
     calcPreview();
   }
+  const pStat = (t, err) => { setStatus("pStatus", t, err); setStatus("pStatus2", t, err); };
+  $("pSave2").onclick = () => $("profileForm").dispatchEvent(new Event("submit", { cancelable: true }));
   $("profileForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!base) { setStatus("pStatus", "Speicher nicht erreichbar.", true); return; }
+    if (!base) { pStat("Speicher nicht erreichbar.", true); return; }
     const p = readForm();
-    if (p.goalWeight >= p.startWeight) { setStatus("pStatus", "Das Zielgewicht muss unter dem Startgewicht liegen.", true); return; }
-    if (p.goalDate <= p.startWeightDate) { setStatus("pStatus", "Das Zieldatum muss nach dem Startdatum liegen.", true); return; }
+    if (p.goalWeight >= p.startWeight) { pStat("Das Zielgewicht muss unter dem Startgewicht liegen.", true); return; }
+    if (p.goalDate <= p.startWeightDate) { pStat("Das Zieldatum muss nach dem Startdatum liegen.", true); return; }
     const startChanged = !hasProfile || p.startWeight !== S.startWeight || p.startWeightDate !== S.startWeightDate || p.goalWeight !== S.goalWeight || p.goalDate !== S.goalDate;
     const next = { ...S, ...p, ...deriveFactors(p), startDate: mondayOf(p.startWeightDate) };
     if (startChanged) next.milestones = null; // custom milestones only kept while start and goal stay the same
     delete next.updatedAt;
     next.updatedAt = new Date().toISOString();
-    $("pSave").disabled = true;
+    $("pSave").disabled = true; $("pSave2").disabled = true;
     try {
       await base.set(next);
       if (!days[p.startWeightDate] || !days[p.startWeightDate].weight) saveDay(p.startWeightDate, (d) => { d.weight = p.startWeight; });
-      setStatus("pStatus", "Gespeichert.");
+      pStat("Gespeichert.");
       if (!hasProfile) location.hash = "#heute";
     } catch (err) {
       if (err && err.code === "invalid_argument") $("roNotice").hidden = false;
-      setStatus("pStatus", "Speichern fehlgeschlagen (" + (err && err.code || "Fehler") + ").", true);
-    } finally { $("pSave").disabled = false; }
+      pStat("Speichern fehlgeschlagen (" + (err && err.code || "Fehler") + ").", true);
+    } finally { $("pSave").disabled = false; $("pSave2").disabled = false; }
   });
 
 
@@ -2477,7 +2497,7 @@ Antworte nur mit JSON in genau dieser Form:
       manual = false;
     };
     const check = (m) => { manual = m; try { lsSet(LS + "updLast", String(Date.now())); A.checkUpdate(); } catch (e) {} };
-    $("updCheck").onclick = () => { setStatus("updStatus", "Suche nach Updates …"); check(true); };
+    $("updCheck").onclick = () => { setStatus("updStatus", "Suche nach Updates …"); $("updStatus").after($("updBanner")); check(true); }; // result appears right below the button
     $("updLater").onclick = () => { if (latest) lsSet(LS + "updSkip", latest); $("updBanner").hidden = true; };
     $("updInstall").onclick = async () => {
       if (pageReady) { try { if (syncCfg()) await syncNow(true); } catch (e) {} try { A.reloadPage(); } catch (e) {} return; }

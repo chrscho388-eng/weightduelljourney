@@ -13,6 +13,7 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const b = await chromium.launch();
   const pg = await b.newPage({ viewport: { width: 390, height: 844 } });
   const errors = [];
+  const openSettings = async () => { await pg.click("nav.tabs a[data-tab=einstellungen]"); await pg.evaluate(() => document.querySelectorAll("#view-einstellungen details").forEach((d) => { d.open = true; })); };
   pg.on("pageerror", (e) => errors.push(e.message));
   pg.on("console", (m) => { if (m.type() === "error" && !/fonts\.g|ERR_|Failed to load resource/.test(m.text())) errors.push(m.text()); });
   await pg.route("https://api.github.com/**", (r) => r.fulfill({ status: 404, body: "{}" }));
@@ -251,16 +252,16 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("#planAccept"); await pg.waitForTimeout(400);
   const pl4 = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/plans/2026-11-02")));
   check(pl4.days[0].meals[0].name.startsWith("Frittatensuppe") && /^photo:[0-9a-f]{16}$/.test(pl4.canteenMenu || ""), "accepted plan keeps the menu photo");
-  await pg.click("nav.tabs a[data-tab=profil]"); await pg.waitForTimeout(150);
+  await openSettings(); await pg.waitForTimeout(150);
   await pg.click('#themeChips [data-theme-set="dark"]'); await pg.waitForTimeout(100);
   const bgDark = await pg.evaluate(() => getComputedStyle(document.body).backgroundColor);
   check(bgDark === "rgb(19, 24, 21)", "dark mode can be switched on (" + bgDark + ")");
   await pg.reload(); await pg.waitForTimeout(800);
   check(await pg.evaluate(() => document.documentElement.dataset.theme) === "dark", "dark mode is remembered");
-  await pg.click("nav.tabs a[data-tab=profil]"); await pg.waitForTimeout(150);
+  await openSettings(); await pg.waitForTimeout(150);
   await pg.click('#themeChips [data-theme-set="light"]'); await pg.waitForTimeout(100);
   check(await pg.evaluate(() => getComputedStyle(document.body).backgroundColor) === "rgb(243, 244, 239)", "light mode can be switched on");
-  await pg.click("#changelogBox > summary");
+  await pg.click("nav.tabs a[data-tab=profil]"); await pg.click("#changelogBox > summary");
   check(await pg.isVisible("#changelog .ver") && (await pg.$$("#changelog .ver")).length > 20 && /^3\.\d+/.test(await pg.textContent("#changelog .ver b")), "changelog lists the versions");
   // photos: inline photos of old data move into the photo store, documents keep only a reference
   const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -283,7 +284,7 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
     if (m === "PUT") { putJson = JSON.parse(Buffer.from(JSON.parse(r.request().postData()).content, "base64").toString("utf8")); return r.fulfill({ status: 200, body: "{}" }); }
     return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(remoteFile(remoteDocs)) });
   });
-  await pg.click("nav.tabs a[data-tab=profil]"); await pg.click("#syncNowBtn"); await pg.waitForTimeout(1200);
+  await openSettings(); await pg.click("#syncNowBtn"); await pg.waitForTimeout(1200);
   const merged = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
   const ml = merged.meals.map((m) => m.label);
   check(ml.includes("Remote-Apfel") && ml.includes("Frühstück vorhanden"), "sync merges meals from both sides (" + ml.length + ")");
@@ -298,7 +299,7 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   const und = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
   check(/Remote-Apfel/.test(await listed()) && !(und.removed || []).includes("r1"), "undo brings the meal back");
   await pg.click('#mealList li:has-text("Remote-Apfel") .x:not(.star)'); await pg.waitForTimeout(200);
-  await pg.click("nav.tabs a[data-tab=profil]"); await pg.click("#syncNowBtn"); await pg.waitForTimeout(1200);
+  await openSettings(); await pg.click("#syncNowBtn"); await pg.waitForTimeout(1200);
   const del = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
   check(!del.meals.some((m) => m.id === "r1") && del.removed.includes("r1") && !putJson.docs["profile/days/2026-11-04"].meals.some((m) => m.id === "r1"), "deleted meal stays deleted after the merge");
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
@@ -315,7 +316,7 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("#updLater"); await pg.reload(); await pg.waitForTimeout(800);
   await pg.evaluate(() => localStorage.removeItem("kurs:updLast")); await pg.reload(); await pg.waitForTimeout(3200);
   check(!(await pg.isVisible("#updBanner")), "'Später' hides the banner for that version");
-  await pg.click("nav.tabs a[data-tab=profil]"); await pg.click("#updCheck"); await pg.waitForTimeout(300);
+  await openSettings(); await pg.click("#updCheck"); await pg.waitForTimeout(300);
   check(await pg.isVisible("#remBox"), "reminder settings shown in the real app");
   await pg.check("#remSteps"); await pg.fill("#remStepsT", "21:15"); await pg.dispatchEvent("#remStepsT", "change"); await pg.waitForTimeout(100);
   const rem = JSON.parse(await pg.evaluate(() => window.__rem || "{}"));
@@ -332,7 +333,7 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.fill("#steps_9", "10000"); await pg.dispatchEvent("#steps_9", "change"); await pg.waitForTimeout(200);
   const sd = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
   check(sd.steps && sd.steps["9"] === 10000 && sd.inclineSteps === 10000 && sd.flatSteps === (sd.steps["0"] || null), "incline steps saved per incline and as legacy fields");
-  await pg.click("nav.tabs a[data-tab=profil]"); await pg.waitForTimeout(150);
+  await openSettings(); await pg.waitForTimeout(150);
   await pg.fill("#pInclineAdd", "5"); await pg.click("#pInclineAddBtn"); await pg.waitForTimeout(100);
   check(/5 %/.test(await pg.textContent("#pInclines")), "incline added in the profile");
   check((await pg.textContent("#remWeighDay")) === "Dienstag", "weigh reminder names the weigh day");
