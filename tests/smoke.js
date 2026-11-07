@@ -352,6 +352,19 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.fill("#pEvent", ""); await pg.fill("#pKcalKg", ""); await pg.fill("#pBase", ""); await pg.click("#pSave2"); await pg.waitForTimeout(400);
   const prof2 = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")));
   check(prof2.eventKcal === 3000 && prof2.kcalPerKg === 7000 && !prof2.baseKcalManual && prof2.baseKcal !== 2400, "empty fields return to the defaults and the automatic base");
+  // step goals editor (3.59)
+  await openSettings();
+  const goals0 = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")).stepGoals || []);
+  check((await pg.$$("#stepGoalList > div")).length === goals0.length, "step goal rows show the stored goals");
+  await pg.click("#stepGoalAdd");
+  const rows = await pg.$$("#stepGoalList > div"), last = rows[rows.length - 1];
+  const ins = await last.$$("input"); await ins[0].fill("2026-12-01"); await ins[1].fill("20000"); await ins[2].fill("12000");
+  await pg.fill("#pFullDays", "4"); await pg.click("#pSave2"); await pg.waitForTimeout(400);
+  const sg3 = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")));
+  check(sg3.stepGoals.some((g) => g.from === "2026-12-01" && g.steps === 20000 && g.min === 12000) && sg3.stepFullDays === 4, "step goal and full days per week are saved");
+  await pg.click("#stepGoalList > div:last-child button"); await pg.fill("#pFullDays", ""); await pg.click("#pSave2"); await pg.waitForTimeout(400);
+  const sg4 = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")));
+  check(sg4.stepGoals.length === goals0.length && sg4.stepFullDays === 5, "removing the row and clearing full days restores the standard");
   // data safety (3.57): journal, stale in-memory copy, restored preview
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   const jr = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:journal") || "[]"));

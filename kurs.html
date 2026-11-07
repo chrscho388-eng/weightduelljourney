@@ -567,6 +567,12 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       </div>
       <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pRail" style="width:auto"> Hände beim Gehen locker abgestützt (−5 % Verbrauch)</label>
     </details>
+    <details class="panel changelog"><summary>Schrittziele</summary>
+      <p class="small muted" style="margin:10px 0 6px">Ab welchem Datum gilt welches Ziel. „Mindestens“ ist das Ziel für leichtere Tage (leer = gleich dem Ziel).</p>
+      <div id="stepGoalList"></div>
+      <div class="btnrow" style="margin-top:6px"><button class="btn ghost" type="button" id="stepGoalAdd">Ziel hinzufügen</button></div>
+      <div class="field" style="margin-top:10px"><label class="label" for="pFullDays">Tage pro Woche mit vollem Ziel (Rest = Mindestens)</label><input id="pFullDays" type="number" inputmode="numeric" min="0" max="7" placeholder="5"></div>
+    </details>
     <details class="panel changelog"><summary>Schätzung</summary>
       <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für Schätzung und Plan</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal; kein Rind; esse mit Partnerin; schnelle Gerichte"></textarea></div>
     </details>
@@ -1356,7 +1362,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
 
   // ---- week targets: what today needs so the running week average meets the goals ----
   // average step goal per day (e.g. 18,000 on 5 days and 13,000 on 2 → 16,571)
-  function stepAvgGoal(date) { const g = stepGoalFor(date); return g ? (g.min < g.full ? (5 * g.full + 2 * g.min) / 7 : g.full) : 0; }
+  function stepAvgGoal(date) { const g = stepGoalFor(date), fd = Math.max(0, Math.min(7, S.stepFullDays ?? 5)); return g ? (g.min < g.full ? (fd * g.full + (7 - fd) * g.min) / 7 : g.full) : 0; }
   // planned balance of a day: kcal target minus the burn at exactly the step goal (flat steps as logged up to the goal, rest with incline);
   // extra steps beyond the goal never raise the target, they show up in the actual balance
   function sollBal(date) {
@@ -2387,11 +2393,27 @@ Antworte nur mit JSON in genau dieser Form:
   const PF = { pName: "name", pSex: "sex", pAge: "age", pHeight: "heightCm", pStartW: "startWeight", pStartD: "startWeightDate", pGoalW: "goalWeight", pGoalD: "goalDate", pKcal: "kcalTarget", pProt: "proteinTarget", pProtOpt: "proteinOptimum", pSpeed: "speedKmh", pWeighDay: "weighDay", pHints: "estimateHints" };
   const NUMS = ["age", "heightCm", "startWeight", "goalWeight", "kcalTarget", "proteinTarget", "proteinOptimum", "speedKmh", "weighDay"];
   $("pAutoSync").onchange = () => { saveProfile({ autoSyncHourly: $("pAutoSync").checked }); };
+  // step goals: list of {from, steps, min?}; edited rows live in formGoals until the profile is saved
+  let formGoals = [];
+  function renderGoalRows() {
+    const box = $("stepGoalList"); box.innerHTML = "";
+    formGoals.forEach((g, i) => {
+      const row = document.createElement("div"); row.className = "small"; row.style.cssText = "display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap";
+      row.innerHTML = `<span>ab</span><input type="date" value="${esc(g.from || "")}" aria-label="gilt ab" style="width:auto"><input type="number" inputmode="numeric" min="0" step="500" value="${g.steps ?? ""}" placeholder="Ziel" aria-label="Schrittziel" style="width:90px"><input type="number" inputmode="numeric" min="0" step="500" value="${g.min ?? ""}" placeholder="mindestens" aria-label="Mindestens" style="width:100px"><button type="button" class="x" aria-label="Zeile entfernen">×</button>`;
+      const [d, st, mn, x] = row.querySelectorAll("input,button");
+      d.oninput = () => { g.from = d.value; }; st.oninput = () => { g.steps = st.value === "" ? "" : Number(st.value); }; mn.oninput = () => { g.min = mn.value === "" ? "" : Number(mn.value); };
+      x.onclick = () => { formGoals.splice(i, 1); renderGoalRows(); };
+      box.append(row);
+    });
+  }
+  $("stepGoalAdd").onclick = () => { const last = formGoals[formGoals.length - 1]; formGoals.push({ from: todayStr(), steps: last ? last.steps : "", min: last ? last.min : "" }); renderGoalRows(); };
+  const cleanGoals = () => formGoals.filter((g) => /^\d{4}-\d{2}-\d{2}$/.test(g.from || "") && Number(g.steps) > 0).map((g) => ({ from: g.from, steps: Number(g.steps), ...(Number(g.min) > 0 && Number(g.min) < Number(g.steps) ? { min: Number(g.min) } : {}) })).sort((a, b) => a.from < b.from ? -1 : 1);
   function readForm() {
     const p = {};
     for (const [id, k] of Object.entries(PF)) { const v = $(id).value.trim(); p[k] = NUMS.includes(k) ? (v === "" ? null : Number(v)) : v; }
     p.handrail = $("pRail").checked;
     p.autoSyncHourly = $("pAutoSync").checked;
+    p.stepGoals = cleanGoals(); p.stepFullDays = $("pFullDays").value.trim() === "" ? 5 : Math.max(0, Math.min(7, Math.round(Number($("pFullDays").value))));
     const num = (id, lo, hi) => { const v = Number($(id).value); return $(id).value.trim() !== "" && v >= lo && v <= hi ? v : null; };
     p.eventKcal = num("pEvent", 1500, 6000) ?? DEFAULTS.eventKcal; p.kcalPerKg = num("pKcalKg", 3000, 10000) ?? DEFAULTS.kcalPerKg; p.baseKcalManual = num("pBase", 1000, 4000);
     p.inclines = formInclines.slice(); p.inclinePct = S.inclinePct ?? 9; // inclinePct stays: older days are read with it
@@ -2422,6 +2444,7 @@ Antworte nur mit JSON in genau dieser Form:
     for (const [id, k] of Object.entries(PF)) if (document.activeElement !== $(id)) $(id).value = S[k] ?? (id === "pSpeed" ? 3.5 : id === "pWeighDay" ? 1 : id === "pStartD" ? todayStr() : "");
     $("pRail").checked = !!S.handrail;
     $("pAutoSync").checked = S.autoSyncHourly !== false;
+    formGoals = (S.stepGoals || []).map((g) => ({ from: g.from, steps: g.steps, min: g.min ?? "" })); renderGoalRows(); $("pFullDays").value = S.stepFullDays != null && S.stepFullDays !== 5 ? S.stepFullDays : "";
     $("pEvent").value = S.eventKcal !== DEFAULTS.eventKcal ? S.eventKcal : ""; $("pKcalKg").value = S.kcalPerKg !== DEFAULTS.kcalPerKg ? S.kcalPerKg : ""; $("pBase").value = S.baseKcalManual ?? "";
     try { $("pBaseAuto").textContent = fmt(deriveFactors({ ...S, ...readForm() }).baseKcal); } catch (e) {}
     formInclines = inclineList(); renderInclineChips();
