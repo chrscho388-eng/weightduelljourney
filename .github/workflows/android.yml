@@ -7,6 +7,8 @@ on:
       - "android/**"
       - "android-web/**"
       - "kurs.html"
+      - "src/**"
+      - "build.js"
       - "tests/**"
       - ".github/workflows/android.yml"
   workflow_dispatch:
@@ -29,6 +31,13 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: kurs.html passt zu src/
+        run: node build.js --check
+
       - name: App-Seite in die APK legen
         run: |
           mkdir -p android/app/src/main/assets
@@ -40,10 +49,6 @@ jobs:
             cat kurs.html
             printf '</body></html>'
           } > android/app/src/main/assets/index.html
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
 
       - name: Seite testen (bricht den Build bei Fehlern ab)
         run: |

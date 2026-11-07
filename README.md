@@ -49,7 +49,7 @@ Die APK wird bei jeder Änderung an `kurs.html` oder `android/` automatisch übe
 
 ## Wie die App läuft
 
-Die App ist eine einzelne Datei, [`kurs.html`](kurs.html), ohne Build-Schritt. Sie läuft als Claude-Artifact auf claude.ai und nutzt dort drei Laufzeitfunktionen über `window.claude.use(...)`:
+Die App wird als einzelne Datei [`kurs.html`](kurs.html) ausgeliefert. Gebaut wird sie mit `node build.js` aus den Teilen in `src/` (Bearbeiten nur dort). Sie läuft als Claude-Artifact auf claude.ai und nutzt dort drei Laufzeitfunktionen über `window.claude.use(...)`:
 
 | Funktion | Wofür |
 |---|---|

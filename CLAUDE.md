@@ -25,6 +25,10 @@ Etwas Neues entsteht in fester Reihenfolge, jeder Schritt hat einen eigenen Befe
 - **Tests werden nie abgeschwächt**, damit etwas durchgeht. Ist ein Test nachweislich falsch, wird er korrigiert und das begründet.
 - **Für längere, selbstständige Stücke Arbeit `/auto <Aufgabenliste>`**: Rückfragen einmal am Anfang, danach arbeitet Claude die Liste ab. Alles, was eine Freigabe braucht (Push, Löschen, Nachrichten senden), wird nicht ausgeführt, sondern gesammelt und am Ende mit Chris besprochen. `/autoend` schließt sauber ab und schreibt ein Protokoll.
 
+## Code-Aufbau
+
+`kurs.html` ist die gebaute Datei und wird nicht von Hand bearbeitet. Quellen liegen in `src/`: `head.html`, `style.css`, `body.html` (HTML der Tabs), `js/NN-thema.js` (ein Abschnitt je Funktion, in Dateinamen-Reihenfolge zusammengesetzt, alle in einer gemeinsamen Funktion), `tail.html`. Änderung: nur die passende Datei lesen und bearbeiten, dann `node build.js` (baut `kurs.html`), dann `node tests/smoke.js kurs.html`. Beides einchecken; CI prüft mit `node build.js --check`. Changelog steht in `src/js/02-changelog.js`.
+
 ## Git
 
 - Lokal oft committen (billige Rollback-Punkte), gebündelt pushen (am Ende einer Arbeitsphase), nicht nach jeder Kleinigkeit.

@@ -1,0 +1,378 @@
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span id="brandName">Weightplan</span></div>
+    <div class="topright"><div class="top-meta" id="topMeta"><div class="tm2">lädt …</div></div><button class="syncbtn" type="button" id="syncHdr" hidden>⟳ Sync</button><div class="small err" id="unsynced" hidden></div></div>
+  </header>
+  <div class="syncmsg" id="syncHdrMsg" hidden></div>
+  <div class="toast" id="toast" role="status" hidden><span id="toastText"></span><button type="button" id="toastUndo">Rückgängig</button></div>
+  <div class="panel updbanner" id="updBanner" hidden><span id="updText"></span><div class="btnrow" style="margin-top:8px"><button class="btn" type="button" id="updInstall">Jetzt aktualisieren</button><button class="btn ghost" type="button" id="updLater">Später</button></div></div>
+
+  <div id="dbNotice" class="notice" hidden>Der Speicher ist in dieser Ansicht nicht erreichbar. Öffne die App angemeldet in Claude, dann erscheinen deine Einträge.</div>
+  <div id="roNotice" class="notice" hidden>Du kannst hier gerade nichts speichern. Bitte die Person, die dir die App geteilt hat, dich als „Mitwirkende“ einzuladen. Deine Einträge bleiben trotzdem privat.</div>
+
+  <!-- HEUTE -->
+  <section id="view-heute" data-view>
+    <div class="daybar">
+      <button class="iconbtn" id="prevDay" aria-label="Vorheriger Tag">‹</button>
+      <button type="button" class="dname dpick" id="dayName" aria-expanded="false" aria-controls="dayPicker">–</button>
+      <button class="iconbtn" id="nextDay" aria-label="Nächster Tag">›</button>
+    </div>
+    <div class="picker" id="dayPicker" hidden></div>
+    <div class="gauges">
+      <div class="gauge"><div class="label">Aufnahme</div><div class="val" id="gKcal">0</div><div class="of" id="gKcalOf">von 2.000 kcal</div><div class="bar" id="gKcalBar"><i style="width:0"></i></div></div>
+      <div class="gauge"><div class="label">Eiweiß</div><div class="val" id="gProt">0 g</div><div class="of" id="gProtOf">von 180 g</div><div class="bar" id="gProtBar"><i style="width:0"></i><b id="gProtOpt" hidden></b></div></div>
+    </div>
+    <div class="balance-row" id="balanceRow"></div>
+    <div class="panel wgoal" id="weekGoal" hidden></div>
+    <div class="small muted" id="streakLine" style="margin-top:8px"></div>
+    <button class="linkbtn small" type="button" id="reviewHint" hidden style="margin-top:6px"></button>
+
+    <h2>Essen</h2>
+    <div class="panel">
+      <ul class="meals" id="mealList"></ul>
+    </div>
+
+    <div id="favWrap" hidden>
+      <div class="ctitle" style="margin-top:18px"><h3 style="margin:0 0 8px">Schnell eintragen</h3><button class="chip" type="button" id="favEdit" hidden>Bearbeiten</button></div>
+      <div class="chips" id="favChips"></div>
+      <p class="small muted" id="favHint" style="margin:6px 0 0"></p>
+    </div>
+
+    <div id="planChipsWrap" hidden>
+      <h3>Aus dem Plan übernehmen</h3>
+      <div class="chips" id="planChips"></div>
+    </div>
+
+    <h3>Mahlzeit eintragen</h3>
+    <div class="panel">
+      <div class="field">
+        <label class="label" for="mealText">Was hast du gegessen?</label>
+        <textarea id="mealText" placeholder="z. B. 250 g griechischer Joghurt mit 60 g Whey und 100 g Beeren"></textarea>
+      </div>
+      <div class="chips" id="sendMode" role="group" aria-label="Schätzen" hidden style="margin-bottom:8px"><button type="button" class="chip" data-send-mode="direct">Direkt schätzen</button><button type="button" class="chip" data-send-mode="claude">Über Claude (Abgleich)</button></div>
+      <div id="attachBox" class="attach" hidden><div id="attachList" class="thumbs"></div><span class="small" id="attachTxt"></span></div>
+      <div class="btnrow">
+        <label class="btn ghost" id="photoAdd" hidden>Foto hinzufügen<input type="file" id="photoInput" accept="image/*" multiple hidden></label>
+        <button class="btn" id="sendBtn" type="button" hidden>Schätzen</button>
+      </div>
+      <p class="small muted" id="pasteHint" hidden style="margin:6px 0 0">Screenshot in der Zwischenablage? Einfach mit Strg+V einfügen.</p>
+      <p class="small muted" id="askHint" hidden style="margin:6px 0 0">Claude schätzt beim nächsten Abgleich (startet beim Öffnen der Web-App, sofort per ⟳ Sync dort), dafür ohne API-Kosten. Ein Text zum Foto hilft, z. B. die Menge.</p>
+      <div class="status" id="estStatus"></div>
+      <div id="estPreview" class="preview" hidden>
+        <div class="estbody" id="estSeenBox" hidden><img class="mphoto" id="estPhoto" alt="Dein Foto"><p class="seen small" id="estSeen"></p></div>
+        <ul class="meals" id="estList"></ul>
+        <div class="small muted" id="estNote"></div>
+        <div class="btnrow"><button class="btn" id="estAccept">Übernehmen</button><button class="btn ghost" id="estDiscard">Verwerfen</button></div>
+      </div>
+      <h3 class="small label" style="margin-top:14px">Oder selbst eintragen</h3>
+      <div class="fields">
+        <div class="field"><label class="label" for="manKcal">kcal</label><input id="manKcal" type="number" inputmode="numeric" min="0" step="5"></div>
+        <div class="field"><label class="label" for="manProt">Eiweiß (g)</label><input id="manProt" type="number" inputmode="numeric" min="0" step="1"></div>
+      </div>
+      <div class="btnrow"><button class="btn ghost" id="manAdd">Eintragen</button><button class="btn ghost" id="editCancel" hidden>Bearbeiten abbrechen</button></div>
+    </div>
+
+    <h2 id="moveHead">Bewegung und Gewicht</h2>
+    <div class="panel">
+      <div class="fields">
+        <div id="stepFields" style="display:contents"></div>
+        <div class="field" id="weightField"><label class="label" for="weight">Gewicht (kg)</label><input id="weight" type="number" inputmode="decimal" min="40" step="0.1" placeholder="nüchtern"></div>
+        <div class="field"><label class="label" for="dayType">Tagesart</label>
+          <select id="dayType"><option value="HO">Home Office</option><option value="Büro">Büro</option><option value="WE">Wochenende</option><option value="Frei">Feiertag / frei</option></select></div>
+      </div>
+      <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="eventDay" style="width:auto"> Event-Tag (z. B. Essen auswärts, Feier)</label>
+      <button class="linkbtn small" type="button" id="weightShow" hidden>Heute außerplanmäßig wiegen</button>
+      <p class="small muted" style="margin:6px 0 0">Die Tagesart erscheint in der Wochenübersicht, und Claude berücksichtigt sie beim Anpassen des Plans. An Event-Tagen gilt statt des normalen Kalorienziels ein freier Rahmen. Die Bilanz zählt trotzdem voll.</p>
+      <div class="status" id="saveStatus"></div>
+    </div>
+  </section>
+
+  <!-- WOCHE -->
+  <section id="view-woche" data-view hidden>
+    <div class="daybar">
+      <button class="iconbtn" id="prevWeek" aria-label="Vorherige Woche">‹</button>
+      <button type="button" class="dname dpick" id="weekName" aria-expanded="false" aria-controls="weekPicker">–</button>
+      <button class="iconbtn" id="nextWeek" aria-label="Nächste Woche">›</button>
+    </div>
+    <div class="picker" id="weekPicker" hidden></div>
+    <div id="weekReviewWrap" hidden><h2 id="weekReviewHead">Wochenrückblick</h2><div class="panel review" id="weekReview"></div></div>
+    <h2>Tagesbilanz</h2>
+    <p class="small muted" style="margin:-4px 0 8px">Tipp auf einen Tag, um seine Einträge zu sehen und zu bearbeiten.</p>
+    <div class="panel daylist" id="weekTable"></div>
+    <h2>Wochensumme</h2>
+    <div class="panel" id="weekSum"></div>
+  </section>
+
+  <!-- VERLAUF -->
+  <section id="view-verlauf" data-view hidden>
+    <h2>Überblick</h2>
+    <div class="panel" id="insight"></div>
+    <h2>Gewicht</h2>
+    <div class="panel">
+      <svg class="chart" id="chart" viewBox="0 0 600 300" role="img" aria-label="Gewichtsverlauf mit Spätestens-Zielen"></svg>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>gewogen</span>
+        <span><i style="background:var(--s2)"></i>Trend (Schnitt 14 Tage)</span>
+        <span><i style="background:var(--warn)"></i>erwartet laut Bilanz</span>
+        <span><i style="background:var(--chart-goal)"></i>Spätestens-Ziele</span>
+      </div>
+    </div>
+    <div class="panel dchart" style="margin-top:12px">
+      <div class="ctitle"><h3>Erwartet vs. gewogen</h3></div>
+      <div class="cread" id="readExp"></div>
+      <svg class="chart" id="chExp" viewBox="0 0 600 230" role="img" aria-label="Abnahme seit Start: erwartet laut Bilanz und gewogen"></svg>
+      <div class="legend"><span><i style="background:var(--warn)"></i>erwartet laut Bilanz</span><span><i style="background:var(--accent)"></i>gewogen</span></div>
+    </div>
+    <div class="ctitle" style="margin-top:24px"><h2 style="margin:0">Tageswerte</h2>
+      <div class="chips" id="rangeChips" role="group" aria-label="Zeitraum">
+        <button class="chip on" data-range="14">14 Tage</button><button class="chip" data-range="30">30 Tage</button><button class="chip" data-range="0">Alles</button>
+      </div></div>
+    <p class="small muted" style="margin:6px 0 10px">Tipp auf einen Tag zeigt die Werte.</p>
+    <div class="charts">
+      <div class="panel dchart">
+        <div class="ctitle"><h3>Aufnahme und Verbrauch</h3></div>
+        <div class="cread" id="readEnergy"></div>
+        <svg class="chart" id="chEnergy" viewBox="0 0 600 230" role="img" aria-label="Tägliche Kalorienaufnahme und Verbrauch"></svg>
+        <div class="legend"><span><i style="background:var(--s1);height:10px;width:10px"></i>Aufnahme</span><span><i style="background:var(--s2)"></i>Verbrauch</span><span><i style="background:var(--chart-goal)"></i>kcal-Ziel</span></div>
+      </div>
+      <div class="panel dchart">
+        <div class="ctitle"><h3>Energiebilanz</h3></div>
+        <div class="cread" id="readBal"></div>
+        <svg class="chart" id="chBal" viewBox="0 0 600 230" role="img" aria-label="Tägliche Energiebilanz mit 7-Tage-Schnitt"></svg>
+        <div class="legend"><span><i style="background:var(--good);height:10px;width:10px"></i>Defizit</span><span><i style="background:var(--bad);height:10px;width:10px"></i>Überschuss</span><span><i style="background:var(--fg)"></i>Schnitt 7 Tage</span></div>
+      </div>
+      <div class="panel dchart">
+        <div class="ctitle"><h3>Eiweiß</h3></div>
+        <div class="cread" id="readProt"></div>
+        <svg class="chart" id="chProt" viewBox="0 0 600 230" role="img" aria-label="Tägliche Eiweißaufnahme"></svg>
+        <div class="legend"><span><i style="background:var(--s1);height:10px;width:10px"></i>Eiweiß</span><span><i style="background:var(--chart-goal)"></i>Ziel</span></div>
+      </div>
+      <div class="panel dchart">
+        <div class="ctitle"><h3>Schritte</h3></div>
+        <div class="cread" id="readSteps"></div>
+        <svg class="chart" id="chSteps" viewBox="0 0 600 230" role="img" aria-label="Tägliche Schritte mit und ohne Steigung und Schrittziel"></svg>
+        <div class="legend"><span><i style="background:var(--s1);height:10px;width:10px"></i>mit Steigung</span><span><i style="background:var(--s2);height:10px;width:10px"></i>flach</span><span><i style="background:var(--chart-goal)"></i>Ziel</span><span><i style="background:var(--chart-goal);opacity:.55"></i>Mindestziel</span></div>
+      </div>
+    </div>
+
+    <h2>Alle Wochen</h2>
+    <div class="tablewrap"><table id="allWeeks"></table></div>
+    <h2>Zwischenziele</h2>
+    <div class="tablewrap"><table id="goalTable"></table></div>
+  </section>
+
+  <!-- PLAN -->
+  <section id="view-plan" data-view hidden>
+    <div class="daybar">
+      <button class="iconbtn" id="prevPlan" aria-label="Vorherige Woche">‹</button>
+      <button type="button" class="dname dpick" id="planName" aria-expanded="false" aria-controls="planPicker">–</button>
+      <button class="iconbtn" id="nextPlan" aria-label="Nächste Woche">›</button>
+    </div>
+    <div class="picker" id="planPicker" hidden></div>
+    <div id="planAsk" class="panel" style="margin-top:14px" hidden>
+      <div class="field"><label class="label" for="planPrompt">Plan ändern</label>
+        <textarea id="planPrompt" placeholder="z. B. Heute kein Frühstück und ich esse abends auswärts"></textarea></div>
+      <div class="chips" id="planSendMode" role="group" aria-label="Plan ändern" hidden style="margin-bottom:8px"><button type="button" class="chip" data-send-mode="direct">Jetzt berechnen</button><button type="button" class="chip" data-send-mode="claude">Über Claude (Abgleich)</button></div>
+      <div class="btnrow"><button class="btn" id="planAdjustBtn" hidden>Jetzt berechnen</button><button class="btn" type="button" id="planLaterBtn" hidden>An Claude senden</button><button class="btn ghost" id="planUndo" hidden>Letzte Änderung rückgängig</button></div>
+      <div class="status" id="planStatus"></div>
+      <div id="planProposal" class="preview" hidden>
+        <p class="small" id="planSummary" style="margin:0"></p>
+        <div class="btnrow"><button class="btn" id="planAccept">Übernehmen</button><button class="btn ghost" id="planDiscard">Verwerfen</button></div>
+        <p class="small muted" style="margin:6px 0 0">Unten siehst du den Vorschlag. Gespeichert wird er erst mit „Übernehmen“.</p>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="field"><label class="label" for="planNotes">Hinweise für diese Woche</label>
+        <textarea id="planNotes" placeholder="z. B. Mo und Do Büro, Rest Home Office. Mi abends Essen auswärts, Fr Abend verplant."></textarea></div>
+      <p class="small muted" style="margin:4px 0 0">Claude berücksichtigt das beim Erstellen des Wochenplans (montags eine Woche im Voraus) und bei „Plan ändern“.</p>
+      <div class="btnrow"><button class="btn ghost" type="button" id="planNotesSave">Hinweise speichern</button></div>
+      <div class="status" id="planNotesStatus"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="field"><label class="label" for="canteenHabits">Kantine: was du dort meistens isst</label>
+        <textarea id="canteenHabits" placeholder="z. B. Suppe mit Einlage, kleine Salatschüssel, Dessert im kleinen Glas"></textarea></div>
+      <p class="small muted" style="margin:4px 0 0" id="canteenHint">Lade das Wochenmenü als Foto oder Screenshot hoch, sobald es da ist. Claude wählt dann für jeden Bürotag die beste Kombination und gleicht den Rest des Tages aus. Einen Screenshot kannst du auch direkt mit Strg+V einfügen.</p>
+      <div class="btnrow"><label class="btn" id="canteenLabel" hidden>Menü-Foto hochladen<input type="file" id="canteenInput" accept="image/*" hidden></label><button class="btn ghost" type="button" id="canteenHabitsSave">Gewohnheiten speichern</button></div>
+      <details id="canteenMenuBox" style="margin-top:10px" hidden><summary class="small">Menü dieser Woche</summary><img class="mphoto" id="canteenImg" alt="Kantinen-Menü dieser Woche" style="margin-top:8px"></details>
+      <div class="status" id="canteenStatus"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="label">Dauerhafte Wünsche für alle Pläne</div>
+      <ul class="rules" id="rulesList"></ul>
+      <div class="field" style="margin-top:8px"><label class="label" for="planRuleNew" style="position:absolute;left:-9999px">Neuer Wunsch</label>
+        <input id="planRuleNew" type="text" maxlength="300" placeholder="z. B. Frühstück: Joghurt ohne Beeren"></div>
+      <p class="small muted" style="margin:4px 0 0">Gilt für jeden neuen Wochenplan, jede Anpassung und jedes Rezept, mit Vorrang vor den Standardhinweisen im Profil.</p>
+      <label class="small" id="rulesApplyWrap" style="display:flex;gap:8px;align-items:center;margin-top:8px" hidden><input type="checkbox" id="rulesApply" style="width:auto"> Auch auf schon erstellte Pläne ab heute anwenden</label>
+      <div class="btnrow"><button class="btn ghost" type="button" id="planRulesSave">Hinzufügen</button></div>
+      <div class="status" id="planRulesStatus"></div>
+    </div>
+    <div id="shopBox" style="margin-top:14px"></div>
+    <div id="planBody"></div>
+  </section>
+
+  <!-- PROFIL -->
+  <section id="view-profil" data-view hidden>
+    <h2 id="profilTitle">Dein Profil</h2>
+    <p class="small muted" id="profilIntro">Deine Angaben und Einträge sind privat. Niemand sonst sieht sie, auch nicht die Person, die dir die App geteilt hat.</p>
+    <form id="profileForm" class="panel">
+      <div class="fields">
+        <div class="field"><label class="label" for="pName">Name (optional)</label><input id="pName" type="text" maxlength="40"></div>
+        <div class="field"><label class="label" for="pSex">Geschlecht</label><select id="pSex"><option value="m">männlich</option><option value="w">weiblich</option></select></div>
+        <div class="field"><label class="label" for="pAge">Alter</label><input id="pAge" type="number" inputmode="numeric" min="14" max="100" required></div>
+        <div class="field"><label class="label" for="pHeight">Größe (cm)</label><input id="pHeight" type="number" inputmode="numeric" min="120" max="230" required></div>
+        <div class="field"><label class="label" for="pStartW">Startgewicht (kg)</label><input id="pStartW" type="number" inputmode="decimal" step="0.1" min="35" required></div>
+        <div class="field"><label class="label" for="pStartD">gewogen am</label><input id="pStartD" type="date" required></div>
+        <div class="field"><label class="label" for="pGoalW">Zielgewicht (kg)</label><input id="pGoalW" type="number" inputmode="decimal" step="0.1" min="35" required></div>
+        <div class="field"><label class="label" for="pGoalD">Ziel spätestens am</label><input id="pGoalD" type="date" required></div>
+        <div class="field"><label class="label" for="pKcal">kcal pro Tag</label><input id="pKcal" type="number" inputmode="numeric" step="50" min="1200" required></div>
+        <div class="field"><label class="label" for="pProt">Eiweiß pro Tag (g)</label><input id="pProt" type="number" inputmode="numeric" step="5" min="40" required></div>
+        <div class="field"><label class="label" for="pProtOpt">Eiweiß optimal (g, optional)</label><input id="pProtOpt" type="number" inputmode="numeric" step="5" min="0"></div>
+      </div>
+      <div class="small muted" id="pCalc" style="margin-top:10px"></div>
+      <div class="btnrow"><button class="btn" type="submit" id="pSave">Profil speichern</button></div>
+      <div class="status" id="pStatus"></div>
+    </form>
+    <details class="panel changelog features" id="featuresBox"><summary>Funktionen der App</summary><div class="small">
+      <p>Weightplan hilft dir, gezielt abzunehmen: Du trägst ein, was du isst und wie viel du gehst, und die App zeigt dir jeden Tag, ob du auf Kurs zu deinem Zielgewicht bist. Claude schätzt dabei die Kalorien für dich und schreibt dir jede Woche einen passenden Essensplan.</p>
+      <h4>Heute: dein Tag auf einen Blick</h4><ul>
+        <li><b>Essen eintragen ohne Rechnen.</b> Schreib einfach, was du gegessen hast („Schnitzel mit Kartoffelsalat“), oder mach ein Foto vom Teller oder von der Nährwerttabelle. Claude schätzt Kalorien und Eiweiß.</li>
+        <li><b>Schneller geht’s mit Favoriten.</b> Was du oft isst, steht zum Antippen bereit, und Gerichte aus deinem Wochenplan übernimmst du mit einem Tipp.</li>
+        <li><b>Nachträglich korrigieren.</b> Tipp einen Eintrag an, um die Menge zu ändern, nur einen Teil zu zählen oder eine Zutat wegzulassen. Versehentlich gelöscht? „Rückgängig“ holt ihn zurück.</li>
+        <li><b>Siehst du sofort, wo du stehst:</b> wie viel du heute gegessen hast, wie viel Eiweiß, wie viel dein Körper verbraucht hat und ob du im Minus bist.</li>
+        <li><b>Schritte und Gewicht.</b> Trag deine Schritte ein, getrennt nach Steigung (0 % plus die Steigungen aus dem Profil). Am Wiegetag fragt die App nach deinem Gewicht.</li>
+        <li><b>Wochenziel.</b> Die App rechnet aus, wie viele Schritte du heute noch gehen musst und wie viel du heute noch essen darfst, damit die ganze Woche aufgeht. Ein schwacher Tag lässt sich so an den nächsten Tagen ausgleichen.</li>
+        <li><b>Feste Einträge kommen automatisch dazu,</b> je nach Tagesart (Büro, Home Office, Wochenende), zum Beispiel dein Kaffee. Du legst sie unter Einstellungen selbst fest.</li>
+        <li>Tipp aufs Datum, um schnell zu einem anderen Tag der Woche zu springen.</li>
+      </ul>
+      <h4>Woche: wie lief die Woche?</h4><ul>
+        <li>Alle Tage der Woche nebeneinander, mit Durchschnitt und Summe.</li>
+        <li>Vergleich: Wie viel solltest du rechnerisch abgenommen haben, und was sagt die Waage?</li>
+        <li><b>Wochenrückblick:</b> am letzten Tag der Woche eine erste Einschätzung, ab dem Wiegetag die fertige Auswertung mit Prognose und einem Tipp für die nächste Woche.</li>
+        <li>Tipp auf den Wochennamen, um zu einer früheren Woche zu springen.</li>
+      </ul>
+      <h4>Verlauf: der große Überblick</h4><ul>
+        <li>Wann du dein Zielgewicht voraussichtlich erreichst.</li>
+        <li>Deine Gewichtskurve mit Trend und Zwischenzielen, damit einzelne Ausreißer auf der Waage nicht verunsichern.</li>
+        <li>Diagramme für Kalorien, Eiweiß und Schritte, dazu deine Serien und Rekorde, zum Beispiel wie viele Tage am Stück du dein Eiweißziel geschafft hast.</li>
+      </ul>
+      <h4>Plan: was koche ich diese Woche?</h4><ul>
+        <li>Ein fertiger Essensplan für jede Woche, abgestimmt auf dein Kalorien- und Eiweißziel, mit Rezepten zum Antippen. Ein Knopf im Rezept zeigt die Zutaten wahlweise für 1 oder 2 Personen.</li>
+        <li><b>Wünsche einfach hinschreiben:</b> „kein Fisch am Montag“, „die Bohnen müssen weg“ oder „Donnerstag Abendessen auswärts“. Der Plan wird angepasst. Dauerhafte Vorlieben (z. B. keine Pilze) gelten für alle Wochen.</li>
+        <li>Kantine im Büro: Foto vom Speiseplan hochladen, und du bekommst eine Empfehlung, was am besten passt.</li>
+        <li><b>Einkaufsliste</b> aus den Rezepten der nächsten Tage, zum Abhaken im Geschäft. Schon gekochte Gerichte, Reste und Vorrat sind herausgerechnet.</li>
+      </ul>
+      <h4>Profil: du und deine Ziele</h4><ul>
+        <li>Startgewicht, Zielgewicht und Zieldatum, Kalorien- und Eiweißziel, Körperdaten.</li>
+        <li>Unter „Änderungen je Version“ siehst du, was in jedem Update neu ist.</li>
+      </ul>
+      <h4>Einstellungen: wie die App rechnet</h4><ul>
+        <li>Steigungen, Tempo, Wiegetag, Schrittziele, Tagesarten und feste Einträge (zum Beispiel dein Kaffee), Event-Rahmen und Einkaufsliste anpassen. Alle Werte sind vorbelegt.</li>
+        <li>Hinweise für die Schätzung, zum Beispiel welche Marke dein Joghurt hat.</li>
+        <li>Helle oder dunkle Darstellung.</li>
+        <li>Handy-App: Erinnerung ans Wiegen und an die Schritte, Daten sicher in deinem eigenen GitHub-Konto, Updates kommen von selbst.</li>
+        <li>Web-App: gleicht beim Öffnen von selbst mit Claude ab (höchstens alle 2 Stunden), „Sync“ oben rechts sofort.</li>
+      </ul>
+    </div></details>
+    <details class="panel changelog" id="changelogBox"><summary>Änderungen je Version</summary><div id="changelog" class="small"></div></details>
+    </div>
+    <p class="small muted">Der Verbrauch ist eine Schätzung: Grundumsatz nach Mifflin-St Jeor mal 1,2 für sitzenden Alltag, dazu Schritte nach der ACSM-Gehformel. Eine Woche Abnehmen entspricht etwa 7.000 kcal Defizit pro kg. Das ersetzt keine ärztliche Beratung.</p>
+  </section>
+  <section id="view-einstellungen" data-view hidden>
+    <h2>Einstellungen</h2>
+    <p class="small muted">Wie die App rechnet und arbeitet. Alle Werte sind vorbelegt; ändere nur, was bei dir anders ist.</p>
+    <details class="panel changelog" open><summary>Gehen und Verbrauch</summary>
+      <div class="fields" style="margin-top:10px">
+        <div class="field"><label class="label" for="pInclineAdd">Steigungen für Schritte</label><div class="chips" id="pInclines"></div>
+          <div style="display:flex;gap:6px;margin-top:6px"><input id="pInclineAdd" type="number" inputmode="decimal" step="0.5" min="0.5" max="25" placeholder="z. B. 9" style="width:96px"><button class="btn ghost" type="button" id="pInclineAddBtn">+ Steigung</button></div>
+          <p class="small muted" style="margin:4px 0 0">0 % ist immer dabei. Pro Steigung gibt es ein eigenes Schrittfeld; fehlende Schritte zum Ziel rechnet die App mit der höchsten Steigung.</p></div>
+        <div class="field"><label class="label" for="pSpeed">Tempo (km/h)</label><input id="pSpeed" type="number" inputmode="decimal" step="0.1" min="1" max="8" value="3.5"></div>
+        <div class="field"><label class="label" for="pWeighDay">Wiegetag (morgens; die Woche beginnt mit ihm)</label><select id="pWeighDay"><option value="0">Montag</option><option value="1" selected>Dienstag</option><option value="2">Mittwoch</option><option value="3">Donnerstag</option><option value="4">Freitag</option><option value="5">Samstag</option><option value="6">Sonntag</option></select></div>
+      </div>
+      <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pRail" style="width:auto"> Hände beim Gehen locker abgestützt (−5 % Verbrauch)</label>
+    </details>
+    <details class="panel changelog"><summary>Schrittziele</summary>
+      <p class="small muted" style="margin:10px 0 6px">Ab welchem Datum gilt welches Ziel. „Mindestens“ ist das Ziel für leichtere Tage (leer = gleich dem Ziel).</p>
+      <div id="stepGoalList"></div>
+      <div class="btnrow" style="margin-top:6px"><button class="btn ghost" type="button" id="stepGoalAdd">Ziel hinzufügen</button></div>
+      <div class="field" style="margin-top:10px"><label class="label" for="pFullDays">Tage pro Woche mit vollem Ziel (Rest = Mindestens)</label><input id="pFullDays" type="number" inputmode="numeric" min="0" max="7" placeholder="5"></div>
+    </details>
+    <details class="panel changelog"><summary>Tagesarten</summary>
+      <p class="small muted" style="margin:10px 0 6px">Namen ändern oder eigene Tagesarten ergänzen. Das Kürzel bleibt fest, damit alte Tage gültig bleiben.</p>
+      <div id="typeBox"></div>
+      <div class="btnrow" style="margin-top:6px"><button class="btn ghost" type="button" id="typeAdd">Tagesart hinzufügen</button></div>
+      <div class="label" style="margin-top:12px">Standard je Wochentag</div>
+      <div id="typeWeek" class="small" style="display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;margin-top:6px"></div>
+    </details>
+    <details class="panel changelog"><summary>Feste Einträge</summary>
+      <p class="small muted" style="margin:10px 0 6px">Was die App an einer Tagesart jeden Tag selbst einträgt, zum Beispiel Cappuccino oder Skyr. Änderungen gelten ab heute, vergangene Tage bleiben.</p>
+      <div id="fixedBox"></div>
+    </details>
+    <details class="panel changelog"><summary>Einkauf</summary>
+      <div class="field" style="margin-top:10px"><label class="label" for="pPantryExtra">Immer im Haushalt (ein Wort pro Zeile)</label><textarea id="pPantryExtra" rows="3" placeholder="z. B. Reis"></textarea></div>
+      <div class="field" style="margin-top:10px"><label class="label" for="pPantryOff">Aus der Standardliste nehmen (ein Wort pro Zeile)</label><textarea id="pPantryOff" rows="2" placeholder="z. B. Honig"></textarea></div>
+      <p class="small muted" style="margin:4px 0 0">Standardliste: Salz, Pfeffer, Öl, Essig, Gewürze, Brühe, Zucker, Mehl, Knoblauch und ähnliche. Diese Dinge landen im Kasten „Wahrscheinlich schon im Haushalt“ statt auf der Einkaufsliste.</p>
+      <div class="field" style="margin-top:10px"><label class="label" for="pEggG">Gramm Eiklar je Ei</label><input id="pEggG" type="number" inputmode="numeric" min="20" max="50" placeholder="33"></div>
+    </details>
+    <details class="panel changelog"><summary>Schätzung</summary>
+      <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für Schätzung und Plan</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal; kein Rind; esse mit Partnerin; schnelle Gerichte"></textarea></div>
+    </details>
+    <details class="panel changelog"><summary>Erweitert</summary>
+      <div class="fields" style="margin-top:10px">
+        <div class="field"><label class="label" for="pEvent">Event-Tag Rahmen (kcal)</label><input id="pEvent" type="number" inputmode="numeric" step="50" min="1500" max="6000" placeholder="3000"></div>
+        <div class="field"><label class="label" for="pKcalKg">kcal je kg Körpergewicht</label><input id="pKcalKg" type="number" inputmode="numeric" step="100" min="3000" max="10000" placeholder="7000"></div>
+        <div class="field"><label class="label" for="pBase">Grundbedarf pro Tag (kcal)</label><input id="pBase" type="number" inputmode="numeric" step="10" min="1000" max="4000" placeholder="automatisch"></div>
+      </div>
+      <p class="small muted" style="margin:6px 0 0">Event-Tag: Obergrenze an freien Tagen. kcal je kg: Umrechnung zwischen Bilanz und Gewicht (Standard 7.000). Grundbedarf: leer lassen, dann rechnet die App ihn aus Größe, Gewicht und Alter (<span id="pBaseAuto">–</span> kcal).</p>
+    </details>
+    <details class="panel changelog"><summary>Darstellung</summary>
+    <div class="panel"><div class="label">Darstellung</div><div class="chips" id="themeChips" role="group" aria-label="Darstellung" style="margin-top:8px"><button type="button" class="chip" data-theme-set="auto">Automatisch</button><button type="button" class="chip" data-theme-set="light">Hell</button><button type="button" class="chip" data-theme-set="dark">Dunkel</button></div><p class="small muted" style="margin:8px 0 0">Automatisch folgt der Einstellung des Geräts.</p></div>
+    </details>
+    <details class="panel changelog" id="setSyncBox"><summary>Abgleich</summary>
+      <label class="small" id="autoSyncWrap" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="pAutoSync" style="width:auto"> Stündlicher Abgleich mit der Handy-App (Claude, 07–23 Uhr)</label>
+    </details>
+    <div class="btnrow"><button class="btn" type="button" id="pSave2">Einstellungen speichern</button></div>
+    <div class="status" id="pStatus2"></div>
+    <div id="localBox" hidden>
+      <h2>Diese Version</h2>
+      <p class="small muted" id="appVersion" hidden></p>
+      <div class="btnrow" id="updRow" hidden style="margin:0 0 12px"><button class="btn ghost" type="button" id="updCheck">Nach Update suchen</button></div>
+      <div class="status small" id="updStatus"></div>
+      <div class="panel" id="remBox" hidden>
+        <div class="label">Erinnerungen</div>
+        <div class="small remrow"><input type="checkbox" id="remWeigh"><label for="remWeigh">Wiegen (<span id="remWeighDay">Dienstag</span>)</label><input type="time" id="remWeighT" value="07:00" aria-label="Uhrzeit Wiege-Erinnerung"></div>
+        <div class="small remrow"><input type="checkbox" id="remSteps"><label for="remSteps">Schritte, falls noch keine eingetragen</label><input type="time" id="remStepsT" value="20:30" aria-label="Uhrzeit Schritte-Erinnerung"></div>
+        <p class="small muted" style="margin:6px 0 0">Die Erinnerung kommt nur, wenn Gewicht bzw. Schritte für den Tag noch fehlen.</p>
+      </div>
+      <div class="panel">
+        <p class="small" style="margin:0 0 10px">Deine Daten liegen nur auf diesem Gerät. Sichere sie ab und zu als Datei, besonders bevor du Browserdaten löschst oder das Gerät wechselst.</p>
+        <div class="btnrow" style="margin-top:0"><button class="btn ghost" type="button" id="exportBtn">Daten sichern</button><label class="btn ghost">Daten laden<input type="file" id="importInput" accept="application/json,.json" hidden></label></div>
+        <div class="status" id="ioStatus"></div>
+        <div class="field" style="margin-top:14px"><label class="label" for="apiKey">Anthropic-API-Schlüssel (optional, für Schätzung, Plan und Rezepte)</label><input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…"></div>
+        <p class="small muted" style="margin:6px 0 0">Ohne Schlüssel trägst du kcal und Eiweiß selbst ein. Mit Schlüssel schätzt Claude aus Text oder Foto. Der Schlüssel bleibt nur in diesem Browser, die Kosten laufen über dein Anthropic-Konto (ca. 1 Cent pro Schätzung). Einen Schlüssel bekommst du unter console.anthropic.com.</p>
+        <div class="btnrow"><button class="btn ghost" type="button" id="keySave">Schlüssel speichern</button><button class="btn ghost" type="button" id="keyClear">Schlüssel entfernen</button></div>
+        <div class="status" id="keyStatus"></div>
+        <h3 style="margin-top:18px">Sync über GitHub</h3>
+        <p class="small muted" style="margin:0 0 8px">Speichert deine Daten zusätzlich in einem privaten GitHub-Repo. So hast du sie auf mehreren Geräten, und Claude kann Auswertungen und Wochenpläne darin pflegen.</p>
+        <div class="fields">
+          <div class="field"><label class="label" for="syncRepo">Repo (besitzer/name)</label><input id="syncRepo" type="text" autocomplete="off" placeholder="name/weightplan-data"></div>
+          <div class="field"><label class="label" for="syncToken">GitHub-Zugangsschlüssel</label><input id="syncToken" type="password" autocomplete="off" placeholder="github_pat_…"></div>
+        </div>
+        <div class="btnrow"><button class="btn ghost" type="button" id="syncSave">Verbinden und synchronisieren</button><button class="btn ghost" type="button" id="syncNowBtn">Jetzt synchronisieren</button><button class="btn ghost" type="button" id="syncOff">Trennen</button></div>
+        <div class="status" id="syncStatus"></div>
+      </div>
+    <p class="small muted">Änderungen an Werten wirken sofort auf die Berechnungen. Bereits eingetragene Einträge bleiben unverändert.</p>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="Bereiche">
+  <a href="#heute" data-tab="heute">Heute</a>
+  <a href="#woche" data-tab="woche">Woche</a>
+  <a href="#verlauf" data-tab="verlauf">Verlauf</a>
+  <a href="#plan" data-tab="plan">Plan</a>
+  <a href="#profil" data-tab="profil">Profil</a>
+  <a href="#einstellungen" data-tab="einstellungen">Einstell.</a>
+</nav>
+
+<script>
