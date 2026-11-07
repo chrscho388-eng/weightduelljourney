@@ -342,6 +342,16 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(JSON.stringify(pf.inclines) === "[5,9]" && pf.inclinePct === 9, "incline list saved, legacy incline kept");
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   check(await pg.$("#steps_5"), "new incline gets its own step field");
+  // settings tab: numbers with defaults (3.59)
+  await openSettings();
+  const prof0 = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")));
+  check(prof0.eventKcal === 3000 && prof0.kcalPerKg === 7000 && !prof0.baseKcalManual, "defaults stay as before");
+  await pg.fill("#pEvent", "2500"); await pg.fill("#pKcalKg", "6000"); await pg.fill("#pBase", "2400"); await pg.click("#pSave2"); await pg.waitForTimeout(400);
+  const prof1 = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")));
+  check(prof1.eventKcal === 2500 && prof1.kcalPerKg === 6000 && prof1.baseKcal === 2400 && prof1.baseKcalManual === 2400, "extended numbers can be set and are saved");
+  await pg.fill("#pEvent", ""); await pg.fill("#pKcalKg", ""); await pg.fill("#pBase", ""); await pg.click("#pSave2"); await pg.waitForTimeout(400);
+  const prof2 = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")));
+  check(prof2.eventKcal === 3000 && prof2.kcalPerKg === 7000 && !prof2.baseKcalManual && prof2.baseKcal !== 2400, "empty fields return to the defaults and the automatic base");
   // data safety (3.57): journal, stale in-memory copy, restored preview
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   const jr = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:journal") || "[]"));

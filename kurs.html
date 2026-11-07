@@ -570,6 +570,14 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     <details class="panel changelog"><summary>Schätzung</summary>
       <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für Schätzung und Plan</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal; kein Rind; esse mit Partnerin; schnelle Gerichte"></textarea></div>
     </details>
+    <details class="panel changelog"><summary>Erweitert</summary>
+      <div class="fields" style="margin-top:10px">
+        <div class="field"><label class="label" for="pEvent">Event-Tag Rahmen (kcal)</label><input id="pEvent" type="number" inputmode="numeric" step="50" min="1500" max="6000" placeholder="3000"></div>
+        <div class="field"><label class="label" for="pKcalKg">kcal je kg Körpergewicht</label><input id="pKcalKg" type="number" inputmode="numeric" step="100" min="3000" max="10000" placeholder="7000"></div>
+        <div class="field"><label class="label" for="pBase">Grundbedarf pro Tag (kcal)</label><input id="pBase" type="number" inputmode="numeric" step="10" min="1000" max="4000" placeholder="automatisch"></div>
+      </div>
+      <p class="small muted" style="margin:6px 0 0">Event-Tag: Obergrenze an freien Tagen. kcal je kg: Umrechnung zwischen Bilanz und Gewicht (Standard 7.000). Grundbedarf: leer lassen, dann rechnet die App ihn aus Größe, Gewicht und Alter (<span id="pBaseAuto">–</span> kcal).</p>
+    </details>
     <details class="panel changelog"><summary>Darstellung</summary>
     <div class="panel"><div class="label">Darstellung</div><div class="chips" id="themeChips" role="group" aria-label="Darstellung" style="margin-top:8px"><button type="button" class="chip" data-theme-set="auto">Automatisch</button><button type="button" class="chip" data-theme-set="light">Hell</button><button type="button" class="chip" data-theme-set="dark">Dunkel</button></div><p class="small muted" style="margin:8px 0 0">Automatisch folgt der Einstellung des Geräts.</p></div>
     </details>
@@ -2384,6 +2392,8 @@ Antworte nur mit JSON in genau dieser Form:
     for (const [id, k] of Object.entries(PF)) { const v = $(id).value.trim(); p[k] = NUMS.includes(k) ? (v === "" ? null : Number(v)) : v; }
     p.handrail = $("pRail").checked;
     p.autoSyncHourly = $("pAutoSync").checked;
+    const num = (id, lo, hi) => { const v = Number($(id).value); return $(id).value.trim() !== "" && v >= lo && v <= hi ? v : null; };
+    p.eventKcal = num("pEvent", 1500, 6000) ?? DEFAULTS.eventKcal; p.kcalPerKg = num("pKcalKg", 3000, 10000) ?? DEFAULTS.kcalPerKg; p.baseKcalManual = num("pBase", 1000, 4000);
     p.inclines = formInclines.slice(); p.inclinePct = S.inclinePct ?? 9; // inclinePct stays: older days are read with it
     return p;
   }
@@ -2412,6 +2422,8 @@ Antworte nur mit JSON in genau dieser Form:
     for (const [id, k] of Object.entries(PF)) if (document.activeElement !== $(id)) $(id).value = S[k] ?? (id === "pSpeed" ? 3.5 : id === "pWeighDay" ? 1 : id === "pStartD" ? todayStr() : "");
     $("pRail").checked = !!S.handrail;
     $("pAutoSync").checked = S.autoSyncHourly !== false;
+    $("pEvent").value = S.eventKcal !== DEFAULTS.eventKcal ? S.eventKcal : ""; $("pKcalKg").value = S.kcalPerKg !== DEFAULTS.kcalPerKg ? S.kcalPerKg : ""; $("pBase").value = S.baseKcalManual ?? "";
+    try { $("pBaseAuto").textContent = fmt(deriveFactors({ ...S, ...readForm() }).baseKcal); } catch (e) {}
     formInclines = inclineList(); renderInclineChips();
     $("profilTitle").textContent = hasProfile ? "Dein Profil" : "Willkommen! Lege zuerst dein Profil an";
     calcPreview();
@@ -2426,6 +2438,7 @@ Antworte nur mit JSON in genau dieser Form:
     if (p.goalDate <= p.startWeightDate) { pStat("Das Zieldatum muss nach dem Startdatum liegen.", true); return; }
     const startChanged = !hasProfile || p.startWeight !== S.startWeight || p.startWeightDate !== S.startWeightDate || p.goalWeight !== S.goalWeight || p.goalDate !== S.goalDate;
     const next = { ...S, ...p, ...deriveFactors(p), startDate: mondayOf(p.startWeightDate) };
+    if (p.baseKcalManual) next.baseKcal = p.baseKcalManual; else delete next.baseKcalManual;
     if (startChanged) next.milestones = null; // custom milestones only kept while start and goal stay the same
     delete next.updatedAt;
     next.updatedAt = new Date().toISOString();
