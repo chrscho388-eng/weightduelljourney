@@ -27,7 +27,7 @@ Etwas Neues entsteht in fester Reihenfolge, jeder Schritt hat einen eigenen Befe
 
 ## Code-Aufbau
 
-`kurs.html` ist die gebaute Datei und wird nicht von Hand bearbeitet. Quellen liegen in `src/`: `head.html`, `style.css`, `body.html` (HTML der Tabs), `js/NN-thema.js` (ein Abschnitt je Funktion, in Dateinamen-Reihenfolge zusammengesetzt, alle in einer gemeinsamen Funktion), `tail.html`. Änderung: nur die passende Datei lesen und bearbeiten, dann `node build.js` (baut `kurs.html`), dann `node tests/smoke.js kurs.html`. Beides einchecken; CI prüft mit `node build.js --check`. Changelog steht in `src/js/02-changelog.js`.
+`kurs.html` ist die gebaute Datei und wird nicht von Hand bearbeitet. Quellen liegen in `src/`: `head.html`, `style.css`, `body.html` (HTML der Tabs), `js/NN-thema.js` (ein Abschnitt je Funktion, in Dateinamen-Reihenfolge zusammengesetzt, alle in einer gemeinsamen Funktion), `tail.html`. Änderung: nur die passende Datei lesen und bearbeiten, dann `node build.js` (baut `kurs.html`), dann `node tests/smoke.js kurs.html`. Beides einchecken; CI prüft mit `node build.js --check`. Changelog steht in `src/js/02-changelog.js`. Zwischendurch `node tests/smoke.js kurs.html --quick` (ca. 15 s, nur Grundfunktionen); der volle Test läuft in Gruppen parallel (ca. 30 s). `node lint.js` findet undefinierte Variablen. Release in einem Schritt: `RELEASE_TRAILER="<Co-Authored-By/Claude-Session>" node release.js "Nachricht"` (baut, lintet, testet, kopiert nach /mnt mit cmp, committet, pusht auf main); danach Artifact veröffentlichen und CI prüfen.
 
 ## Git
 

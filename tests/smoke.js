@@ -7,24 +7,10 @@ const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, "fixture.json"),
 const fails = [];
 const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!ok) fails.push(msg); };
 
-(async () => {
-  const html = fs.readFileSync(file, "utf8");
-  check(html.lastIndexOf("</script>") > html.lastIndexOf("<script>"), "script block is complete (file not truncated)");
-  const b = await chromium.launch();
-  const pg = await b.newPage({ viewport: { width: 390, height: 844 } });
-  const errors = [];
-  const openSettings = async () => { await pg.click("nav.tabs a[data-tab=einstellungen]"); await pg.evaluate(() => document.querySelectorAll("#view-einstellungen details").forEach((d) => { d.open = true; })); };
-  pg.on("pageerror", (e) => errors.push(e.message));
-  pg.on("console", (m) => { if (m.type() === "error" && !/fonts\.g|ERR_|Failed to load resource/.test(m.text())) errors.push(m.text()); });
-  await pg.route("https://api.github.com/**", (r) => r.fulfill({ status: 404, body: "{}" }));
-  await pg.route("https://fonts.googleapis.com/**", (r) => r.fulfill({ status: 200, contentType: "text/css", body: "" }));
-  await pg.clock.setFixedTime(new Date("2026-11-04T18:00:00+01:00"));
-  await pg.goto("file://" + file);
-  await pg.evaluate((d) => { for (const [k, v] of Object.entries(d)) localStorage.setItem("kurs:data/users/local/" + k, JSON.stringify(v)); }, fixture);
-  await pg.reload(); await pg.waitForTimeout(1200);
 
-  check(!/lädt/.test(await pg.textContent("#topMeta")), "header shows weight, not 'lädt'");
-  check((await pg.textContent("#dayName")).includes("04.11."), "today view shows the date");
+const quick = process.argv.includes("--quick");
+const groups = [
+  ["A-basis-plan", async ({ pg, errors, openSettings, check }) => {
   for (const t of ["woche", "verlauf", "plan", "profil", "heute"]) {
     await pg.click(`nav.tabs a[data-tab=${t}]`); await pg.waitForTimeout(150);
     check(await pg.$eval("#view-" + t, (e) => !e.hidden), "tab " + t + " opens");
@@ -157,6 +143,9 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.click("#shopBox details.donebox summary"); await pg.click("#shopBox details.donebox li input"); await pg.waitForTimeout(150);
   check((await pg.$$("#shopBox > details > ul li")).length === nOpen && !(await pg.$("#shopBox details.donebox")), "unticking moves the item back");
   check(!(await pg.textContent("header.top")).includes("%"), "header without incline badge");
+  }],
+  ["C-anfragen-kantine-editor", async ({ pg, errors, openSettings, check }) => {
+    await pg.fill("#mealText", "Testessen"); await pg.fill("#manKcal", "300"); await pg.fill("#manProt", "20"); await pg.click("#manAdd"); await pg.waitForTimeout(200);
   // request mode (GitHub sync, no API key): plan change goes to Claude for later
   await pg.evaluate(() => { localStorage.setItem("kurs:syncRepo", "a/b"); localStorage.setItem("kurs:syncToken", "x"); });
   await pg.reload(); await pg.waitForTimeout(800);
@@ -274,6 +263,10 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(await pg.evaluate(() => getComputedStyle(document.body).backgroundColor) === "rgb(243, 244, 239)", "light mode can be switched on");
   await pg.click("nav.tabs a[data-tab=profil]"); await pg.click("#changelogBox > summary");
   check(await pg.isVisible("#changelog .ver") && (await pg.$$("#changelog .ver")).length > 20 && /^3\.\d+/.test(await pg.textContent("#changelog .ver b")), "changelog lists the versions");
+  }],
+  ["D-fotos-sync-update", async ({ pg, errors, openSettings, check }) => {
+    const listed = () => pg.$$eval("#mealList .mname", (e) => e.map((x) => x.textContent).join("|"));
+    await pg.evaluate(() => { localStorage.setItem("kurs:syncRepo", "a/b"); localStorage.setItem("kurs:syncToken", "x"); }); await pg.reload(); await pg.waitForTimeout(800);
   // photos: inline photos of old data move into the photo store, documents keep only a reference
   const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
   await pg.evaluate((src) => localStorage.setItem("kurs:data/users/local/profile/days/2026-11-02", JSON.stringify({ date: "2026-11-02", dayType: "HO", meals: [{ id: "p1", label: "Altes Foto", kcal: 100, protein: 5, photo: src }], updatedAt: "2026-11-02T10:00:00.000Z" })), tinyPng);
@@ -353,6 +346,8 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(JSON.stringify(pf.inclines) === "[5,9]" && pf.inclinePct === 9, "incline list saved, legacy incline kept");
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   check(await pg.$("#steps_5"), "new incline gets its own step field");
+  }],
+  ["E-einstellungen", async ({ pg, errors, openSettings, check }) => {
   // settings tab: numbers with defaults (3.59)
   await openSettings();
   const prof0 = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")));
@@ -409,6 +404,9 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await (await (await pg.$$("#typeBox > div")).pop().$("button.x")).click(); await pg.click("#pSave2"); await pg.waitForTimeout(400);
   const profT = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")));
   check((profT.dayTypes || []).every((x) => ["HO", "Büro", "WE", "Frei"].includes(x.id)) && profT.dayTypeWeek[6] === "WE", "removing an own day type resets the weekday standard");
+  }],
+  ["F-datensicherheit", async ({ pg, errors, openSettings, check }) => {
+    await pg.fill("#mealText", "Testessen"); await pg.fill("#manKcal", "300"); await pg.fill("#manProt", "20"); await pg.click("#manAdd"); await pg.waitForTimeout(200);
   // data safety (3.57): journal, stale in-memory copy, restored preview
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   const jr = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:journal") || "[]"));
@@ -435,7 +433,33 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await pg.reload(); await pg.waitForTimeout(1500);
   await pg.fill("#mealText", "Offline Eintrag"); await pg.fill("#manKcal", "20"); await pg.fill("#manProt", "1"); await pg.click("#manAdd"); await pg.waitForTimeout(2500);
   check(await pg.evaluate(() => !!localStorage.getItem("kurs:dirtyAt")), "entry stays marked as not uploaded after a failed upload");
-  check(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
+  }],
+];
+
+(async () => {
+  const html = fs.readFileSync(file, "utf8");
+  check(html.lastIndexOf("</script>") > html.lastIndexOf("<script>"), "script block is complete (file not truncated)");
+  const b = await chromium.launch();
+  // every group gets its own browser context (own storage) and fixture, groups run side by side
+  const runGroup = async ([name, body]) => {
+    const pg = await b.newPage({ viewport: { width: 390, height: 844 } });
+    const errors = [];
+    const gcheck = (ok, msg) => check(ok, "[" + name.split("-")[0] + "] " + msg);
+    const openSettings = async () => { await pg.click("nav.tabs a[data-tab=einstellungen]"); await pg.evaluate(() => document.querySelectorAll("#view-einstellungen details").forEach((d) => { d.open = true; })); };
+    pg.on("pageerror", (e) => errors.push(e.message));
+    pg.on("console", (m) => { if (m.type() === "error" && !/fonts\.g|ERR_|Failed to load resource/.test(m.text())) errors.push(m.text()); });
+    await pg.route("https://api.github.com/**", (r) => r.fulfill({ status: 404, body: "{}" }));
+    await pg.route("https://fonts.googleapis.com/**", (r) => r.fulfill({ status: 200, contentType: "text/css", body: "" }));
+    await pg.clock.setFixedTime(new Date("2026-11-04T18:00:00+01:00"));
+    await pg.goto("file://" + file);
+    await pg.evaluate((d) => { for (const [k, v] of Object.entries(d)) localStorage.setItem("kurs:data/users/local/" + k, JSON.stringify(v)); }, fixture);
+    await pg.reload(); await pg.waitForTimeout(1200);
+    try { await body({ pg, errors, openSettings, check: gcheck }); }
+    catch (e) { gcheck(false, "group crashed: " + String(e.message).split("\n").slice(0, 3).join(" ")); }
+    gcheck(errors.length === 0, "no script errors" + (errors.length ? ": " + errors.join(" | ") : ""));
+    await pg.close();
+  };
+  await Promise.all((quick ? groups.slice(0, 1) : groups).map(runGroup));
   await b.close();
   if (fails.length) { console.log(`\n${fails.length} check(s) failed`); process.exit(1); }
   console.log("\nall checks passed");

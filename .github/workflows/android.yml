@@ -9,6 +9,8 @@ on:
       - "kurs.html"
       - "src/**"
       - "build.js"
+      - "lint.js"
+      - "eslint.config.js"
       - "tests/**"
       - ".github/workflows/android.yml"
   workflow_dispatch:
@@ -38,6 +40,11 @@ jobs:
       - name: kurs.html passt zu src/
         run: node build.js --check
 
+      - name: Lint
+        run: |
+          npm install --no-save --no-package-lock eslint@9
+          node lint.js
+
       - name: App-Seite in die APK legen
         run: |
           mkdir -p android/app/src/main/assets
@@ -49,6 +56,12 @@ jobs:
             cat kurs.html
             printf '</body></html>'
           } > android/app/src/main/assets/index.html
+
+      - name: Playwright-Browser aus dem Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.48.2-chromium
 
       - name: Seite testen (bricht den Build bei Fehlern ab)
         run: |
