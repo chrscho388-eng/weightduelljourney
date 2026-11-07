@@ -394,6 +394,21 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   await (await pg.$$("#fixedBox > div.small button.x"))[1].click(); await pg.click("#pSave2"); await pg.waitForTimeout(400);
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(600);
   check(!(await dayMeals("2026-11-04")).includes("Skyr Test"), "removing a fixed entry removes it from today");
+  // day types (3.59)
+  await openSettings();
+  const optsBefore = await pg.$$eval("#dayType option", (o) => o.map((x) => x.value));
+  await pg.click("#typeAdd");
+  const trows = await pg.$$("#typeBox > div"); await (await trows[trows.length - 1].$("input")).fill("Urlaub");
+  await pg.selectOption('#typeWeek select[aria-label="Sonntag"]', { label: "Urlaub" });
+  await pg.click("#pSave2"); await pg.waitForTimeout(400);
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(500);
+  const optsAfter = await pg.$$eval("#dayType option", (o) => o.map((x) => x.textContent));
+  const sunType = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")).dayTypeWeek[6]);
+  check(optsBefore.length === 4 && optsAfter.includes("Urlaub") && /^T\d/.test(sunType), "own day type is offered and can be the standard for a weekday");
+  await openSettings();
+  await (await (await pg.$$("#typeBox > div")).pop().$("button.x")).click(); await pg.click("#pSave2"); await pg.waitForTimeout(400);
+  const profT = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:data/users/local/profile")));
+  check((profT.dayTypes || []).every((x) => ["HO", "Büro", "WE", "Frei"].includes(x.id)) && profT.dayTypeWeek[6] === "WE", "removing an own day type resets the weekday standard");
   // data safety (3.57): journal, stale in-memory copy, restored preview
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   const jr = await pg.evaluate(() => JSON.parse(localStorage.getItem("kurs:journal") || "[]"));

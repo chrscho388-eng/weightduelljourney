@@ -573,6 +573,13 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <div class="btnrow" style="margin-top:6px"><button class="btn ghost" type="button" id="stepGoalAdd">Ziel hinzufügen</button></div>
       <div class="field" style="margin-top:10px"><label class="label" for="pFullDays">Tage pro Woche mit vollem Ziel (Rest = Mindestens)</label><input id="pFullDays" type="number" inputmode="numeric" min="0" max="7" placeholder="5"></div>
     </details>
+    <details class="panel changelog"><summary>Tagesarten</summary>
+      <p class="small muted" style="margin:10px 0 6px">Namen ändern oder eigene Tagesarten ergänzen. Das Kürzel bleibt fest, damit alte Tage gültig bleiben.</p>
+      <div id="typeBox"></div>
+      <div class="btnrow" style="margin-top:6px"><button class="btn ghost" type="button" id="typeAdd">Tagesart hinzufügen</button></div>
+      <div class="label" style="margin-top:12px">Standard je Wochentag</div>
+      <div id="typeWeek" class="small" style="display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;margin-top:6px"></div>
+    </details>
     <details class="panel changelog"><summary>Feste Einträge</summary>
       <p class="small muted" style="margin:10px 0 6px">Was die App an einer Tagesart jeden Tag selbst einträgt, zum Beispiel Cappuccino oder Skyr. Änderungen gelten ab heute, vergangene Tage bleiben.</p>
       <div id="fixedBox"></div>
@@ -933,17 +940,27 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
     const weighNow = weekday(curDay) === (S.weighDay ?? 1) || !!d.weight || weightExtra === curDay;
     $("weightField").hidden = !weighNow; $("weightShow").hidden = weighNow;
     $("moveHead").textContent = weighNow ? "Bewegung und Gewicht" : "Bewegung";
+    { const sel = $("dayType"), list = dayTypes(), sig = JSON.stringify(list); if (sel.dataset.sig !== sig) { sel.innerHTML = list.map((t) => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join(""); sel.dataset.sig = sig; } }
     if (document.activeElement !== $("dayType")) $("dayType").value = d.dayType || defaultType(curDay);
     $("eventDay").checked = !!d.event;
   }
   function defaultType(s) {
     const pd = ((plans[mondayOf(s)] || {}).days || []).find((x) => x.date === s);
-    if (pd && ["HO", "Büro", "WE", "Frei"].includes(pd.type)) return pd.type;
-    const w = weekday(s); return w >= 5 ? "WE" : "HO";
+    if (pd && dayTypes().some((t) => t.id === pd.type)) return pd.type;
+    const w = weekday(s), id = (S.dayTypeWeek || [])[w];
+    return id && dayTypes().some((t) => t.id === id) ? id : DAY_WEEK[w];
   }
   // ---- fixed daily entries by day type (e.g. cappuccino, skyr), entered by the app itself ----
   let daysLoaded = false;
   const DAY_TYPES = [{ id: "HO", name: "Home Office" }, { id: "Büro", name: "Büro" }, { id: "WE", name: "Wochenende" }, { id: "Frei", name: "Frei" }];
+  const BUILTIN_TYPES = DAY_TYPES.map((t) => t.id);
+  const DAY_WEEK = ["HO", "HO", "HO", "HO", "HO", "WE", "WE"];
+  // own day types (S.dayTypes) replace the standard list; built-in ids can be renamed but never removed
+  const dayTypes = () => {
+    const own = Array.isArray(S.dayTypes) ? S.dayTypes.filter((t) => t && t.id && t.name) : [];
+    return DAY_TYPES.map((t) => ({ id: t.id, name: (own.find((o) => o.id === t.id) || t).name })).concat(own.filter((o) => !BUILTIN_TYPES.includes(o.id)));
+  };
+  const typeName = (id) => (dayTypes().find((t) => t.id === id) || { name: id }).name;
   const COFFEE_DEFAULT = { since: "2026-10-28", kcal: 95, protein: 5, perType: { HO: 1, "Büro": 3, WE: 1, Frei: 1 } };
   const isFx = (m) => m.id === "coffee" || String(m.id).startsWith("fix:");
   // S.fixedMeals = { since, byType: { <type>: [{ id, label, count, kcal, protein }] } }; older profiles only have S.coffee
@@ -1584,7 +1601,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     const st = weekStats(curWeek);
     let h = "";
     st.rows.forEach((r) => {
-      const tag = `<span>${WD[weekday(r.date)]} ${dm(r.date)} ›</span>${r.d.dayType ? ` <span class="pill">${esc(r.d.dayType)}</span>` : ""}${r.d.event ? ' <span class="pill warn">Event</span>' : ""}${r.d.weight ? ` <span class="pill">${fmt(r.d.weight, 1)} kg</span>` : ""}`;
+      const tag = `<span>${WD[weekday(r.date)]} ${dm(r.date)} ›</span>${r.d.dayType ? ` <span class="pill">${esc(typeName(r.d.dayType))}</span>` : ""}${r.d.event ? ' <span class="pill warn">Event</span>' : ""}${r.d.weight ? ` <span class="pill">${fmt(r.d.weight, 1)} kg</span>` : ""}`;
       if (r.empty) h += `<button class="dayrow empty" data-date="${r.date}"><span class="dtag">${tag}</span><span class="dbal">offen</span></button>`;
       else h += `<button class="dayrow" data-date="${r.date}"><span class="dtag">${tag}</span><span class="dbal ${r.bal > 0 ? "pos" : "neg"}">${signed(r.bal)} kcal</span>
         <span class="dsub">Aufnahme <b>${fmt(r.kin)}</b> · Verbrauch <b>${fmt(r.out)}</b> · Eiweiß <b>${fmt(r.pr)} g</b></span>
@@ -1853,7 +1870,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     const types = []; for (let i = 0; i < 7; i++) { const d = addDays(mon, i), doc = days[d]; if (doc && (doc.dayType || doc.event)) types.push(`${WDL[weekday(d)]} ${d}: ${[doc.dayType, doc.event ? "Event-Tag" : ""].filter(Boolean).join(", ")}`); }
     const notes = (S.planNotes || {})[mon];
     return `Du passt den Wochen-Mahlzeitenplan einer Person an, die abnehmen will.
-${notes ? "Hinweise der Person für diese Woche (Tagesarten, Termine, Essen auswärts):\n" + String(notes).slice(0, 800) + "\n" : ""}${types.length ? "Tagesarten laut Log (HO = Home Office, WE = Wochenende):\n" + types.join("\n") : ""}
+${notes ? "Hinweise der Person für diese Woche (Tagesarten, Termine, Essen auswärts):\n" + String(notes).slice(0, 800) + "\n" : ""}${types.length ? "Tagesarten laut Log (" + dayTypes().map((t) => t.id + " = " + t.name).join(", ") + "):\n" + types.join("\n") : ""}
 Heute ist ${WDL[weekday(today)]}, ${today}. Die Woche geht von ${mon} (Montag) bis ${addDays(mon, 6)} (Sonntag).
 Tagesziel: ${S.kcalTarget} kcal und mindestens ${S.proteinTarget} g Eiweiß${Number(S.proteinOptimum) > S.proteinTarget ? `, ideal ${S.proteinOptimum} g` : ""}. Event-Tage sind beim Kalorienziel frei.
 ${S.estimateHints ? "Hinweise und Vorlieben der Person:\n" + S.estimateHints.slice(0, 1500) + "\n" : ""}${S.planRules ? "DAUERHAFTE WÜNSCHE der Person (haben Vorrang vor allen Hinweisen oben):\n" + String(S.planRules).slice(0, 1500) + "\n" : ""}${S.canteenHabits ? "Was die Person in der Kantine (Bürotage, mittags) meistens isst:\n" + String(S.canteenHabits).slice(0, 1000) + "\n" : ""}${eaten.length ? "Diese Woche schon gegessen (laut Log):\n" + eaten.join("\n") + "\n" : ""}
@@ -1868,7 +1885,7 @@ Regeln:
 - Jede Mahlzeit mit slot (z. B. Frühstück, Mittag, Abend, Nachtisch), name, detail (Zutaten mit Gramm roh, Eier in Stück, Eiklar nie einzeln, Zitrusfrüchte nur als Frucht; Vorrat oder Reste in Klammern als "(Vorrat)" bzw. "(Rest von …)"), kcal und protein als je EIN Mittelwert, nie Spannen.
 - cook: true nur für Gerichte, die man selbst kocht oder zubereitet und für die ein Rezept sinnvoll ist; false für Fertiges, Kantine, Lieferdienst, auswärts, Shakes, Skyr, Joghurt-Frühstück und Ähnliches.
 - Bei auswärts essen: eine realistische Schätzung als Mahlzeit, im detail kurze Tipps für eine gute Wahl.
-- type pro Tag optional (z. B. HO, Büro, WE, Event), info pro Tag optional für einen kurzen Hinweis.
+- type pro Tag optional (eines von ${dayTypes().map((t) => t.id).join(", ")} oder Event), info pro Tag optional für einen kurzen Hinweis.
 - Gib immer den kompletten Plan der Woche zurück, auch unveränderte Tage.
 
 Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
@@ -2434,11 +2451,40 @@ Antworte nur mit JSON in genau dieser Form:
   }
   $("stepGoalAdd").onclick = () => { const last = formGoals[formGoals.length - 1]; formGoals.push({ from: todayStr(), steps: last ? last.steps : "", min: last ? last.min : "" }); renderGoalRows(); };
   const cleanGoals = () => formGoals.filter((g) => /^\d{4}-\d{2}-\d{2}$/.test(g.from || "") && Number(g.steps) > 0).map((g) => ({ from: g.from, steps: Number(g.steps), ...(Number(g.min) > 0 && Number(g.min) < Number(g.steps) ? { min: Number(g.min) } : {}) })).sort((a, b) => a.from < b.from ? -1 : 1);
+  // day types: formTypes (list) and formWeek (standard per weekday) live here until the profile is saved
+  let formTypes = DAY_TYPES.map((t) => ({ ...t })), formWeek = DAY_WEEK.slice();
+  function renderTypes() {
+    const box = $("typeBox"); box.innerHTML = "";
+    formTypes.forEach((t, i) => {
+      const row = document.createElement("div"); row.className = "small"; row.style.cssText = "display:flex;gap:6px;align-items:center;margin-top:6px";
+      row.innerHTML = `<input type="text" maxlength="30" value="${esc(t.name)}" aria-label="Name" style="flex:1"><span class="muted">${esc(t.id)}</span>${BUILTIN_TYPES.includes(t.id) ? "" : '<button type="button" class="x" aria-label="Zeile entfernen">×</button>'}`;
+      const [nm, , x] = [row.querySelector("input"), 0, row.querySelector("button")];
+      nm.oninput = () => { t.name = nm.value; renderTypeWeek(); };
+      if (x) x.onclick = () => { formTypes.splice(i, 1); formWeek = formWeek.map((id, w) => id === t.id ? DAY_WEEK[w] : id); renderTypes(); renderFixed(); };
+      box.append(row);
+    });
+    renderTypeWeek();
+  }
+  function renderTypeWeek() {
+    const wk = $("typeWeek"); wk.innerHTML = "";
+    WDL.forEach((nameDay, w) => {
+      const lab = document.createElement("span"); lab.textContent = nameDay;
+      const sel = document.createElement("select"); sel.setAttribute("aria-label", nameDay);
+      sel.innerHTML = formTypes.map((t) => `<option value="${esc(t.id)}"${formWeek[w] === t.id ? " selected" : ""}>${esc(t.name || t.id)}</option>`).join("");
+      sel.onchange = () => { formWeek[w] = sel.value; };
+      wk.append(lab, sel);
+    });
+  }
+  $("typeAdd").onclick = () => {
+    let id = "T" + (formTypes.length + 1); while (formTypes.some((t) => t.id === id)) id += "x";
+    formTypes.push({ id, name: "" }); renderTypes(); renderFixed();
+  };
+  const cleanTypes = () => formTypes.map((t) => ({ id: t.id, name: String(t.name || "").trim().slice(0, 30) })).filter((t) => t.name);
   // fixed daily entries: rows per day type live in formFixed until the profile is saved
   let formFixed = {};
   function renderFixed() {
     const box = $("fixedBox"); box.innerHTML = "";
-    DAY_TYPES.forEach((t) => {
+    formTypes.forEach((t) => {
       const rows = formFixed[t.id] = formFixed[t.id] || [];
       const h = document.createElement("div"); h.className = "label"; h.textContent = t.name; h.style.marginTop = "10px"; box.append(h);
       rows.forEach((it, i) => {
@@ -2452,7 +2498,7 @@ Antworte nur mit JSON in genau dieser Form:
       const add = document.createElement("button"); add.type = "button"; add.className = "btn ghost"; add.textContent = "Eintrag hinzufügen"; add.style.marginTop = "6px";
       add.onclick = () => { rows.push({ id: uid(), label: "", count: 1, kcal: "", protein: "" }); renderFixed(); };
       box.append(add);
-      const others = DAY_TYPES.filter((o) => o.id !== t.id && (formFixed[o.id] || []).length);
+      const others = formTypes.filter((o) => o.id !== t.id && (formFixed[o.id] || []).length);
       if (others.length) {
         const cp = document.createElement("select"); cp.setAttribute("aria-label", "Von anderer Tagesart kopieren"); cp.style.cssText = "margin-left:6px;width:auto";
         cp.innerHTML = `<option value="">Kopieren von …</option>` + others.map((o) => `<option value="${esc(o.id)}">${esc(o.name)}</option>`).join("");
@@ -2474,6 +2520,7 @@ Antworte nur mit JSON in genau dieser Form:
     for (const [id, k] of Object.entries(PF)) { const v = $(id).value.trim(); p[k] = NUMS.includes(k) ? (v === "" ? null : Number(v)) : v; }
     p.handrail = $("pRail").checked;
     p.autoSyncHourly = $("pAutoSync").checked;
+    { const own = cleanTypes(), ids = new Set(DAY_TYPES.map((t) => t.id).concat(own.map((t) => t.id))); p.dayTypes = own; p.dayTypeWeek = formWeek.map((id, w) => ids.has(id) ? id : DAY_WEEK[w]); }
     { const words = (id) => [...new Set($(id).value.split(/\n|,/).map((x) => x.trim()).filter(Boolean))].slice(0, 60); p.pantryExtra = words("pPantryExtra"); p.pantryOff = words("pPantryOff"); const g = Number($("pEggG").value); p.eggWhiteG = $("pEggG").value.trim() !== "" && g >= 20 && g <= 50 ? g : null; }
     { const byType = cleanFixed(), cur = fixedConfig(); p.fixedMeals = JSON.stringify(byType) === JSON.stringify(cur.byType) ? { since: cur.since, byType } : { since: todayStr(), byType }; }
     p.stepGoals = cleanGoals(); p.stepFullDays = $("pFullDays").value.trim() === "" ? 5 : Math.max(0, Math.min(7, Math.round(Number($("pFullDays").value))));
@@ -2508,6 +2555,7 @@ Antworte nur mit JSON in genau dieser Form:
     $("pRail").checked = !!S.handrail;
     $("pAutoSync").checked = S.autoSyncHourly !== false;
     $("pPantryExtra").value = (S.pantryExtra || []).join("\n"); $("pPantryOff").value = (S.pantryOff || []).join("\n"); $("pEggG").value = S.eggWhiteG ?? "";
+    formTypes = dayTypes().map((t) => ({ ...t })); formWeek = (S.dayTypeWeek && S.dayTypeWeek.length === 7 ? S.dayTypeWeek : DAY_WEEK).slice(); renderTypes();
     formFixed = JSON.parse(JSON.stringify(fixedConfig().byType)); renderFixed();
     formGoals = (S.stepGoals || []).map((g) => ({ from: g.from, steps: g.steps, min: g.min ?? "" })); renderGoalRows(); $("pFullDays").value = S.stepFullDays != null && S.stepFullDays !== 5 ? S.stepFullDays : "";
     $("pEvent").value = S.eventKcal !== DEFAULTS.eventKcal ? S.eventKcal : ""; $("pKcalKg").value = S.kcalPerKg !== DEFAULTS.kcalPerKg ? S.kcalPerKg : ""; $("pBase").value = S.baseKcalManual ?? "";
