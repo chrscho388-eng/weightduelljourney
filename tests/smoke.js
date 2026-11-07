@@ -138,6 +138,17 @@ const check = (ok, msg) => { console.log((ok ? "ok   " : "FAIL ") + msg); if (!o
   check(/Reispfanne \(Mi, schon gekocht\)/.test(shop) && !/Reis\d/.test(buy), "already cooked plan meal is skipped");
   check(!/Skyr\)/.test(shop) && (shop.match(/Skyr/g) || []).length === 1, "shopping list merges bracketed items");
   check(!/Berglinsen/.test(shop) && !(await pg.$('#shopBox [data-sp="today"]')), "shopping list skips past days");
+  // shopping settings (3.59)
+  const fixtureShop = async () => { await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(300); return pg.textContent("#shopBox"); };
+  await openSettings();
+  await pg.fill("#pPantryExtra", "Skyr"); await pg.fill("#pEggG", "30"); await pg.click("#pSave2"); await pg.waitForTimeout(400);
+  const shop2 = await fixtureShop(), buy2 = shop2.split("Wahrscheinlich")[0], have2 = shop2.split("Wahrscheinlich")[1] || "";
+  check(!/Skyr/.test(buy2) && /Skyr/.test(have2) && /Eier10 Stk\./.test(buy2), "own pantry word and egg white factor change the shopping list");
+  await openSettings();
+  await pg.fill("#pPantryExtra", ""); await pg.fill("#pPantryOff", "Salz"); await pg.fill("#pEggG", ""); await pg.click("#pSave2"); await pg.waitForTimeout(400);
+  const shop3 = await fixtureShop();
+  check(/Salz/.test(shop3.split("Wahrscheinlich")[0]) && !/Salz/.test(shop3.split("Wahrscheinlich")[1] || ""), "a built-in word can be switched off");
+  await openSettings(); await pg.fill("#pPantryOff", ""); await pg.click("#pSave2"); await pg.waitForTimeout(300); await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(300);
   // ticked items move into their own collapsible box
   const nOpen = (await pg.$$("#shopBox > details > ul li")).length;
   await pg.click("#shopBox > details > ul li input"); await pg.waitForTimeout(150);

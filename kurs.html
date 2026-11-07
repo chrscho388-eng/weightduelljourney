@@ -577,6 +577,12 @@ nav.tabs a[aria-current="page"] { color: var(--accent); border-top-color: var(--
       <p class="small muted" style="margin:10px 0 6px">Was die App an einer Tagesart jeden Tag selbst einträgt, zum Beispiel Cappuccino oder Skyr. Änderungen gelten ab heute, vergangene Tage bleiben.</p>
       <div id="fixedBox"></div>
     </details>
+    <details class="panel changelog"><summary>Einkauf</summary>
+      <div class="field" style="margin-top:10px"><label class="label" for="pPantryExtra">Immer im Haushalt (ein Wort pro Zeile)</label><textarea id="pPantryExtra" rows="3" placeholder="z. B. Reis"></textarea></div>
+      <div class="field" style="margin-top:10px"><label class="label" for="pPantryOff">Aus der Standardliste nehmen (ein Wort pro Zeile)</label><textarea id="pPantryOff" rows="2" placeholder="z. B. Honig"></textarea></div>
+      <p class="small muted" style="margin:4px 0 0">Standardliste: Salz, Pfeffer, Öl, Essig, Gewürze, Brühe, Zucker, Mehl, Knoblauch und ähnliche. Diese Dinge landen im Kasten „Wahrscheinlich schon im Haushalt“ statt auf der Einkaufsliste.</p>
+      <div class="field" style="margin-top:10px"><label class="label" for="pEggG">Gramm Eiklar je Ei</label><input id="pEggG" type="number" inputmode="numeric" min="20" max="50" placeholder="33"></div>
+    </details>
     <details class="panel changelog"><summary>Schätzung</summary>
       <div class="field" style="margin-top:10px"><label class="label" for="pHints">Hinweise für Schätzung und Plan</label><textarea id="pHints" placeholder="z. B. Kokosmilch immer normal; kein Rind; esse mit Partnerin; schnelle Gerichte"></textarea></div>
     </details>
@@ -2272,6 +2278,13 @@ Antworte nur mit JSON in genau dieser Form:
   }
   // ---- shopping list from the week's plan: recipe ingredients where present, else the meal's ingredient line ----
   const PANTRY = /(?<![\p{L}-])(salz|pfeffer|öl|olivenöl|rapsöl|sesamöl|sonnenblumenöl|paprikapulver|kreuzkümmel|currypulver|chiliflocken|chilipulver|cayennepfeffer|zimt|oregano|thymian|majoran|getrocknete kräuter|kräuter der provence|italienische kräuter|gewürze?|muskat|lorbeer|essig|balsamico|sojaso(?:ß|ss)e|sojasauce|fischso(?:ß|ss)e|chili|senf|honig|brühe|gemüsebrühe|hühnerbrühe|zucker|mehl|speisestärke|backpulver|wasser|süßstoff|sirup|knoblauch|knoblauchpulver|knoblauchzehen?)(?![\p{L}-])/iu;
+  // own words are added to the built-in list; built-in words can be switched off in the settings
+  function isPantry(n) {
+    const re = (w) => new RegExp("(?<![\\p{L}-])" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\p{L}-])", "iu");
+    if ((S.pantryExtra || []).some((w) => w && re(w).test(n))) return true;
+    const m = n.match(PANTRY);
+    return !!m && !(S.pantryOff || []).some((w) => w.toLowerCase() === m[1].toLowerCase());
+  }
   const NOT_SHOPPED = /kantine|juit|lieferdienst|restaurant|auswärts|verkostung|einladung|grillabend|imbiss|essen gehen/i;
   const SHOP_CATS = [
     ["Vorrat und Konserven", /passata|gehackte tomaten|tomatenmark|kokosmilch|aroy|kidney|kichererbsen|linsen|mais|thunfisch|currypaste|sweet.?chili|soße|sauce|nudeln|pasta|spaghetti|reis|couscous|bulgur|wraps?|tortilla|brot|brötchen|haferflocken|whey|protein|nüsse|mandeln/i],
@@ -2325,10 +2338,10 @@ Antworte nur mit JSON in genau dieser Form:
       let lc = n.toLowerCase();
       const cit = lc.match(/^(zitronen|limetten|orangen)(?:saft|schale|abrieb)$/) || lc.match(/^(?:saft|schale|abrieb)(?: von| der| einer)? (zitrone|limette|orange)n?$/);
       if (cit) { n = { zitronen: "Zitrone", limetten: "Limette", orangen: "Orange" }[cit[1]] || cit[1].charAt(0).toUpperCase() + cit[1].slice(1); lc = n.toLowerCase(); qty = null; }
-      if (/^(?:hühnerei)?(?:eiklar|eiweiß)$/.test(lc)) { n = "Eier"; lc = "eier"; qty = qty && (qty.u === "g" || qty.u === "ml") ? { q: qty.q / 33, u: "Stk." } : null; }
+      if (/^(?:hühnerei)?(?:eiklar|eiweiß)$/.test(lc)) { n = "Eier"; lc = "eier"; qty = qty && (qty.u === "g" || qty.u === "ml") ? { q: qty.q / (S.eggWhiteG || 33), u: "Stk." } : null; }
       else if (lc === "ei") { n = "Eier"; lc = "eier"; }
       const key = lc;
-      if (PANTRY.test(n)) { pantry[key] = pantry[key] || n; return; }
+      if (isPantry(n)) { pantry[key] = pantry[key] || n; return; }
       const it = items[key] = items[key] || { name: n.charAt(0).toUpperCase() + n.slice(1), units: {} };
       if (qty) it.units[qty.u] = (it.units[qty.u] || 0) + qty.q * mult;
       if (note && !it.note) it.note = note;
@@ -2461,6 +2474,7 @@ Antworte nur mit JSON in genau dieser Form:
     for (const [id, k] of Object.entries(PF)) { const v = $(id).value.trim(); p[k] = NUMS.includes(k) ? (v === "" ? null : Number(v)) : v; }
     p.handrail = $("pRail").checked;
     p.autoSyncHourly = $("pAutoSync").checked;
+    { const words = (id) => [...new Set($(id).value.split(/\n|,/).map((x) => x.trim()).filter(Boolean))].slice(0, 60); p.pantryExtra = words("pPantryExtra"); p.pantryOff = words("pPantryOff"); const g = Number($("pEggG").value); p.eggWhiteG = $("pEggG").value.trim() !== "" && g >= 20 && g <= 50 ? g : null; }
     { const byType = cleanFixed(), cur = fixedConfig(); p.fixedMeals = JSON.stringify(byType) === JSON.stringify(cur.byType) ? { since: cur.since, byType } : { since: todayStr(), byType }; }
     p.stepGoals = cleanGoals(); p.stepFullDays = $("pFullDays").value.trim() === "" ? 5 : Math.max(0, Math.min(7, Math.round(Number($("pFullDays").value))));
     const num = (id, lo, hi) => { const v = Number($(id).value); return $(id).value.trim() !== "" && v >= lo && v <= hi ? v : null; };
@@ -2493,6 +2507,7 @@ Antworte nur mit JSON in genau dieser Form:
     for (const [id, k] of Object.entries(PF)) if (document.activeElement !== $(id)) $(id).value = S[k] ?? (id === "pSpeed" ? 3.5 : id === "pWeighDay" ? 1 : id === "pStartD" ? todayStr() : "");
     $("pRail").checked = !!S.handrail;
     $("pAutoSync").checked = S.autoSyncHourly !== false;
+    $("pPantryExtra").value = (S.pantryExtra || []).join("\n"); $("pPantryOff").value = (S.pantryOff || []).join("\n"); $("pEggG").value = S.eggWhiteG ?? "";
     formFixed = JSON.parse(JSON.stringify(fixedConfig().byType)); renderFixed();
     formGoals = (S.stepGoals || []).map((g) => ({ from: g.from, steps: g.steps, min: g.min ?? "" })); renderGoalRows(); $("pFullDays").value = S.stepFullDays != null && S.stepFullDays !== 5 ? S.stepFullDays : "";
     $("pEvent").value = S.eventKcal !== DEFAULTS.eventKcal ? S.eventKcal : ""; $("pKcalKg").value = S.kcalPerKg !== DEFAULTS.kcalPerKg ? S.kcalPerKg : ""; $("pBase").value = S.baseKcalManual ?? "";
