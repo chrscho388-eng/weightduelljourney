@@ -109,7 +109,10 @@
   <section id="view-verlauf" data-view hidden>
     <h2>Überblick</h2>
     <div class="panel" id="insight"></div>
-    <h2>Gewicht</h2>
+    <div class="ctitle"><h2 style="margin:0">Gewicht</h2>
+      <div class="chips" id="rangeChips" role="group" aria-label="Zeitraum für alle Graphen">
+        <button class="chip" data-range="14">14 Tage</button><button class="chip" data-range="30">30 Tage</button><button class="chip" data-range="start">Seit Start</button><button class="chip" data-range="goal">Bis Ziel</button>
+      </div></div>
     <div class="panel">
       <svg class="chart" id="chart" viewBox="0 0 600 300" role="img" aria-label="Gewichtsverlauf mit Spätestens-Zielen"></svg>
       <div class="legend">
@@ -125,11 +128,8 @@
       <svg class="chart" id="chExp" viewBox="0 0 600 230" role="img" aria-label="Abnahme seit Start: erwartet laut Bilanz und gewogen"></svg>
       <div class="legend"><span><i style="background:var(--warn)"></i>erwartet laut Bilanz</span><span><i style="background:var(--accent)"></i>gewogen</span></div>
     </div>
-    <div class="ctitle" style="margin-top:24px"><h2 style="margin:0">Tageswerte</h2>
-      <div class="chips" id="rangeChips" role="group" aria-label="Zeitraum">
-        <button class="chip on" data-range="14">14 Tage</button><button class="chip" data-range="30">30 Tage</button><button class="chip" data-range="0">Alles</button>
-      </div></div>
-    <p class="small muted" style="margin:6px 0 10px">Tipp auf einen Tag zeigt die Werte.</p>
+    <div class="ctitle" style="margin-top:24px"><h2 style="margin:0">Tageswerte</h2></div>
+    <p class="small muted" style="margin:6px 0 10px">Der Zeitraum oben gilt für alle Graphen. Tipp auf einen Tag zeigt die Werte.</p>
     <div class="charts">
       <div class="panel dchart">
         <div class="ctitle"><h3>Aufnahme und Verbrauch</h3></div>

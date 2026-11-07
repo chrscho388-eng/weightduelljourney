@@ -103,6 +103,14 @@ const groups = [
   await pg.click("nav.tabs a[data-tab=verlauf]"); await pg.waitForTimeout(150);
   check((await pg.textContent("#insight")).includes("Prognose"), "overview shows the forecast");
   check((await pg.$$("#chart polyline")).length > 0, "weight chart is drawn");
+  const xl = async () => (await pg.$$eval("#chart text", (e) => e.map((x) => x.textContent))).join("|");
+  const labelsStart = await xl();
+  for (const r of ["14", "30", "goal", "start"]) {
+    await pg.click(`#rangeChips [data-range="${r}"]`); await pg.waitForTimeout(150);
+    check((await pg.$$("#chart polyline")).length > 0 && await pg.$eval(`#rangeChips [data-range="${r}"]`, (e) => e.classList.contains("on")), "range " + r + ": weight chart drawn, chip marked");
+    if (r === "14") check((await xl()) !== labelsStart, "14 days zooms the weight chart (axis changes)");
+  }
+  check(!(await pg.$$eval("#allWeeks tr.weekrow", (e) => e.some((x) => /^W0/.test(x.textContent)))), "weeks table lists no week before the start");
   check((await pg.$$("#chSteps path")).length >= 2 && (await pg.$$("#chSteps line[stroke-dasharray='2 4']")).length > 0, "steps chart draws bars and goals");
   check(/Schritte, davon/.test(await pg.textContent("#readSteps")), "steps readout shown");
   // plan + shopping list

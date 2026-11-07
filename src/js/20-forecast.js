@@ -48,6 +48,9 @@
     }).join("") + `</div>`;
     $("insight").innerHTML = h;
   }
+  // shared time range of the history graphs: "14", "30" (days), "start" (since the start weight) or "goal" (all the way to the target)
+  let histRange = "start"; try { const v = localStorage.getItem("kurs:histRange"); if (["14", "30", "start", "goal"].includes(v)) histRange = v; } catch (e) {}
+  const histDays = () => histRange === "14" ? 14 : histRange === "30" ? 30 : 0;
   function renderExpChart() {
     const start = S.startWeightDate, svg = $("chExp");
     if (!start || !S.startWeight) { svg.innerHTML = ""; $("readExp").textContent = ""; return; }
@@ -58,21 +61,23 @@
     const act = weighIns().filter((w) => w.date >= start).map((w) => [w.date, w.weight - S.startWeight]);
     if (!act.length || act[0][0] !== start) act.unshift([start, 0]);
     const W = 600, H = 230, L = 52, R = 14, T = 12, B = 30;
-    const endD = [exp[exp.length - 1][0], act[act.length - 1][0], addDays(start, 21)].sort().pop();
-    const vals = exp.map((p) => p[1]).concat(act.map((p) => p[1]), [0]);
+    const wd = histDays(), wStart = wd ? [start, addDays(today, -(wd - 1))].sort().pop() : start;
+    const expW = exp.filter((p) => p[0] >= wStart), actW = act.filter((p) => p[0] >= wStart);
+    const endD = [exp[exp.length - 1][0], act[act.length - 1][0], addDays(wStart, wd ? 13 : 21)].sort().pop();
+    const vals = expW.map((p) => p[1]).concat(actW.map((p) => p[1]), wd ? [] : [0]); if (!vals.length) vals.push(0);
     let lo = Math.floor(Math.min(...vals) * 2 - 0.5) / 2, hi = Math.max(0.5, Math.ceil(Math.max(...vals) * 2) / 2);
     const span = hi - lo, step = span > 8 ? 2 : span > 4 ? 1 : 0.5;
     lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
-    const x0 = toUTC(start), x1 = toUTC(endD);
+    const x0 = toUTC(wStart), x1 = toUTC(endD);
     const X = (s) => L + (toUTC(s) - x0) / (x1 - x0) * (W - L - R), Y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
     let g = "";
     for (let v = lo; v <= hi + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${Y(v) + 5}" text-anchor="end">${v > 0 ? "+" : v < 0 ? "−" : ""}${fmt(Math.abs(v), step < 1 ? 1 : 0)}</text>`;
     const nd = Math.round((x1 - x0) / 864e5), every = Math.max(7, Math.ceil(nd / 6 / 7) * 7);
-    for (let i = 0; i <= nd; i += every) { const d = addDays(start, i); g += `<text x="${X(d)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : "middle"}">${dm(d).slice(0, 6)}</text>`; }
-    g += `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1"/>`;
-    g += `<polyline fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 4" points="${exp.map(([d, v]) => X(d) + "," + Y(v)).join(" ")}"/>`;
-    if (act.length > 1) g += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${act.map(([d, v]) => X(d) + "," + Y(v)).join(" ")}"/>`;
-    act.forEach(([d, v]) => g += `<circle cx="${X(d)}" cy="${Y(v)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`);
+    for (let i = 0; i <= nd; i += every) { const d = addDays(wStart, i); g += `<text x="${X(d)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : "middle"}">${dm(d).slice(0, 6)}</text>`; }
+    if (lo <= 0 && hi >= 0) g += `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1"/>`;
+    g += `<polyline fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 4" points="${expW.map(([d, v]) => X(d) + "," + Y(v)).join(" ")}"/>`;
+    if (actW.length > 1) g += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${actW.map(([d, v]) => X(d) + "," + Y(v)).join(" ")}"/>`;
+    actW.forEach(([d, v]) => g += `<circle cx="${X(d)}" cy="${Y(v)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`);
     svg.innerHTML = g;
     const la = act[act.length - 1], ePt = exp.find((p) => p[0] === la[0]);
     if (act.length < 2 || !ePt) { $("readExp").innerHTML = `Erwartet bisher <b>${signedKg(cum / S.kcalPerKg)}</b>. Der Vergleich erscheint nach der nächsten Wiegung.`; return; }

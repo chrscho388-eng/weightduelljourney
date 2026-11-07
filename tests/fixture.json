@@ -275,5 +275,18 @@
    }
   ],
   "updatedAt": "2026-11-04T08:00:00.000Z"
+ },
+ "profile/days/2026-10-25": {
+  "date": "2026-10-25",
+  "dayType": "WE",
+  "meals": [
+   {
+    "id": "v1",
+    "label": "Vorstart-Snack",
+    "kcal": 300,
+    "protein": 5
+   }
+  ],
+  "updatedAt": "2026-10-25T20:00:00.000Z"
  }
 }

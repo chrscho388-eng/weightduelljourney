@@ -1,13 +1,15 @@
   // ---- daily charts ----
-  let range = 14, selDate = null;
+  let selDate = null;
+  const markRange = () => document.querySelectorAll("#rangeChips .chip").forEach((x) => x.classList.toggle("on", x.dataset.range === histRange));
+  markRange();
   document.querySelectorAll("#rangeChips .chip").forEach((c) => c.onclick = () => {
-    range = Number(c.dataset.range);
-    document.querySelectorAll("#rangeChips .chip").forEach((x) => x.classList.toggle("on", x === c));
-    renderDaily();
+    histRange = c.dataset.range; try { localStorage.setItem("kurs:histRange", histRange); } catch (e) {}
+    markRange(); renderHistory(); renderExpChart(); renderDaily();
   });
   function dailyRows() {
     const end = todayStr();
     const firstData = Object.keys(days).filter((d) => hasData(days[d])).sort()[0] || end;
+    const range = histDays();
     let start = range ? addDays(end, -(range - 1)) : firstData;
     const rows = [];
     for (let d = start; d <= end; d = addDays(d, 1)) {
