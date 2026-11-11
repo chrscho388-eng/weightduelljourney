@@ -40,7 +40,7 @@
     } else {
       box.append(row("prow", `<span class="pn">Portion</span><input type="number" inputmode="numeric" min="0" step="10" data-me="pct" aria-label="Portion in Prozent" value="${e.pct}"><span class="small muted">%</span>`));
     }
-    if (direct || rq) box.append(row("", `<textarea data-me="change" rows="2" placeholder="Oder beschreiben, was anders war, z. B. ohne Feta, dafür 50 g Reis mehr">${esc(e.change)}</textarea><div class="btnrow" style="margin-top:6px"><button type="button" class="btn ghost" data-ma="ask">${direct ? "Neu schätzen" : "An Claude senden"}</button></div>`));
+    if (direct || rq) box.append(row("", `<textarea data-me="change" rows="2" placeholder="Oder beschreiben, was anders war, z. B. ohne Feta, dafür 50 g Reis mehr">${esc(e.change)}</textarea><div class="btnrow" style="margin-top:6px"><button type="button" class="btn ghost" data-ma="ask">${!Number(e.orig.kcal) && !Number(e.orig.protein) ? "Neu schätzen lassen" : direct ? "Neu schätzen" : "An Claude senden"}</button></div>`));
     box.append(row("btnrow", `<button type="button" class="btn" data-ma="save">Speichern</button><button type="button" class="btn ghost" data-ma="cancel">Abbrechen</button>`));
     const st = row("status small", ""); box.append(st);
     const sync = () => { box.querySelector('[data-me="kcal"]').value = e.kcal; box.querySelector('[data-me="protein"]').value = e.protein; box.querySelector('[data-me="label"]').value = e.label; };
@@ -60,19 +60,21 @@
     };
     const ask = box.querySelector('[data-ma="ask"]');
     if (ask) ask.onclick = async () => {
-      const change = String(e.change || "").trim();
-      if (!change) { st.textContent = "Beschreib kurz, was anders war."; st.classList.add("err"); return; }
+      let change = String(e.change || "").trim();
+      // an entry without values (e.g. logged as text only) is simply estimated, no description needed
+      const fresh = !change && !Number(e.orig.kcal) && !Number(e.orig.protein);
+      if (!change && !fresh) { st.textContent = "Beschreib kurz, was anders war."; st.classList.add("err"); return; }
       const before = `${e.orig.label} (${e.orig.kcal} kcal, ${e.orig.protein} g Eiweiß${e.parts.length ? "; Bestandteile: " + e.parts.map((pt) => `${pt.name} ${pt.g0} g`).join(", ") : ""})`;
       if (!directNow()) {
         // queue: Claude re-estimates at the next sync; the old values count until then
         const id = e.id, day = e.day; medit = null;
-        saveDay(day, (doc) => { doc.meals = (doc.meals || []).map((x) => x.id === id ? { ...x, pending: true, request: `Korrektur dieses Eintrags. Bisher: ${before}. Änderung: ${change}`.slice(0, 600) } : x); });
+        saveDay(day, (doc) => { doc.meals = (doc.meals || []).map((x) => x.id === id ? { ...x, pending: true, request: (fresh ? String(e.orig.label) : `Korrektur dieses Eintrags. Bisher: ${before}. Änderung: ${change}`).slice(0, 600) } : x); });
         setStatus("estStatus", "An Claude geschickt. Die neue Schätzung kommt beim nächsten Abgleich, bis dahin zählen die bisherigen Werte.");
         return;
       }
       ask.disabled = true; st.classList.remove("err"); st.textContent = "Claude schätzt neu …";
       try {
-        const res = await sample.json(estPrompt(`Ein schon eingetragener Posten wird korrigiert. Bisher: ${before}. Änderung: ${change}. Gib genau EINEN Posten mit dem korrigierten Stand zurück.`, false), { modelTier: "default" });
+        const res = await sample.json(estPrompt(fresh ? `${e.orig.label}. Gib genau EINEN Posten zurück, der alles zusammenfasst.` : `Ein schon eingetragener Posten wird korrigiert. Bisher: ${before}. Änderung: ${change}. Gib genau EINEN Posten mit dem korrigierten Stand zurück.`, false), { modelTier: "default" });
         const it = res && Array.isArray(res.items) && res.items.find((x) => x && x.label);
         if (!it) throw { code: "empty" };
         e.label = String(it.label).slice(0, 300); e.kcal = Math.round(Number(it.kcal) || 0); e.protein = Math.round(Number(it.protein) || 0);
@@ -80,7 +82,7 @@
         e.orig = { kcal: e.kcal, protein: e.protein, label: e.label }; e.parts = parts.map((pt) => ({ ...pt, g0: pt.grams, k0: pt.kcal, p0: pt.protein, gone: false })); e.change = ""; e.g0 = null; e.pct = 100;
         renderDay();
         const st2 = document.querySelector(".medit .status"); if (st2) st2.textContent = "Neu geschätzt. Prüfen und speichern.";
-      } catch (er) { st.classList.add("err"); st.textContent = er && er.code === "rate_limited" ? "Gerade zu viele Anfragen. Versuch es gleich noch einmal." : "Das hat nicht geklappt. Formuliere es etwas genauer."; ask.disabled = false; }
+      } catch (er) { st.classList.add("err"); st.textContent = er && er.code === "rate_limited" ? "Gerade zu viele Anfragen. Versuch es gleich noch einmal." : "Das hat nicht geklappt. " + aiErr(er); ask.disabled = false; }
     };
     return box;
   }
@@ -96,8 +98,13 @@
   }
   $("editCancel").onclick = endEdit;
   $("manAdd").onclick = () => {
-    const label = $("mealText").value.trim(), kcal = Number($("manKcal").value), prot = Number($("manProt").value) || 0;
-    if (!label || !(kcal >= 0) || $("manKcal").value === "") { setStatus("estStatus", "Bitte Beschreibung und kcal angeben, oder schätzen lassen.", true); return; }
+    let label = $("mealText").value.trim(); const kcal = Number($("manKcal").value), prot = Number($("manProt").value) || 0;
+    if ($("manKcal").value === "" || !(kcal >= 0)) {
+      // text only: let Claude estimate it (now or at the next sync) instead of failing
+      if (label && !editingId && (directNow() || requestMode())) { $("sendBtn").click(); return; }
+      setStatus("estStatus", label ? "Bitte kcal angeben." : "Bitte kcal angeben (eine Beschreibung ist freiwillig).", true); return;
+    }
+    if (!label) label = "Eigener Eintrag"; // values only: the name can be changed later
     if (editingId) {
       const id = editingId;
       saveDay(curDay, (doc) => { doc.meals = doc.meals.map((m) => m.id === id ? { ...m, label, kcal: Math.round(kcal), protein: Math.round(prot) } : m); });

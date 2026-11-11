@@ -103,6 +103,18 @@
       img.src = url;
     });
   }
+  // readable cause of a failed Claude call, shown after the message
+  function aiErr(e) {
+    const c = e && e.code;
+    if (c === "network") return "Keine Verbindung zu Claude.";
+    if (c === "too_long") return "Die Antwort war zu lang und wurde abgeschnitten.";
+    if (c === "invalid_json") return "Claudes Antwort war nicht lesbar.";
+    if (c === "empty") return "Claude hat nichts Verwertbares zurückgegeben.";
+    if (c === "bad_key") return "Der API-Schlüssel wurde abgelehnt (Einstellungen › Abgleich und Daten).";
+    if (c === "rate_limited") return "Gerade zu viele Anfragen.";
+    if (c === "error") return "Fehler von Claude" + (e.status ? " (" + e.status + (e.detail ? ": " + String(e.detail).slice(0, 140) : "") + ")" : "") + ".";
+    return "Unbekannter Fehler" + (c ? " (" + String(c).slice(0, 40) + ")" : e && e.message ? " (" + String(e.message).slice(0, 80) + ")" : "") + ".";
+  }
   function localSample() {
     const key = lsGet(LS + "apiKey");
     if (!key) return null;
@@ -112,21 +124,27 @@
         const content = [];
         for (const f of (opts && opts.images) || []) { const b64 = await shrinkImage(f); if (b64) content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: b64 } }); }
         content.push({ type: "text", text: prompt });
-        let r;
-        try {
-          r = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-            body: JSON.stringify({ model: ESTIMATE_MODEL, max_tokens: 6000, messages: [{ role: "user", content }] })
-          });
-        } catch (e) { throw { code: "network" }; }
-        if (r.status === 401 || r.status === 403) throw { code: "bad_key" };
-        if (r.status === 429 || r.status === 529) throw { code: "rate_limited" };
-        if (!r.ok) throw { code: "error" };
-        const j = await r.json();
-        const t = (j.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
-        const m = t.match(/\{[\s\S]*\}/);
-        try { return JSON.parse(m ? m[0] : t); } catch (e) { throw { code: "invalid_json" }; }
+        const once = async () => {
+          let r;
+          try {
+            r = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+              body: JSON.stringify({ model: ESTIMATE_MODEL, max_tokens: 16000, messages: [{ role: "user", content }] })
+            });
+          } catch (e) { throw { code: "network" }; }
+          if (r.status === 401 || r.status === 403) throw { code: "bad_key" };
+          if (r.status === 429 || r.status === 529) throw { code: "rate_limited" };
+          if (!r.ok) { let detail = ""; try { const j = await r.json(); detail = j && j.error && j.error.message || ""; } catch (e) {} throw { code: "error", status: r.status, detail }; }
+          const j = await r.json();
+          const t = (j.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
+          if (j.stop_reason === "max_tokens") throw { code: "too_long" };
+          const m = t.match(/\{[\s\S]*\}/);
+          try { return JSON.parse(m ? m[0] : t); } catch (e) { throw { code: "invalid_json" }; }
+        };
+        // one automatic second try for passing problems (connection, server error, unreadable answer)
+        try { return await once(); }
+        catch (e) { if (e && (e.code === "network" || e.code === "invalid_json" || (e.code === "error" && e.status >= 500))) return await once(); throw e; }
       }
     };
   }

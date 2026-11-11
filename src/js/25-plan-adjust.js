@@ -61,7 +61,7 @@ Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
       setStatus("planStatus", ""); curPlan = mon; renderPlan();
     } catch (e) {
       const c = e && e.code;
-      setStatus("planStatus", c === "not_granted" ? "Claude-Nutzung wurde nicht erlaubt." : c === "rate_limited" ? "Gerade zu viele Anfragen. Versuch es in einer Minute erneut." : c === "bad_key" ? "Der API-Schlüssel wurde abgelehnt. Prüfe ihn im Tab Profil." : "Das hat nicht geklappt. Formuliere den Wunsch etwas genauer und versuch es noch einmal.", true);
+      setStatus("planStatus", c === "not_granted" ? "Claude-Nutzung wurde nicht erlaubt." : c === "rate_limited" ? "Gerade zu viele Anfragen. Versuch es in einer Minute erneut." : c === "bad_key" ? "Der API-Schlüssel wurde abgelehnt. Prüfe ihn im Tab Profil." : "Das hat nicht geklappt. " + aiErr(e) + " Versuch es noch einmal oder schick den Wunsch „Über Claude (Abgleich)“.", true);
     } finally { $("planAdjustBtn").disabled = false; }
   };
   // without a key: store the wish on the plan, Claude rewrites the plan at the next sync

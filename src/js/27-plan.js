@@ -1,7 +1,8 @@
   // ---- plan ----
   let notesWeek = null;
+  // open/closed plan days only for the current visit of the tab: by default just today is open
   let dayOpen = {};
-  try { dayOpen = JSON.parse(localStorage.getItem("kurs:planDayOpen") || "{}") || {}; } catch (e) {}
+  try { localStorage.removeItem("kurs:planDayOpen"); } catch (e) {}
   function renderPlanNotes() {
     const el = $("planNotes");
     // keep what the person is typing; refresh when the week changes or the field is not focused
@@ -51,8 +52,7 @@
     h += p.note ? `<p class="small muted" style="margin-top:12px">${esc(p.note)}</p>` : "";
     (p.days || []).forEach((d, di) => {
       const tk = (d.meals || []).reduce((a, m) => a + (m.kcal || 0), 0), tp = (d.meals || []).reduce((a, m) => a + (m.protein || 0), 0);
-      // collapsible: past days start closed, the person's own choice per day is remembered
-      const open = d.date in dayOpen ? dayOpen[d.date] : d.date >= todayStr();
+      const open = d.date in dayOpen ? dayOpen[d.date] : d.date === todayStr();
       h += `<details class="planday panel${d.date === todayStr() ? " today" : ""}" data-date="${d.date}"${open ? " open" : ""}><summary><h3><span>${WD[weekday(d.date)]} ${dm(d.date)}${d.type ? ` <span class="pill">${esc(d.type)}</span>` : ""}</span><span class="num">${fmt(tk)} kcal · ${fmt(tp)} g Eiweiß</span></h3></summary>`;
       if (d.info) h += `<div class="small muted">${esc(d.info)}</div>`;
       (d.meals || []).forEach((m, mi) => h += `<div ${mealAttrs(m, isProposal ? null : "d" + di + ":" + mi)}><div><div class="slot">${esc(m.slot || "")}</div>${esc(m.name)}</div><div class="mv">${fmt(m.kcal)} kcal\n${fmt(m.protein)} g Eiweiß</div>${m.detail ? `<div class="detail">${esc(m.detail)}</div>` : ""}${recipeHtml(m, isProposal ? null : "d" + di + ":" + mi)}</div>`);
@@ -66,8 +66,6 @@
     el.innerHTML = h;
     el.querySelectorAll("details.planday").forEach((dt) => dt.addEventListener("toggle", () => {
       dayOpen[dt.dataset.date] = dt.open;
-      Object.keys(dayOpen).forEach((k) => { if (k < addDays(todayStr(), -42)) delete dayOpen[k]; });
-      lsSet(LS + "planDayOpen", JSON.stringify(dayOpen));
     }));
     el.querySelectorAll(".pmeal.tap [data-rc]").forEach((b) => b.onclick = (e) => {
       e.stopPropagation();

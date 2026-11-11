@@ -95,7 +95,7 @@ Antworte nur mit JSON in genau dieser Form:
       await base.collection("plans").doc(week).set(next); plans[week] = next;
       openRecipe = ref; renderPlan();
     } catch (e) {
-      delete row.dataset.busy; st.textContent = "Das hat nicht geklappt. Versuch es noch einmal."; st.classList.add("err");
+      delete row.dataset.busy; st.textContent = "Das hat nicht geklappt. " + aiErr(e) + " Versuch es noch einmal."; st.classList.add("err");
     }
   }
   async function makeRecipe(row, later) {
@@ -129,6 +129,6 @@ Antworte nur mit JSON in genau dieser Form:
       await base.collection("plans").doc(week).set(next); plans[week] = next;
       openRecipe = ref; renderPlan();
     } catch (e) {
-      delete row.dataset.busy; st.textContent = "Das hat nicht geklappt. Tippe noch einmal."; st.classList.add("err");
+      delete row.dataset.busy; st.textContent = "Das hat nicht geklappt. " + aiErr(e) + " Tippe noch einmal."; st.classList.add("err");
     }
   }

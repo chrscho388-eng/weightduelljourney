@@ -116,13 +116,14 @@ const groups = [
   // plan + shopping list
   await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
   check((await pg.textContent("#planBody")).includes("Reispfanne"), "plan shows meals");
-  // plan days collapse: past days closed, today open, choice remembered
+  // plan days: only today open by default; other days can be opened; every visit of the tab starts again with only today open
   const openDays = await pg.$$eval("details.planday", (e) => e.map((x) => [x.dataset.date, x.open]));
-  check(openDays.some(([d, o]) => d < "2026-11-04" && !o) && openDays.some(([d, o]) => d === "2026-11-04" && o), "past plan days collapsed, today open");
-  await pg.click('details.planday[data-date="2026-11-04"] > summary'); await pg.waitForTimeout(100);
+  check(openDays.length > 1 && openDays.every(([d, o]) => o === (d === "2026-11-04")), "only today's plan day is open");
+  await pg.click('details.planday[data-date="2026-11-04"] > summary'); await pg.click('details.planday[data-date="2026-11-05"] > summary'); await pg.waitForTimeout(100);
+  check(await pg.$eval('details.planday[data-date="2026-11-05"]', (x) => x.open), "other plan days can be opened");
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
-  check(!(await pg.$eval('details.planday[data-date="2026-11-04"]', (x) => x.open)), "collapsed day stays collapsed");
-  await pg.click('details.planday[data-date="2026-11-04"] > summary'); await pg.waitForTimeout(100);
+  const reopened = await pg.$$eval("details.planday", (e) => e.map((x) => [x.dataset.date, x.open]));
+  check(reopened.every(([d, o]) => o === (d === "2026-11-04")), "tab switch resets the plan to only today open");
   await pg.click("#shopBox summary"); await pg.waitForTimeout(150);
   const shop = await pg.textContent("#shopBox");
   check(/Hähnchenbrust/.test(shop) && /500 g/.test(shop), "shopping list doubles cooked dish");
@@ -230,6 +231,27 @@ const groups = [
   check((await pg.textContent("#sendBtn")) === "An Claude senden" && await pg.isVisible("#askHint"), "switch to 'über Claude' changes the send button");
   estImgs = -1; await pg.fill("#mealText", "Mango-Shake über Claude"); await pg.click("#sendBtn"); await pg.waitForTimeout(800);
   check(estImgs === -1 && (await dayNow()).meals.some((m) => m.pending && m.request === "Mango-Shake über Claude"), "'über Claude' queues a request instead of estimating");
+  // 3.65: text without kcal goes to Claude, values without text are fine
+  await pg.fill("#mealText", "Nur Text ohne Werte"); await pg.fill("#manKcal", ""); await pg.fill("#manProt", ""); await pg.click("#manAdd"); await pg.waitForTimeout(400);
+  check((await dayNow()).meals.some((m) => m.pending && m.request === "Nur Text ohne Werte"), "'Eintragen' with text only asks Claude instead of failing");
+  await pg.fill("#mealText", ""); await pg.fill("#manKcal", "250"); await pg.fill("#manProt", "12"); await pg.click("#manAdd"); await pg.waitForTimeout(300);
+  check((await dayNow()).meals.some((m) => m.label === "Eigener Eintrag" && m.kcal === 250 && m.protein === 12 && !m.pending), "values without a description are logged");
+  // an entry without values is re-estimated without a description
+  await pg.fill("#mealText", "Null-Eintrag"); await pg.fill("#manKcal", "0"); await pg.fill("#manProt", ""); await pg.click("#manAdd"); await pg.waitForTimeout(300);
+  await pg.click('#mealList .mname button:has-text("Null-Eintrag")'); await pg.waitForTimeout(150);
+  check((await pg.textContent('.medit [data-ma="ask"]')) === "Neu schätzen lassen", "editor offers 'Neu schätzen lassen' for an entry without values");
+  await pg.click('.medit [data-ma="ask"]'); await pg.waitForTimeout(300);
+  check((await dayNow()).meals.some((m) => m.label === "Null-Eintrag" && m.pending && m.request === "Null-Eintrag"), "entry without values goes to Claude as a plain estimate, not as a correction");
+  // direct estimate fails: the cause is shown and the same text can go to Claude instead
+  const fail500 = (r) => r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: { message: "Overloaded test" } }) });
+  await pg.route("https://api.anthropic.com/**", fail500);
+  await pg.click("#sendMode [data-send-mode=direct]"); await pg.waitForTimeout(100);
+  await pg.fill("#mealText", "Fehlschlag-Essen"); await pg.click("#sendBtn"); await pg.waitForTimeout(800);
+  check(/Fehler von Claude \(500: Overloaded test\)/.test(await pg.textContent("#estStatus")) && await pg.isVisible("#estFallbackBtn"), "failed direct estimate shows the cause and a way to Claude");
+  await pg.unroute("https://api.anthropic.com/**", fail500);
+  await pg.click("#estFallbackBtn"); await pg.waitForTimeout(300);
+  check((await dayNow()).meals.some((m) => m.pending && m.request === "Fehlschlag-Essen") && !(await pg.isVisible("#estFallbackBtn")), "fallback sends the same text to Claude");
+  await pg.click("#sendMode [data-send-mode=claude]"); await pg.waitForTimeout(100);
   await pg.reload(); await pg.waitForTimeout(800);
   check((await pg.textContent("#sendBtn")) === "An Claude senden", "send mode remembered");
   // editor in 'über Claude' mode: the described change is queued, old values still count

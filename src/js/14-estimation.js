@@ -58,10 +58,12 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
     $("estNote").textContent = `Zusammen ${fmt(tk)} kcal und ${fmt(tp)} g Eiweiß.` + (pendingNote ? " Annahme: " + pendingNote : "");
     $("estPreview").hidden = false; savePreview();
   }
+  let estFailImgs = [];
+  $("estFallbackBtn").onclick = async () => { const ok = await queueEstimate(estFailImgs); if (ok) { $("estFallback").hidden = true; estFailImgs = []; attachPhoto(null); } };
   async function runEstimate(images) {
     const text = $("mealText").value.trim();
     if (!text && !images.length) { setStatus("estStatus", "Beschreibe zuerst, was du gegessen hast, oder füge ein Foto hinzu.", true); return false; }
-    $("sendBtn").disabled = true; setStatus("estStatus", "Claude schätzt …");
+    $("sendBtn").disabled = true; $("estFallback").hidden = true; setStatus("estStatus", "Claude schätzt …");
     try {
       const opts = { modelTier: "default" };
       if (images.length) opts.images = images;
@@ -81,9 +83,10 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
       const c = e && e.code;
       if (c === "not_granted") { setStatus("estStatus", "Schätzen ist nicht erlaubt worden. Trag kcal und Eiweiß selbst ein.", true); sample = null; updateEntryButtons(); }
       else if (c === "bad_key") setStatus("estStatus", "Der API-Schlüssel wurde abgelehnt. Prüfe ihn im Tab Profil.", true);
-      else if (c === "network") setStatus("estStatus", "Keine Verbindung zur Schätzung. Prüfe die Internetverbindung.", true);
       else if (c === "rate_limited") setStatus("estStatus", "Gerade zu viele Anfragen. Versuch es in einer Minute erneut.", true);
-      else setStatus("estStatus", "Die Schätzung hat nicht geklappt. Formuliere es etwas genauer oder trag die Werte selbst ein.", true);
+      else setStatus("estStatus", "Die Schätzung hat nicht geklappt. " + aiErr(e) + (requestMode() ? " Du kannst den Eintrag stattdessen an Claude schicken." : " Trag die Werte sonst selbst ein."), true);
+      // no dead end: the same text and photos can go to Claude for the next sync
+      if (c !== "not_granted" && requestMode()) { estFailImgs = images.slice(); $("estFallback").hidden = false; }
     } finally { $("sendBtn").disabled = false; }
     return false;
   }
