@@ -383,6 +383,18 @@ const groups = [
   check(JSON.stringify(pf.inclines) === "[5,9]" && pf.inclinePct === 9, "incline list saved, legacy incline kept");
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   check(await pg.$("#steps_5"), "new incline gets its own step field");
+  // 3.66: a switched-off fixed entry stays off after a sync; before, the other side brought it back and both synced forever
+  await pg.reload(); await pg.waitForTimeout(1500);
+  remoteDocs = { "profile/days/2026-11-04": JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04"))) };
+  check(remoteDocs["profile/days/2026-11-04"].meals.some((m) => m.id === "coffee"), "remote day has the coffee entry");
+  let nPut = 0;
+  await pg.route("https://api.github.com/repos/a/b/contents/**", (r) => { if (r.request().method() === "PUT" && !r.request().url().includes("/photos/")) nPut++; return r.fallback(); });
+  await pg.click('#mealList li:has-text("Cappuccino") .x:not(.star)'); await pg.waitForTimeout(300);
+  await openSettings(); await pg.click("#syncNowBtn"); await pg.waitForTimeout(4000);
+  const putsAfter = nPut; await pg.waitForTimeout(3000);
+  const offDay = JSON.parse(await pg.evaluate(() => localStorage.getItem("kurs:data/users/local/profile/days/2026-11-04")));
+  check(!offDay.meals.some((m) => m.id === "coffee") && (offDay.fixedOff || []).includes("coffee"), "removed fixed entry stays removed after the sync");
+  check(putsAfter >= 1 && nPut === putsAfter && putsAfter <= 3, "no endless sync after removing a fixed entry (" + putsAfter + " then " + nPut + " uploads)");
   }],
   ["E-einstellungen", async ({ pg, errors, openSettings, check }) => {
   // settings tab: numbers with defaults (3.59)

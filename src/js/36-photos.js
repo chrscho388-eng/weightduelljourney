@@ -47,7 +47,9 @@
     const olds = new Map((old.meals || []).map((m) => [m.id, m]));
     // a side without the photo (e.g. shortened) never deletes the other side's photo
     const keepPhoto = (m) => { const o = olds.get(m.id); return o && !m.photo && !m.photos && (o.photo || o.photos) ? { ...m, ...(o.photo ? { photo: o.photo } : {}), ...(o.photos ? { photos: o.photos } : {}) } : m; };
-    const meals = [...(nw.meals || []).map(keepPhoto), ...(old.meals || []).filter((m) => !have.has(m.id))].filter((m) => !gone.has(m.id));
+    // fixed entries switched off on the newer side stay off (else the other side brings them back and the two sync forever)
+    const off = new Set([...(nw.fixedOff || []), ...(nw.coffeeOff ? ["coffee"] : [])]);
+    const meals = [...(nw.meals || []).map(keepPhoto), ...(old.meals || []).filter((m) => !have.has(m.id))].filter((m) => !gone.has(m.id) && !off.has(m.id));
     const out = { ...nw, meals };
     if (removed.length) out.removed = removed; else delete out.removed;
     return out;
