@@ -25,7 +25,22 @@ const groups = [
   await pg.click("#prevWeek"); await pg.waitForTimeout(200);
   const rv = await pg.$eval("#weekReviewWrap", (e) => e.hidden ? "" : e.textContent);
   check(/Wochenrückblick/.test(rv) && /Bilanz/.test(rv) && /Empfehlung/.test(rv), "weekly review shown for the past week");
-  await pg.click("#nextWeek"); await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  await pg.click("#nextWeek"); await pg.waitForTimeout(200);
+  // projection: finished days (before the fixture's today 04.11.) give the average, all other days get it
+  const pj = await pg.evaluate(() => {
+    const num = (t) => { const m = t.replace(/\./g, "").replace(",", ".").match(/([+−-]?)(\d+(?:\.\d+)?)/); return m ? (m[1] === "−" || m[1] === "-" ? -1 : 1) * Number(m[2]) : NaN; };
+    const rows = [...document.querySelectorAll("#weekTable button.dayrow:not(.empty)")].map((b) => ({ date: b.dataset.date, bal: num(b.querySelector(".dbal").textContent) }));
+    const done = rows.filter((r) => r.date < "2026-11-04"), base = done.length ? done : rows;
+    const avg = base.reduce((a, r) => a + r.bal, 0) / base.length;
+    const perKg = num(document.querySelector("#weekSum").textContent.match(/Summe \/ ([\d.]+) kcal pro kg/)[1]);
+    const box = document.getElementById("weekProj");
+    return { want: (base.reduce((a, r) => a + r.bal, 0) + avg * (7 - base.length)) / perKg, got: box ? num(box.querySelector(".num").textContent) : NaN, sub: box ? box.textContent : "", rest: 7 - base.length };
+  });
+  check(Math.abs(pj.want - pj.got) < 0.06 && pj.sub.includes(pj.rest + " Resttage"), `week projection uses the average of finished days (want ${pj.want.toFixed(2)}, got ${pj.got}, ${pj.rest} rest days)`);
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
+  // burn split: base plus steps make the total
+  const bs = await pg.$eval("#balanceRow", (e) => { const v = {}; const c = [...e.children]; for (let i = 0; i < c.length - 1; i += 2) v[c[i].textContent] = Number(c[i + 1].textContent.replace(/\D/g, "")); return v; });
+  check(bs.Grundverbrauch > 0 && bs["Durch Schritte"] >= 0 && bs.Grundverbrauch + bs["Durch Schritte"] === bs["Verbrauch gesamt"], "today splits the burn into base and steps (" + JSON.stringify(bs) + ")");
   // quick pickers
   await pg.click("#dayName"); await pg.waitForTimeout(100);
   check((await pg.$$("#dayPicker button")).length >= 7, "day picker lists the days of the week");

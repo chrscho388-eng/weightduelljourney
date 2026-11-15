@@ -11,7 +11,14 @@
     }
     const wStart = days[mon] && days[mon].weight;
     const wEnd = days[addDays(mon, 7)] && days[addDays(mon, 7)].weight;
-    return { rows, sum, n, avg: n ? { kin: kin / n, out: out / n, bal: sum / n, pr: pr / n } : null, expected: sum / S.kcalPerKg, wStart, wEnd };
+    // projection: days already over (before today) give the average; every other day of the week gets that average,
+    // so today's half-filled day does not distort it. Without a finished day, the recorded days so far are used.
+    const today = todayStr();
+    let basis = rows.filter((r) => !r.empty && r.date < today);
+    if (!basis.length) basis = rows.filter((r) => !r.empty);
+    const pAvg = basis.length ? basis.reduce((a, r) => a + r.bal, 0) / basis.length : 0;
+    const proj = { avg: pAvg, rest: 7 - basis.length, sum: basis.reduce((a, r) => a + r.bal, 0) + pAvg * (7 - basis.length) };
+    return { rows, sum, n, avg: n ? { kin: kin / n, out: out / n, bal: sum / n, pr: pr / n } : null, expected: sum / S.kcalPerKg, proj, wStart, wEnd };
   }
   const r5 = (x) => Math.round(x / 5) * 5;
   function stepsTxt(d) {
@@ -34,7 +41,8 @@
         <span class="dsub">Schritte: ${stepsTxt(r.d)}</span></button>`;
     });
     if (st.avg) h += `<div class="dayrow sum"><span class="dtag">Schnitt (${st.n} ${st.n === 1 ? "Tag" : "Tage"})</span><span class="dbal ${st.avg.bal > 0 ? "pos" : "neg"}">${signed(r5(st.avg.bal))} kcal</span>
-        <span class="dsub">Aufnahme <b>${fmt(r5(st.avg.kin))}</b> · Verbrauch <b>${fmt(r5(st.avg.out))}</b> · Eiweiß <b>${fmt(st.avg.pr)} g</b></span></div>`;
+        <span class="dsub">Aufnahme <b>${fmt(r5(st.avg.kin))}</b> · Verbrauch <b>${fmt(r5(st.avg.out))}</b> · Eiweiß <b>${fmt(st.avg.pr)} g</b></span>
+        <span class="dsub">Verbrauch: Grund <b>${fmt(S.baseKcal)}</b> · durch Schritte <b>${fmt(r5(st.avg.out - S.baseKcal))}</b></span></div>`;
     $("weekTable").innerHTML = h;
     renderReview();
     $("weekTable").querySelectorAll("button[data-date]").forEach((b) => { b.title = "Tag öffnen"; b.onclick = () => { curDay = b.dataset.date; endEdit(); location.hash = "#heute"; renderDay(); }; });
@@ -43,6 +51,7 @@
       <div class="fields">
         <div><div class="label">Summe Bilanz</div><div class="num" style="font-size:20px">${signed(r5(st.sum))} kcal</div><div class="small muted">${st.n} von 7 Tagen erfasst</div></div>
         <div><div class="label">Erwartet</div><div class="num" style="font-size:20px">${signedKg(st.expected)}</div><div class="small muted">Summe / ${fmt(S.kcalPerKg)} kcal pro kg</div></div>
+        <div id="weekProj"><div class="label">Hochgerechnet</div><div class="num" style="font-size:20px">${signedKg(st.proj.sum / S.kcalPerKg)}</div><div class="small muted">${st.proj.rest ? `Schnitt ${signed(r5(st.proj.avg))} kcal × ${st.proj.rest} ${st.proj.rest === 1 ? "Resttag" : "Resttage"}` : "alle 7 Tage abgeschlossen"}</div></div>
         <div><div class="label">Tatsächlich (${WD[S.weighDay ?? 1]} → ${WD[S.weighDay ?? 1]})</div><div class="num" style="font-size:20px">${actual == null ? "offen" : signedKg(actual)}</div><div class="small muted">${st.wStart ? fmt(st.wStart, 1) : "?"} → ${st.wEnd ? fmt(st.wEnd, 1) : "Di " + dm(addDays(curWeek, 8))} kg</div></div>
       </div>`;
   }

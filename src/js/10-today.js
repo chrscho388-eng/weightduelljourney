@@ -23,7 +23,8 @@
     const wdays = []; for (let i = 0; i <= wkPos(curDay); i++) { const x = addDays(mon, i); if (hasData(dayDoc(x))) wdays.push(dayDoc(x)); }
     const avgBal = wdays.length ? wdays.reduce((a, x) => a + intake(x) - burn(x), 0) / wdays.length : null;
     $("balanceRow").innerHTML =
-      `<span>Verbrauch</span><b>${fmt(out)} kcal</b>` +
+      (() => { const bp = burnParts(d); return bp.manual ? `<span>Verbrauch (von Hand gesetzt)</span><b>${fmt(out)} kcal</b>` :
+        `<span>Grundverbrauch</span><b>${fmt(bp.base)} kcal</b><span>Durch Schritte</span><b>${fmt(bp.steps)} kcal</b><span>Verbrauch gesamt</span><b>${fmt(out)} kcal</b>`; })() +
       `<span>Bilanz heute</span><b class="${bal > 0 ? "pos" : "neg"}">${signed(bal)} kcal</b>` +
       (avgBal != null ? `<span>Schnitt ${wn >= 1 ? "Woche " + wn : "dieser Woche"} (${wdays.length} ${wdays.length === 1 ? "Tag" : "Tage"})</span><b class="${avgBal > 0 ? "pos" : "neg"}">${signed(Math.round(avgBal / 5) * 5)} kcal</b>` : "");
 
