@@ -82,5 +82,11 @@
       svg += `<text x="${Math.min(X(lw.date) + 10, W - R - 60)}" y="${Y(lw.weight) - 8}" style="fill:var(--fg)">${fmtW(lw.weight)}</text>`;
     }
     $("chart").innerHTML = svg + "</g>";
+    const wTag = (d) => { const w = stepAt(weights.map((x) => [x.date, x.weight]), d); return w ? { y: Y(w[1]), text: `Gewogen ${fmtW(w[1])} kg${w[0] !== d ? ` (${WD[weekday(w[0])]} ${dm(w[0])})` : ""}`, color: "var(--accent)", dot: w[0] === d } : null; };
+    const msAt = (d) => { for (let i = 1; i < MS.length; i++) if (d <= MS[i].date) { const a = MS[i - 1], b = MS[i], f = (toUTC(d) - toUTC(a.date)) / (toUTC(b.date) - toUTC(a.date)); return d < a.date ? null : a.kg + (b.kg - a.kg) * f; } return null; };
+    cursors.chart = { W, L, R, T, B: H - B, xOf: (d) => d >= xa && d <= xb ? X(d) : null,
+      dateAt: (x) => { const d = addDays(xa, Math.round((x - L) / (W - L - R) * nd)); return d < xa ? xa : d > xb ? xb : d; },
+      items: (d) => { const e = stepAt(exp, d), z = msAt(d); return [wTag(d), e && d <= addDays(end, 1) ? { y: Y(e[1]), text: `Erwartet ${fmt(e[1], 1)} kg`, color: "var(--warn)" } : null, z != null ? { y: Y(z), text: `Spätestens-Ziel ${fmt(z, 1)} kg`, color: "var(--chart-goal)", dot: false } : null]; } };
+    attachCursor("chart"); paintCursor("chart");
   }
 

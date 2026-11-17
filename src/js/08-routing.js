@@ -7,6 +7,7 @@
     document.querySelectorAll("nav.tabs a").forEach((a) => { if (a.dataset.tab === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     // entering the plan tab: only today open again
     if (v === "plan" && typeof dayOpen === "object") { dayOpen = {}; document.querySelectorAll("details.planday").forEach((d) => { d.open = d.dataset.date === todayStr(); }); }
+    if (v !== "verlauf") clearCursor(); // the day line in the history charts goes away with the tab
     window.scrollTo(0, 0);
   }
   window.addEventListener("hashchange", route);

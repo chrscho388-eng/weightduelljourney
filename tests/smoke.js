@@ -136,6 +136,24 @@ const groups = [
   check(!(await pg.$$eval("#allWeeks tr.weekrow", (e) => e.some((x) => /^W0/.test(x.textContent)))), "weeks table lists no week before the start");
   check((await pg.$$("#chSteps path")).length >= 2 && (await pg.$$("#chSteps line[stroke-dasharray='2 4']")).length > 0, "steps chart draws bars and goals");
   check(/Schritte, davon/.test(await pg.textContent("#readSteps")), "steps readout shown");
+  // day line: tap sets it in all history charts, dragging moves it, tapping the same day removes it, leaving the tab clears it
+  await pg.click('#rangeChips [data-range="14"]'); await pg.waitForTimeout(150);
+  await pg.$eval("#chEnergy", (e) => e.scrollIntoView({ block: "center" }));
+  const eb = await pg.$eval("#chEnergy", (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+  const at = (f) => [eb.x + eb.w * f, eb.y + eb.h * 0.5];
+  await pg.mouse.click(...at(0.9)); await pg.waitForTimeout(150);
+  const cur = async () => pg.$$eval("svg.chart", (s) => s.map((x) => { const g = x.querySelector("g.cur"); return g ? x.id + ":" + g.textContent : null; }).filter(Boolean));
+  const c1 = await cur(), d1 = (c1.find((x) => x.startsWith("chEnergy:")) || "").slice(9, 22);
+  check(c1.length >= 5 && /chEnergy:[^|]*Aufnahme/.test(c1.join("|")) && /chEnergy:[^|]*Verbrauch/.test(c1.join("|")) && /chart:.*Gewogen/.test(c1.join("|")), "tap shows the day line with values in all history charts (" + c1.length + ")");
+  check(/^\S+ \d\d\.\d\d\./.test(await pg.textContent("#readEnergy")) && !(await pg.textContent("#readEnergy")).startsWith("Schnitt"), "readout follows the day line");
+  await pg.mouse.move(...at(0.9)); await pg.mouse.down(); await pg.mouse.move(...at(0.55), { steps: 6 }); await pg.mouse.up(); await pg.waitForTimeout(150);
+  const d2 = ((await cur()).find((x) => x.startsWith("chEnergy:")) || "").slice(9, 22);
+  check(d2 && d2 !== d1, `dragging moves the day line (${d1} → ${d2})`);
+  await pg.mouse.click(...at(0.55)); await pg.waitForTimeout(150);
+  check((await cur()).length === 0 && (await pg.textContent("#readEnergy")).startsWith("Schnitt"), "tapping the same day removes the line");
+  await pg.mouse.click(...at(0.3)); await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150); await pg.click("nav.tabs a[data-tab=verlauf]"); await pg.waitForTimeout(150);
+  check((await cur()).length === 0, "changing the tab removes the line");
+  await pg.click('#rangeChips [data-range="start"]'); await pg.waitForTimeout(150);
   // plan + shopping list
   await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
   check((await pg.textContent("#planBody")).includes("Reispfanne"), "plan shows meals");

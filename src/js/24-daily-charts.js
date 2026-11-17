@@ -4,8 +4,57 @@
   markRange();
   document.querySelectorAll("#rangeChips .chip").forEach((c) => c.onclick = () => {
     histRange = c.dataset.range; try { localStorage.setItem("kurs:histRange", histRange); } catch (e) {}
-    markRange(); renderHistory(); renderExpChart(); renderDaily();
+    selDate = null; markRange(); renderHistory(); renderExpChart(); renderDaily();
   });
+  // ---- chart cursor: tap a chart for a vertical day line, drag it sideways; every history chart shows the same day ----
+  // Each chart registers { W, L, R, T, B, xOf(date) -> x or null, dateAt(x) -> date, items(date) -> [{ y, text, color }], note(date) }.
+  const cursors = {};
+  function paintCursor(id) {
+    const svg = $(id), c = cursors[id]; if (!svg) return;
+    const old = svg.querySelector("g.cur"); if (old) old.remove();
+    if (!c || !selDate) return;
+    const x = c.xOf(selDate); if (x == null) return;
+    const right = x > (c.L + c.W - c.R) / 2, ax = right ? x - 8 : x + 8, anchor = right ? "end" : "start";
+    const halo = 'stroke="var(--surface)" stroke-width="5" paint-order="stroke" stroke-linejoin="round"';
+    let h = `<line x1="${x}" x2="${x}" y1="${c.T}" y2="${c.B}" stroke="var(--fg)" stroke-width="1.5" stroke-opacity=".7"/>`;
+    const note = c.note ? c.note(selDate) : "";
+    h += `<text x="${ax}" y="${c.T + 16}" text-anchor="${anchor}" style="fill:var(--fg)" font-weight="600" ${halo}>${WD[weekday(selDate)]} ${dm(selDate)}${note ? " · " + note : ""}</text>`;
+    // value tags next to the line, pushed apart so they do not overlap
+    const its = c.items(selDate).filter((it) => it && it.y != null && isFinite(it.y)).sort((a, b) => a.y - b.y);
+    let prev = c.T + 22;
+    its.forEach((it) => {
+      if (it.dot !== false) h += `<circle cx="${x}" cy="${it.y}" r="4.5" fill="${it.color}" stroke="var(--surface)" stroke-width="2"/>`;
+      const ty = Math.min(c.B - 4, Math.max(it.y + 6, prev + 20)); prev = ty;
+      h += `<text x="${ax}" y="${ty}" text-anchor="${anchor}" style="fill:${it.color}" font-weight="600" ${halo}>${it.text}</text>`;
+    });
+    svg.insertAdjacentHTML("beforeend", `<g class="cur" pointer-events="none">${h}</g>`);
+  }
+  function paintCursors() { Object.keys(cursors).forEach(paintCursor); dailyRead(); }
+  function setCursor(d) { if (d === selDate) return; selDate = d; paintCursors(); }
+  function clearCursor() { if (selDate) setCursor(null); }
+  function attachCursor(id) {
+    const svg = $(id); if (!svg || svg.dataset.cur) return;
+    svg.dataset.cur = "1"; svg.classList.add("cursorable");
+    const xAt = (e) => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()).x; };
+    let drag = null;
+    svg.addEventListener("pointerdown", (e) => {
+      const c = cursors[id]; if (!c || (e.pointerType === "mouse" && e.button !== 0)) return;
+      const d = c.dateAt(xAt(e)); if (!d) return;
+      drag = { off: d === selDate, moved: false, pid: e.pointerId };
+      try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+      setCursor(d);
+    });
+    svg.addEventListener("pointermove", (e) => {
+      if (!drag || e.pointerId !== drag.pid) return;
+      const d = cursors[id] && cursors[id].dateAt(xAt(e));
+      if (d && d !== selDate) { drag.moved = true; setCursor(d); }
+    });
+    svg.addEventListener("pointerup", () => { if (drag && drag.off && !drag.moved) setCursor(null); drag = null; });
+    svg.addEventListener("pointercancel", () => { drag = null; });
+  }
+  // value of a step line (last point on or before the date)
+  const stepAt = (pts, d) => { let v = null; for (const p of pts) { if (p[0] <= d) v = p; else break; } return v; };
+  const kgTxt = (v) => (v > 0 ? "+" : v < 0 ? "−" : "±") + fmtW(Math.abs(v)) + " kg";
   function dailyRows() {
     const end = todayStr();
     const firstData = Object.keys(days).filter((d) => hasData(days[d])).sort()[0] || end;
@@ -69,22 +118,28 @@
         if (n <= 31) sg.forEach((p) => marks += `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="${o.lineColor}" stroke="var(--surface)" stroke-width="2"/>`);
       });
     }
-    let hits = "";
-    rows.forEach((r, i) => hits += `<rect class="hit${r.date === selDate ? " on" : ""}" data-date="${r.date}" x="${L + i * band}" y="${T}" width="${band}" height="${H - T - B}"/>`);
-    $(svgId).innerHTML = g + hits + marks;
-    $(svgId).querySelectorAll(".hit").forEach((h) => {
-      const pick = () => { selDate = h.dataset.date; renderDaily(); };
-      h.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") pick(); });
-      h.addEventListener("click", pick);
-    });
+    $(svgId).innerHTML = g + marks;
+    const idx = {}; rows.forEach((r, i) => { idx[r.date] = i; });
+    cursors[svgId] = { W, L, R, T, B: H - B, xOf: (d) => idx[d] == null ? null : XC(idx[d]),
+      dateAt: (x) => rows[Math.max(0, Math.min(n - 1, Math.floor((x - L) / band)))].date,
+      note: (d) => { const r = rows[idx[d]]; return !r || !r.has ? "keine Einträge" : r.ev ? "Event" : ""; },
+      items: (d) => { const r = rows[idx[d]]; return r && r.has ? o.tags(r).map((t) => ({ ...t, y: Y(t.v) })) : []; } };
+    attachCursor(svgId); paintCursor(svgId);
   }
   function renderDaily() {
     const rows = dailyRows();
-    if (!rows.some((r) => r.date === selDate)) selDate = null;
-    drawDaily("chEnergy", rows, { bar: (r) => r.kin, barColor: () => "var(--s1)", line: (r) => r.out, lineColor: "var(--s2)", ref: S.kcalTarget });
-    drawDaily("chBal", rows, { bar: (r) => r.bal, barColor: (r) => r.bal > 0 ? "var(--bad)" : "var(--good)", line: (r) => r.avg7, lineColor: "var(--fg)" });
-    drawDaily("chProt", rows, { bar: (r) => r.pr, barColor: () => "var(--s1)", ref: S.proteinTarget });
-    drawDaily("chSteps", rows, { bar: (r) => r.inc, barColor: () => "var(--s1)", bar2: (r) => r.flat, bar2Color: "var(--s2)", left: 84, refs: [{ at: (r) => r.goal, dash: "6 4" }, { at: (r) => r.goalMin, dash: "2 4", faint: true }] });
+    drawDaily("chEnergy", rows, { bar: (r) => r.kin, barColor: () => "var(--s1)", line: (r) => r.out, lineColor: "var(--s2)", ref: S.kcalTarget,
+      tags: (r) => [{ v: r.kin, text: "Aufnahme " + fmt(r5(r.kin)), color: "var(--s1)" }, { v: r.out, text: "Verbrauch " + fmt(r5(r.out)), color: "var(--s2)" }] });
+    drawDaily("chBal", rows, { bar: (r) => r.bal, barColor: (r) => r.bal > 0 ? "var(--bad)" : "var(--good)", line: (r) => r.avg7, lineColor: "var(--fg)",
+      tags: (r) => [{ v: r.bal, text: signed(r5(r.bal)) + " kcal", color: r.bal > 0 ? "var(--bad)" : "var(--good)" }].concat(r.avg7 != null ? [{ v: r.avg7, text: "Ø 7 Tage " + signed(r5(r.avg7)), color: "var(--fg)" }] : []) });
+    drawDaily("chProt", rows, { bar: (r) => r.pr, barColor: () => "var(--s1)", ref: S.proteinTarget, tags: (r) => [{ v: r.pr, text: fmt(r.pr) + " g", color: "var(--s1)" }] });
+    drawDaily("chSteps", rows, { bar: (r) => r.inc, barColor: () => "var(--s1)", bar2: (r) => r.flat, bar2Color: "var(--s2)", left: 84, refs: [{ at: (r) => r.goal, dash: "6 4" }, { at: (r) => r.goalMin, dash: "2 4", faint: true }],
+      tags: (r) => [{ v: r.inc + r.flat, text: fmt(Math.round((r.inc + r.flat) / 100) * 100) + " gesamt", color: "var(--fg)", dot: false }, { v: r.inc, text: fmt(Math.round(r.inc / 100) * 100) + " Steigung", color: "var(--s1)", dot: false }] });
+    lastRows = rows; dailyRead();
+  }
+  let lastRows = [];
+  function dailyRead() {
+    const rows = lastRows;
     const rec = rows.filter((r) => r.has);
     const avg = (f) => rec.length ? rec.reduce((a, r) => a + f(r), 0) / rec.length : null;
     const sel = selDate && rows.find((r) => r.date === selDate);

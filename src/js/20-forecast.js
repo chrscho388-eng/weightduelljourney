@@ -79,6 +79,11 @@
     if (actW.length > 1) g += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${actW.map(([d, v]) => X(d) + "," + Y(v)).join(" ")}"/>`;
     actW.forEach(([d, v]) => g += `<circle cx="${X(d)}" cy="${Y(v)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`);
     svg.innerHTML = g;
+    cursors.chExp = { W, L, R, T, B: H - B, xOf: (d) => d >= wStart && d <= endD ? X(d) : null,
+      dateAt: (x) => { const d = addDays(wStart, Math.round((x - L) / (W - L - R) * Math.round((x1 - x0) / 864e5))); return d < wStart ? wStart : d > endD ? endD : d; },
+      items: (d) => { const e = d <= today ? stepAt(exp, d) : null, a = stepAt(act, d);
+        return [e ? { y: Y(e[1]), text: "Erwartet " + signedKg(e[1]), color: "var(--warn)" } : null, a ? { y: Y(a[1]), text: `Gewogen ${signedKg(a[1])}${a[0] !== d ? ` (${WD[weekday(a[0])]} ${dm(a[0])})` : ""}`, color: "var(--accent)", dot: a[0] === d } : null]; } };
+    attachCursor("chExp"); paintCursor("chExp");
     const la = act[act.length - 1], ePt = exp.find((p) => p[0] === la[0]);
     if (act.length < 2 || !ePt) { $("readExp").innerHTML = `Erwartet bisher <b>${signedKg(cum / S.kcalPerKg)}</b>. Der Vergleich erscheint nach der nächsten Wiegung.`; return; }
     const diff = la[1] - ePt[1], weeks = (toUTC(la[0]) - x0) / (7 * 864e5);
