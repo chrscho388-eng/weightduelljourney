@@ -215,6 +215,10 @@ tr.weekrow:hover td { background: var(--accent-soft); }
 .chart { width: 100%; height: auto; display: block; }
 .chart text { fill: var(--muted); font-family: var(--font-data); font-size: 18px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); margin-top: 6px; }
+.chart .curbox { fill: var(--surface); fill-opacity: .94; stroke: var(--line); stroke-width: 1.5; }
+.chart text.curhead { fill: var(--fg); font-weight: 600; font-size: 16px; }
+.chart text.curtxt { fill: var(--fg); font-size: 16px; }
+.chart.has-cur .lastlbl { display: none; }
 .chart.cursorable { touch-action: pan-y; cursor: crosshair; -webkit-user-select: none; user-select: none; }
 .ctitle { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .ctitle h3 { margin: 0 0 6px; }

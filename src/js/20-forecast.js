@@ -73,7 +73,8 @@
     let g = "";
     for (let v = lo; v <= hi + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${Y(v) + 5}" text-anchor="end">${v > 0 ? "+" : v < 0 ? "−" : ""}${fmt(Math.abs(v), step < 1 ? 1 : 0)}</text>`;
     const nd = Math.round((x1 - x0) / 864e5), every = Math.max(7, Math.ceil(nd / 6 / 7) * 7);
-    for (let i = 0; i <= nd; i += every) { const d = addDays(wStart, i); g += `<text x="${X(d)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : "middle"}">${dm(d).slice(0, 6)}</text>`; }
+    const xl = []; for (let i = 0; i <= nd; i += every) { const d = addDays(wStart, i); xl.push([X(d), dm(d).slice(0, 6)]); }
+    g += xLabels(xl, H - 6, L, W, R);
     if (lo <= 0 && hi >= 0) g += `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1"/>`;
     g += `<polyline fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 4" points="${expW.map(([d, v]) => X(d) + "," + Y(v)).join(" ")}"/>`;
     if (actW.length > 1) g += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${actW.map(([d, v]) => X(d) + "," + Y(v)).join(" ")}"/>`;

@@ -12,22 +12,40 @@
   function paintCursor(id) {
     const svg = $(id), c = cursors[id]; if (!svg) return;
     const old = svg.querySelector("g.cur"); if (old) old.remove();
+    svg.classList.remove("has-cur");
     if (!c || !selDate) return;
     const x = c.xOf(selDate); if (x == null) return;
-    const right = x > (c.L + c.W - c.R) / 2, ax = right ? x - 8 : x + 8, anchor = right ? "end" : "start";
-    const halo = 'stroke="var(--surface)" stroke-width="5" paint-order="stroke" stroke-linejoin="round"';
-    let h = `<line x1="${x}" x2="${x}" y1="${c.T}" y2="${c.B}" stroke="var(--fg)" stroke-width="1.5" stroke-opacity=".7"/>`;
+    // one tidy info box beside the line (date on top, one row per series with its colour dot); on the curves only dots
     const note = c.note ? c.note(selDate) : "";
-    h += `<text x="${ax}" y="${c.T + 16}" text-anchor="${anchor}" style="fill:var(--fg)" font-weight="600" ${halo}>${WD[weekday(selDate)]} ${dm(selDate)}${note ? " · " + note : ""}</text>`;
-    // value tags next to the line, pushed apart so they do not overlap
-    const its = c.items(selDate).filter((it) => it && it.y != null && isFinite(it.y)).sort((a, b) => a.y - b.y);
-    let prev = c.T + 22;
-    its.forEach((it) => {
-      if (it.dot !== false) h += `<circle cx="${x}" cy="${it.y}" r="4.5" fill="${it.color}" stroke="var(--surface)" stroke-width="2"/>`;
-      const ty = Math.min(c.B - 4, Math.max(it.y + 6, prev + 20)); prev = ty;
-      h += `<text x="${ax}" y="${ty}" text-anchor="${anchor}" style="fill:${it.color}" font-weight="600" ${halo}>${it.text}</text>`;
+    const its = c.items(selDate).filter((it) => it && it.y != null && isFinite(it.y));
+    let h = `<line x1="${x}" x2="${x}" y1="${c.T}" y2="${c.B}" stroke="var(--fg)" stroke-width="1.5" stroke-opacity=".6"/>`;
+    its.forEach((it) => { if (it.dot !== false) h += `<circle cx="${x}" cy="${it.y}" r="5" fill="${it.color}" stroke="var(--surface)" stroke-width="2"/>`; });
+    const rows = [{ t: `${WD[weekday(selDate)]} ${dm(selDate)}${note ? " · " + note : ""}`, head: true }].concat(its.slice().sort((a, b) => a.y - b.y).map((it) => ({ t: it.text, color: it.color })));
+    const lh = 22, pad = 10, dotW = 16, chW = 9.6; // 16px data font: about 9.6px per character
+    const bw = Math.ceil(Math.max(...rows.map((r) => r.t.length * chW + (r.head ? 0 : dotW)))) + 2 * pad, bh = rows.length * lh + 2 * pad - 4;
+    let bx = x > (c.L + c.W - c.R) / 2 ? x - 12 - bw : x + 12;
+    bx = Math.max(c.L + 2, Math.min(c.W - c.R - bw, bx));
+    const by = c.T + 4;
+    h += `<rect class="curbox" x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="8"/>`;
+    rows.forEach((r, k) => {
+      const ty = by + pad + 14 + k * lh;
+      if (r.head) h += `<text class="curhead" x="${bx + pad}" y="${ty}">${r.t}</text>`;
+      else h += `<circle cx="${bx + pad + 5}" cy="${ty - 5}" r="5" fill="${r.color}"/><text class="curtxt" x="${bx + pad + dotW}" y="${ty}">${r.t}</text>`;
     });
     svg.insertAdjacentHTML("beforeend", `<g class="cur" pointer-events="none">${h}</g>`);
+    svg.classList.add("has-cur");
+  }
+  // x-axis date label that never sticks out of the chart and never overlaps the previous one
+  function xLabels(list, y, L, W, R) {
+    let out = "", lastRight = -1e9; const half = 34;
+    list.forEach(([x, t]) => {
+      let a = "middle", tx = x, left = x - half, right = x + half;
+      if (right > W - 2) { a = "end"; tx = W - 2; left = tx - 2 * half; right = tx; }
+      else if (left < L - 6) { a = "start"; tx = L - 6; left = tx; right = tx + 2 * half; }
+      if (left < lastRight + 6) return;
+      lastRight = right; out += `<text x="${tx}" y="${y}" text-anchor="${a}">${t}</text>`;
+    });
+    return out;
   }
   function paintCursors() { Object.keys(cursors).forEach(paintCursor); dailyRead(); }
   function setCursor(d) { if (d === selDate) return; selDate = d; paintCursors(); }
@@ -54,7 +72,6 @@
   }
   // value of a step line (last point on or before the date)
   const stepAt = (pts, d) => { let v = null; for (const p of pts) { if (p[0] <= d) v = p; else break; } return v; };
-  const kgTxt = (v) => (v > 0 ? "+" : v < 0 ? "−" : "±") + fmtW(Math.abs(v)) + " kg";
   function dailyRows() {
     const end = todayStr();
     const firstData = Object.keys(days).filter((d) => hasData(days[d])).sort()[0] || end;
@@ -81,7 +98,8 @@
     return `M${x},${y0}V${y1 - r}Q${x},${y1} ${x + r},${y1}H${x + w - r}Q${x + w},${y1} ${x + w},${y1 - r}V${y0}Z`;
   }
   function drawDaily(svgId, rows, o) {
-    const W = 600, H = 230, L = o.left || 62, R = 10, T = 12, B = 30;
+    const W = 600, H = 230, R = 10, T = 12, B = 30;
+    let L = o.left || 62;
     const vals = [];
     rows.forEach((r) => { if (r.has) { vals.push(o.bar(r) + (o.bar2 ? o.bar2(r) : 0)); if (o.line) { const v = o.line(r); if (v != null) vals.push(v); } } });
     if (o.ref != null) vals.push(o.ref);
@@ -90,6 +108,7 @@
     let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
     const step = niceStep(hi - lo || 100);
     lo = Math.floor(lo / step) * step; hi = Math.ceil(hi * 1.05 / step) * step; if (hi === lo) hi = lo + step;
+    L = Math.max(L, Math.max(fmt(lo).length, fmt(hi).length) * 11 + 10); // wide labels like "−2.500" need more room
     const n = rows.length, band = (W - L - R) / n;
     const bw = Math.max(2, Math.min(28, band - 2));
     const X = (i) => L + i * band + (band - bw) / 2, XC = (i) => L + i * band + band / 2;
@@ -97,7 +116,7 @@
     let g = "";
     for (let v = lo; v <= hi + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${Y(v) + 5}" text-anchor="end">${fmt(v)}</text>`;
     const every = Math.ceil(n / 7);
-    rows.forEach((r, i) => { if ((n - 1 - i) % every === 0) g += `<text x="${XC(i)}" y="${H - 6}" text-anchor="middle">${dm(r.date).slice(0, 6)}</text>`; });
+    g += xLabels(rows.map((r, i) => (n - 1 - i) % every === 0 ? [XC(i), dm(r.date).slice(0, 6)] : null).filter(Boolean), H - 6, L, W, R);
     let marks = "";
     rows.forEach((r, i) => {
       if (!r.has) return;

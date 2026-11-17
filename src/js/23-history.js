@@ -31,7 +31,8 @@
 
     // chart
     if (MS.length < 2) { $("chart").innerHTML = ""; return; }
-    const W = 600, H = 300, L = 46, R = 16, T = 16, B = 36;
+    const W = 600, H = 300, R = 16, T = 16, B = 36;
+    let L = 46;
     const today = todayStr(), wd = histDays(), lastMs = MS[MS.length - 1].date;
     let xa = MS[0].date, xb = lastMs; // visible time window
     if (histRange === "start") { xa = S.startWeightDate || MS[0].date; xb = addDays(today, 14); }
@@ -40,7 +41,16 @@
     if (xb <= xa) xb = addDays(xa, 7);
     const x0 = toUTC(xa), x1 = toUTC(xb);
     const vw = weights.filter((w) => w.date >= xa && w.date <= xb), vm = MS.filter((m) => m.date >= xa && m.date <= xb);
-    const seen = (vw.length ? vw : weights).map((w) => w.weight).concat(vm.map((m) => m.kg), histRange === "goal" ? [S.goalWeight] : []);
+    // expected from balance, starting at start weight
+    let cum = 0; const exp = [[S.startWeightDate, S.startWeight]];
+    const end = todayStr();
+    for (let d = addDays(S.startWeightDate, 0); d <= end; d = addDays(d, 1)) {
+      const doc = dayDoc(d); if (!hasData(doc)) continue;
+      cum += intake(doc) - burn(doc); exp.push([addDays(d, 1), S.startWeight + cum / S.kcalPerKg]);
+    }
+    // the height follows everything drawn in the window (weighed, trend, expected), so no curve leaves the chart
+    const trendIn = weights.map((w, i) => [w.date, trendAt(weights, i)]).filter((p) => p[0] >= xa && p[0] <= xb).map((p) => p[1]);
+    const seen = (vw.length ? vw : weights).map((w) => w.weight).concat(vm.map((m) => m.kg), trendIn, exp.filter((p) => p[0] >= xa && p[0] <= xb).map((p) => p[1]), histRange === "goal" ? [S.goalWeight] : []);
     if (!seen.length) seen.push(S.goalWeight);
     let yMax = Math.ceil(Math.max(...seen) + 0.5), yMin = Math.floor(Math.min(...seen) - 0.5);
     if (yMax - yMin < 2) { yMax += 1; yMin -= 1; }
@@ -48,6 +58,7 @@
     const Y = (kg) => T + (yMax - kg) / (yMax - yMin) * (H - T - B);
     let svg = `<defs><clipPath id="chClip"><rect x="${L - 6}" y="${T - 6}" width="${W - L - R + 12}" height="${H - T - B + 12}"/></clipPath></defs>`;
     const span = yMax - yMin, step = span > 24 ? 5 : span > 10 ? 2 : span > 3 ? 1 : 0.5;
+    if (step < 1) L = 62; // "91,5" needs more room than "91"
     for (let k = yMin; k <= yMax + 1e-9; k += step) svg += `<line x1="${L}" x2="${W - R}" y1="${Y(k)}" y2="${Y(k)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${Y(k) + 4}" text-anchor="end">${fmt(k, step < 1 ? 1 : 0)}</text>`;
     const MON = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
     const nd = Math.round((x1 - x0) / 864e5);
@@ -60,26 +71,21 @@
       });
     } else {
       const every = Math.max(1, Math.ceil(nd / 6));
-      for (let i = 0; i <= nd; i += every) { const s = addDays(xa, i); svg += `<line x1="${X(s)}" x2="${X(s)}" y1="${T}" y2="${H - B}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/><text x="${X(s)}" y="${H - B + 22}" text-anchor="${i === 0 ? "start" : "middle"}">${dm(s).slice(0, 6)}</text>`; }
+      const xl = [];
+      for (let i = 0; i <= nd; i += every) { const s = addDays(xa, i); svg += `<line x1="${X(s)}" x2="${X(s)}" y1="${T}" y2="${H - B}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>`; xl.push([X(s), dm(s).slice(0, 6)]); }
+      svg += xLabels(xl, H - B + 22, L, W, R);
     }
     svg += '<g clip-path="url(#chClip)">';
     if (histRange === "goal" || S.goalWeight >= yMin) svg += `<line x1="${L}" x2="${W - R}" y1="${Y(S.goalWeight)}" y2="${Y(S.goalWeight)}" stroke="var(--chart-goal)" stroke-width="1" stroke-dasharray="5 4"/>`;
     svg += `<polyline fill="none" stroke="var(--chart-goal)" stroke-width="2" points="${MS.map((m) => X(m.date) + "," + Y(m.kg)).join(" ")}"/>`;
     MS.slice(1).forEach((m) => svg += `<circle cx="${X(m.date)}" cy="${Y(m.kg)}" r="3" fill="var(--chart-goal)"/>`);
-    // expected from balance, starting at start weight
-    let cum = 0; const exp = [[S.startWeightDate, S.startWeight]];
-    const end = todayStr();
-    for (let d = addDays(S.startWeightDate, 0); d <= end; d = addDays(d, 1)) {
-      const doc = dayDoc(d); if (!hasData(doc)) continue;
-      cum += intake(doc) - burn(doc); exp.push([addDays(d, 1), S.startWeight + cum / S.kcalPerKg]);
-    }
     if (exp.length > 1) svg += `<polyline fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 4" points="${exp.map(([d, k]) => X(d) + "," + Y(k)).join(" ")}"/>`;
     if (weights.length) {
       svg += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${weights.map((w) => X(w.date) + "," + Y(w.weight)).join(" ")}"/>`;
       weights.forEach((w, i) => svg += `<circle cx="${X(w.date)}" cy="${Y(w.weight)}" r="${i === weights.length - 1 ? 5 : 3.5}" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`);
       if (weights.length > 1) svg += `<polyline fill="none" stroke="var(--s2)" stroke-width="2" stroke-linejoin="round" points="${weights.map((w, i) => X(w.date) + "," + Y(trendAt(weights, i))).join(" ")}"/>`;
       const lw = weights[weights.length - 1];
-      svg += `<text x="${Math.min(X(lw.date) + 10, W - R - 60)}" y="${Y(lw.weight) - 8}" style="fill:var(--fg)">${fmtW(lw.weight)}</text>`;
+      svg += `<text class="lastlbl" x="${Math.min(X(lw.date) + 10, W - R - 60)}" y="${Y(lw.weight) - 8}" style="fill:var(--fg)">${fmtW(lw.weight)}</text>`;
     }
     $("chart").innerHTML = svg + "</g>";
     const wTag = (d) => { const w = stepAt(weights.map((x) => [x.date, x.weight]), d); return w ? { y: Y(w[1]), text: `Gewogen ${fmtW(w[1])} kg${w[0] !== d ? ` (${WD[weekday(w[0])]} ${dm(w[0])})` : ""}`, color: "var(--accent)", dot: w[0] === d } : null; };

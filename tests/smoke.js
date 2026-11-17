@@ -153,6 +153,14 @@ const groups = [
   check((await cur()).length === 0 && (await pg.textContent("#readEnergy")).startsWith("Schnitt"), "tapping the same day removes the line");
   await pg.mouse.click(...at(0.3)); await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150); await pg.click("nav.tabs a[data-tab=verlauf]"); await pg.waitForTimeout(150);
   check((await cur()).length === 0, "changing the tab removes the line");
+  // nothing sticks out: all labels inside the charts, the weight chart's curves stay inside its height, in every range
+  for (const rg of ["14", "30", "goal", "start"]) {
+    await pg.click(`#rangeChips [data-range="${rg}"]`); await pg.waitForTimeout(150);
+    const out = await pg.$$eval("svg.chart", (svgs) => svgs.flatMap((sv) => { const vb = sv.viewBox.baseVal; return [...sv.querySelectorAll("text")].map((t) => { const b = t.getBBox(); return b.width && (b.x < -1 || b.x + b.width > vb.width + 1) ? sv.id + ":" + t.textContent : null; }).filter(Boolean); }));
+    const ys = await pg.$$eval("#chart polyline", (ps) => ps.flatMap((p) => p.getAttribute("points").split(" ").map((q) => [Number(q.split(",")[0]), Number(q.split(",")[1])])));
+    const inX = ys.filter(([x]) => x >= 40 && x <= 590);
+    check(!out.length && inX.every(([, y]) => y >= 10 && y <= 270), `range ${rg}: no label or curve cut off (${out.slice(0, 3).join(", ")})`);
+  }
   await pg.click('#rangeChips [data-range="start"]'); await pg.waitForTimeout(150);
   // plan + shopping list
   await pg.click("nav.tabs a[data-tab=plan]"); await pg.waitForTimeout(150);
