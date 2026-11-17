@@ -13,6 +13,6 @@
     list.forEach((p) => { const el = $(idOf(p)); if (document.activeElement !== el) el.value = m[p] || ""; });
   }
   $("weightShow").onclick = () => { weightExtra = curDay; $("weightField").hidden = false; $("weightShow").hidden = true; $("moveHead").textContent = "Bewegung und Gewicht"; $("weight").focus(); };
-  $("weight").onchange = (e) => saveDay(curDay, (d) => { const w = numOrNull(e.target.value); if (w) d.weight = Math.round(w * 10) / 10; else delete d.weight; });
+  $("weight").onchange = (e) => saveDay(curDay, (d) => { const w = numOrNull(e.target.value); if (w) d.weight = Math.round(w * 100) / 100; else delete d.weight; });
   $("dayType").onchange = (e) => saveDay(curDay, (d) => { d.dayType = e.target.value; });
   $("eventDay").onchange = (e) => saveDay(curDay, (d) => { d.event = e.target.checked; });

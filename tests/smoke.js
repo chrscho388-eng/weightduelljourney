@@ -36,6 +36,10 @@ const groups = [
     const box = document.getElementById("weekProj");
     return { want: (base.reduce((a, r) => a + r.bal, 0) + avg * (7 - base.length)) / perKg, got: box ? num(box.querySelector(".num").textContent) : NaN, sub: box ? box.textContent : "", rest: 7 - base.length };
   });
+  const sumTxt = await pg.textContent("#weekSum"), liveRow = await pg.$eval('#weekTable button[data-date="2026-11-04"]', (b) => b.querySelector(".dbal").textContent).catch(() => "");
+  check(liveRow === "läuft", "today's row in the week shows 'läuft' instead of a balance");
+  const doneSum = await pg.$$eval("#weekTable button.dayrow:not(.empty):not(.live) .dbal", (e) => e.reduce((a, x) => a + (x.textContent.includes("−") ? -1 : 1) * Number(x.textContent.replace(/\D/g, "")), 0));
+  check(sumTxt.replace(/\D/g, "").startsWith(String(Math.abs(Math.round(doneSum / 5) * 5))), "week sum counts only finished days (" + doneSum + ")");
   check(Math.abs(pj.want - pj.got) < 0.06 && pj.sub.includes(pj.rest + " Resttage"), `week projection uses the average of finished days (want ${pj.want.toFixed(2)}, got ${pj.got}, ${pj.rest} rest days)`);
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   // burn split: base plus steps make the total
@@ -86,6 +90,10 @@ const groups = [
   await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   await pg.click("#weightShow"); await pg.waitForTimeout(100);
   check(!(await hid("#weightField")), "weight field can be opened on other days");
+  // body weight keeps two decimals
+  await pg.fill("#weight", "88.95"); await pg.dispatchEvent("#weight", "change"); await pg.waitForTimeout(200);
+  check((await pg.textContent("#topMeta")).includes("88,95"), "weight is saved and shown with two decimals");
+  await pg.fill("#weight", ""); await pg.dispatchEvent("#weight", "change"); await pg.waitForTimeout(200);
   // manual entry
   await pg.fill("#mealText", "Testessen"); await pg.fill("#manKcal", "300"); await pg.fill("#manProt", "20");
   await pg.click("#manAdd"); await pg.waitForTimeout(200);

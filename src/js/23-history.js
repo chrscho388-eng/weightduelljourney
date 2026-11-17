@@ -8,9 +8,9 @@
     let any = false;
     for (let m = lastMon; m >= first; m = addDays(m, -7)) {
       if (weekNo(m) < 1) continue; // weeks before the start weigh-in are not listed
-      const st = weekStats(m); if (!st.n && !st.wStart) continue; any = true;
+      const st = weekStats(m); if (!st.n && !st.wStart && !st.running) continue; any = true;
       const wn = weekNo(m), act = (st.wStart && st.wEnd) ? st.wEnd - st.wStart : null;
-      h += `<tr class="weekrow" data-week="${m}" tabindex="0" title="Woche öffnen"><td>${wn >= 1 ? "W" + wn : "W0"} · ${dm(m)} ›</td><td>${signed(r5(st.sum))}</td><td>${signedKg(st.expected)}</td><td>${act == null ? "offen" : signedKg(act)}</td><td>${st.wStart ? fmt(st.wStart, 1) : "–"}</td></tr>`;
+      h += `<tr class="weekrow" data-week="${m}" tabindex="0" title="Woche öffnen"><td>${wn >= 1 ? "W" + wn : "W0"} · ${dm(m)} ›</td><td>${st.n ? signed(r5(st.sum)) : "–"}</td><td>${st.n ? signedKg(st.expected) : st.running ? "läuft" : "–"}</td><td>${act == null ? "offen" : signedKg(act)}</td><td>${st.wStart ? fmtW(st.wStart) : "–"}</td></tr>`;
     }
     $("allWeeks").innerHTML = any ? h + "</tbody>" : `<tbody><tr><td class="muted">Noch keine Wochen erfasst.</td></tr></tbody>`;
     $("allWeeks").querySelectorAll("tr[data-week]").forEach((r) => {
@@ -79,7 +79,7 @@
       weights.forEach((w, i) => svg += `<circle cx="${X(w.date)}" cy="${Y(w.weight)}" r="${i === weights.length - 1 ? 5 : 3.5}" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`);
       if (weights.length > 1) svg += `<polyline fill="none" stroke="var(--s2)" stroke-width="2" stroke-linejoin="round" points="${weights.map((w, i) => X(w.date) + "," + Y(trendAt(weights, i))).join(" ")}"/>`;
       const lw = weights[weights.length - 1];
-      svg += `<text x="${Math.min(X(lw.date) + 10, W - R - 60)}" y="${Y(lw.weight) - 8}" style="fill:var(--fg)">${fmt(lw.weight, 1)}</text>`;
+      svg += `<text x="${Math.min(X(lw.date) + 10, W - R - 60)}" y="${Y(lw.weight) - 8}" style="fill:var(--fg)">${fmtW(lw.weight)}</text>`;
     }
     $("chart").innerHTML = svg + "</g>";
   }

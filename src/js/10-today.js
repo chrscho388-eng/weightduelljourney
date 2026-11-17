@@ -20,7 +20,7 @@
 
     // week-to-date average
     const mon = wkStart(curDay);
-    const wdays = []; for (let i = 0; i <= wkPos(curDay); i++) { const x = addDays(mon, i); if (hasData(dayDoc(x))) wdays.push(dayDoc(x)); }
+    const wdays = []; for (let i = 0; i <= wkPos(curDay); i++) { const x = addDays(mon, i); if (x < todayStr() && hasData(dayDoc(x))) wdays.push(dayDoc(x)); } // a running day does not count yet
     const avgBal = wdays.length ? wdays.reduce((a, x) => a + intake(x) - burn(x), 0) / wdays.length : null;
     $("balanceRow").innerHTML =
       (() => { const bp = burnParts(d); return bp.manual ? `<span>Verbrauch (von Hand gesetzt)</span><b>${fmt(out)} kcal</b>` :

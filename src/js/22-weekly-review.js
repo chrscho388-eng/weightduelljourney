@@ -34,8 +34,8 @@
     if (r.goalSteps) h += `<p><b>Bewegung:</b> im Schnitt ${k(fmt(Math.round(r.steps / 100) * 100))} Schritte (Ziel ${fmt(Math.round(r.goalSteps / 100) * 100)}), volles Schrittziel an ${tg(r.stepOk)} Tagen.</p>`;
     h += `<p><b>Bilanz:</b> ${k(signed(r5(r.sum)) + " kcal")}, das sind etwa ${k(signedKg(exp))}${expSun != null ? `. Mit dem ${lastN} nach Plan rund ${signedKg(expSun)}` : ""}.</p>`;
     const tue = addDays(r.mon, 7), wdS = WD[S.weighDay ?? 1];
-    if (r.wStart && r.wEnd) { const act = r.wEnd - r.wStart; h += `<p><b>Gewicht (${wdS} → ${wdS}):</b> ${fmt(r.wStart, 1)} → ${fmt(r.wEnd, 1)} kg, also ${k(signedKg(act))} gegenüber ${signedKg(exp)} erwartet${Math.abs(act - exp) >= 0.5 ? " – einzelne Wiegungen schwanken stark (Wasser), aussagekräftig ist der Trend über zwei Wochen" : ""}.</p>`; }
-    else h += `<p><b>Gewicht:</b> Vergleich nach dem Wiegen am ${wdS} ${dm(tue)}${r.wStart ? ` (Start ${fmt(r.wStart, 1)} kg)` : ""}.</p>`;
+    if (r.wStart && r.wEnd) { const act = r.wEnd - r.wStart; h += `<p><b>Gewicht (${wdS} → ${wdS}):</b> ${fmtW(r.wStart)} → ${fmtW(r.wEnd)} kg, also ${k(signedKg(act))} gegenüber ${signedKg(exp)} erwartet${Math.abs(act - exp) >= 0.5 ? " – einzelne Wiegungen schwanken stark (Wasser), aussagekräftig ist der Trend über zwei Wochen" : ""}.</p>`; }
+    else h += `<p><b>Gewicht:</b> Vergleich nach dem Wiegen am ${wdS} ${dm(tue)}${r.wStart ? ` (Start ${fmtW(r.wStart)} kg)` : ""}.</p>`;
     if (r.ms) h += `<p><b>Zwischenziel:</b> ${fmt(r.ms.kg, 1)} kg bis ${dm(r.ms.date)}, noch ${k(fmt(r.lastW.weight - r.ms.kg, 1) + " kg")}.</p>`;
     if (r.f.eta) { const wk = Math.round((toUTC(S.goalDate) - toUTC(r.f.eta)) / (7 * 864e5)); h += `<p><b>Prognose:</b> ${fmt(S.goalWeight, 1)} kg etwa am ${k(dm(r.f.eta) + r.f.eta.slice(0, 4))}${wk > 0 ? `, ${wk} ${wk === 1 ? "Woche" : "Wochen"} vor der Deadline` : wk < 0 ? `, ${-wk} ${wk === -1 ? "Woche" : "Wochen"} nach der Deadline` : ""}.</p>`; }
     let rec;
