@@ -40,7 +40,15 @@
     const ok = directNow() && (!imgs.length || sampleImages) ? await runEstimate(imgs) : requestMode() ? await queueEstimate(imgs) : false;
     if (ok) attachPhoto(null);
   };
-  $("photoInput").onchange = (e) => { [...(e.target.files || [])].forEach((f) => attachPhoto(f)); e.target.value = ""; };
+  // a picture the app cannot read (e.g. HEIC from a file manager) is reported instead of silently dropped later
+  const readable = (f) => new Promise((res) => { const img = new Image(), url = URL.createObjectURL(f); img.onload = () => { URL.revokeObjectURL(url); res(img.width > 0); }; img.onerror = () => { URL.revokeObjectURL(url); res(false); }; img.src = url; });
+  $("photoInput").onchange = async (e) => {
+    const files = [...(e.target.files || [])]; e.target.value = "";
+    if (!files.length) { setStatus("estStatus", "Es kam kein Foto an. Versuch es über die Galerie oder die Kamera.", true); return; }
+    let bad = 0;
+    for (const f of files) { if (await readable(f)) attachPhoto(f); else bad++; }
+    if (bad) setStatus("estStatus", (bad === 1 ? "Ein Foto konnte" : bad + " Fotos konnten") + " nicht gelesen werden (Format wird nicht unterstützt, z. B. HEIC). Speichere es als JPG oder nimm es über Galerie oder Kamera.", true);
+  };
   const sendModeGet = () => { try { return localStorage.getItem("kurs:sendMode") === "claude" ? "claude" : "direct"; } catch (e) { return "direct"; } };
   // with an API key and GitHub sync both ways work: let the user pick (remembered on the device)
   const directNow = () => !!sample && !(STANDALONE && requestMode() && sendModeGet() === "claude");

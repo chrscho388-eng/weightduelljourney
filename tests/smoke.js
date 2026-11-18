@@ -262,6 +262,8 @@ const groups = [
   await pg.setInputFiles("#photoInput", [{ name: "a.png", mimeType: "image/png", buffer: png }, { name: "b.png", mimeType: "image/png", buffer: png }]); await pg.waitForTimeout(300);
   check((await pg.$$("#attachList .thumb")).length === 2, "two photos attached");
   await pg.click("#attachList .thumb .x"); await pg.waitForTimeout(100);
+  await pg.setInputFiles("#photoInput", [{ name: "d.heic", mimeType: "image/heic", buffer: Buffer.from("not an image") }]); await pg.waitForTimeout(300);
+  check((await pg.$$("#attachList .thumb")).length === 1 && /nicht gelesen werden/.test(await pg.textContent("#estStatus")), "unreadable photo is reported, not attached");
   await pg.setInputFiles("#photoInput", [{ name: "c.png", mimeType: "image/png", buffer: png }]); await pg.waitForTimeout(300);
   await pg.fill("#mealText", "Fertiggericht, Etikett"); await pg.click("#sendBtn"); await pg.waitForTimeout(800);
   const d6 = (await dayNow()).meals.find((m) => m.request === "Fertiggericht, Etikett");

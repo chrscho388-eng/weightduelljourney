@@ -2,6 +2,7 @@ package de.weightplan.app;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -50,7 +51,7 @@ public class MainActivity extends Activity {
      * Version of the native shell (Java code, bridge, manifest). Raise it whenever something here changes:
      * releases with a higher number need a real APK install; all others only swap the page (no installer).
      */
-    static final int NATIVE = 4;
+    static final int NATIVE = 5;
 
     private WebView webView;
     private ValueCallback<Uri[]> pendingFileCallback;
@@ -159,9 +160,16 @@ public class MainActivity extends Activity {
         }
         Uri[] result = null;
         if (resultCode == RESULT_OK) {
-            if (data != null && (data.getData() != null || data.getClipData() != null)) {
-                result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
-            } else if (lastPhotoUri != null) {
+            ClipData clip = data != null ? data.getClipData() : null;
+            if (clip != null && clip.getItemCount() > 0) {
+                // file managers answer a multiple selection with ClipData only, which parseResult may drop
+                java.util.List<Uri> uris = new java.util.ArrayList<>();
+                for (int i = 0; i < clip.getItemCount(); i++) { Uri u = clip.getItemAt(i).getUri(); if (u != null) uris.add(u); }
+                if (!uris.isEmpty()) result = uris.toArray(new Uri[0]);
+            }
+            if (result == null && data != null && data.getData() != null) {
+                result = new Uri[]{data.getData()};
+            } else if (result == null && lastPhotoUri != null) {
                 result = new Uri[]{lastPhotoUri}; // photo taken with the camera
             }
         }
