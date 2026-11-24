@@ -93,7 +93,8 @@ h3 { font-family: var(--font-display); font-weight: 600; font-size: 18px; margin
 .pos { color: var(--bad); } .neg { color: var(--good); }
 .wgoal { margin-top: 12px; }
 .features h4 { margin: 12px 0 4px; font-size: 14px; } .features ul { margin: 0; padding-left: 18px; } .features li { margin: 2px 0; }
-.review p { margin: 0 0 8px; } .review p:last-child { margin-bottom: 0; } .review b.k { font-family: var(--font-data); font-weight: 500; }
+.review p { margin: 0 0 8px; }
+.aireview { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 4px; } .aireview ul { margin: 0 0 8px; padding-left: 20px; } .aireview li { margin: 2px 0; } .review p:last-child { margin-bottom: 0; } .review b.k { font-family: var(--font-data); font-weight: 500; }
 .wgoal h3 { margin: 0 0 6px; font-size: 15px; }
 .wgoal .balance-row { margin-top: 0; }
 .wgoal h3 + .balance-row + h3 { margin-top: 12px; }
@@ -121,6 +122,8 @@ input[type=number] { font-family: var(--font-data); }
 .attach span { flex: 1; }
 .attach .x { border: 0; background: none; color: var(--muted); font-size: 20px; cursor: pointer; }
 .btn.disabled { opacity: .5; pointer-events: none; }
+.evtoggle { display: inline-flex; width: fit-content; gap: 8px; align-items: center; margin-top: 18px; padding: 6px 10px 6px 0; } /* only the box and its text react, away from the inputs */
+.evtoggle input { width: auto; margin: 0; }
 .btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
 /* meals */

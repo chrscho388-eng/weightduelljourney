@@ -6,8 +6,10 @@
     Object.keys(m).map(Number).forEach((p) => { if (!list.includes(p)) list.push(p); });
     const box = $("stepFields"), key = list.join(","), idOf = (p) => "steps_" + String(p).replace(".", "_");
     if (box.dataset.key !== key) {
-      box.innerHTML = list.map((p) => `<div class="field"><label class="label" for="${idOf(p)}">${p ? "Schritte bei " + pctFmt(p) : "Schritte flach (0 %)"}</label><input id="${idOf(p)}" data-pct="${p}" type="number" inputmode="numeric" min="0" step="500"></div>`).join("");
+      box.innerHTML = list.map((p) => `<div class="field"><label class="label" for="${idOf(p)}">${p ? "Schritte bei " + pctFmt(p) : "Schritte flach (0 %)"}</label><input id="${idOf(p)}" data-pct="${p}" type="number" inputmode="numeric" min="0" step="500" enterkeyhint="done"></div>`).join("");
       box.dataset.key = key;
+      // "Fertig" on the keyboard closes it (and saves via change), so nobody has to tap next to the field
+      box.querySelectorAll("input").forEach((inp) => inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } }));
       box.querySelectorAll("input").forEach((inp) => inp.onchange = (e) => saveDay(curDay, (dd) => { setSteps(dd, Number(inp.dataset.pct), numOrNull(e.target.value)); if (!dd.dayType) dd.dayType = defaultType(curDay); }));
     }
     list.forEach((p) => { const el = $(idOf(p)); if (document.activeElement !== el) el.value = m[p] || ""; });

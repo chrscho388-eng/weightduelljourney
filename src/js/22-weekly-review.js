@@ -43,8 +43,65 @@
     else if (r.pace < 0.5) rec = `Nur ${fmt(r.pace, 1)} kg pro Woche: zuerst Einträge und Schritte prüfen, bleibt es so, das Kalorienziel um 150 kcal senken.`;
     else if (r.pace <= 1.2) rec = `${fmt(r.pace, 1)} kg pro Woche liegen im Zielbereich – alles so lassen.`;
     else rec = `${fmt(r.pace, 1)} kg pro Woche sind schnell. Fühlst du dich gut, passt das; bei Müdigkeit oder Hunger das Ziel auf 2.200 kcal anheben.`;
-    h += `<p><b>Empfehlung:</b> ${rec}</p>`;
+    // Claude's own analysis of the week, stored on the week's first day (synced like any day)
+    const ai = dayDoc(r.mon).review, asked = dayDoc(r.mon).reviewRequested;
+    if (ai && (ai.summary || (ai.tips || []).length)) h += aiReviewHtml(ai);
+    else h += `<p><b>Empfehlung:</b> ${rec}</p>`;
+    const canNow = directNow(), canAsk = requestMode();
+    if (canNow || canAsk) h += `<div class="btnrow"><button class="btn${ai ? " ghost" : ""}" type="button" id="reviewAiBtn"${asked && !canNow ? " disabled" : ""}>${ai ? "Neu analysieren" : "Von Claude analysieren lassen"}</button></div>`;
+    h += `<div class="status" id="reviewAiStatus">${asked && !canNow ? "Angefragt. Claude analysiert die Woche beim nächsten Abgleich." : ""}</div>`;
     $("weekReview").innerHTML = h;
+    const b = $("reviewAiBtn"); if (b) b.onclick = () => runReviewAi(r);
+  }
+  function aiReviewHtml(ai) {
+    const li = (a) => (a || []).filter(Boolean).map((x) => `<li>${esc(String(x))}</li>`).join("");
+    let h = `<div class="aireview"><p><b>Claudes Analyse</b>${ai.at ? ` <span class="small muted">vom ${dm(ai.at.slice(0, 10))}</span>` : ""}</p>`;
+    if (ai.summary) h += `<p>${esc(String(ai.summary))}</p>`;
+    if ((ai.good || []).length) h += `<p><b>Lief gut</b></p><ul>${li(ai.good)}</ul>`;
+    if ((ai.notice || []).length) h += `<p><b>Fällt auf</b></p><ul>${li(ai.notice)}</ul>`;
+    if ((ai.tips || []).length) h += `<p><b>Für nächste Woche</b></p><ul>${li(ai.tips)}</ul>`;
+    return h + "</div>";
+  }
+  // everything Claude needs about the week, as compact text
+  function reviewData(r) {
+    const line = (x) => { const d = dayDoc(x); if (!hasData(d)) return `${WD[weekday(x)]} ${dm(x)}: keine Einträge`;
+      const meals = (d.meals || []).map((m) => `${m.label} (${Math.round(m.kcal || 0)} kcal, ${Math.round(m.protein || 0)} g)`).join("; ");
+      return `${WD[weekday(x)]} ${dm(x)}${d.dayType ? " [" + typeName(d.dayType) + "]" : ""}${d.event ? " [Event-Tag]" : ""}${d.weight ? " Gewicht " + d.weight + " kg" : ""}: Aufnahme ${intake(d)} kcal, Eiweiß ${protein(d)} g, Verbrauch ${burn(d)} kcal, Bilanz ${intake(d) - burn(d)} kcal, Schritte ${stepsTxt(d).replace(/<[^>]+>/g, "")}. Essen: ${meals || "–"}`; };
+    const week = (m) => { const out = []; for (let i = 0; i < 7; i++) out.push(line(addDays(m, i))); return out.join("\n"); };
+    const prev = weekStats(addDays(r.mon, -7));
+    const notes = [r.mon, addDays(r.mon, 6)].map((x) => (S.planNotes || {})[mondayOf(x)]).filter(Boolean);
+    return `Ziele: ${S.kcalTarget} kcal pro Tag (Event-Tag ${S.eventKcal} kcal), Eiweiß mindestens ${S.proteinTarget} g${Number(S.proteinOptimum) > S.proteinTarget ? `, optimal ${S.proteinOptimum} g` : ""}, Zielgewicht ${S.goalWeight} kg bis ${S.goalDate}, ${S.kcalPerKg} kcal je kg.
+Startgewicht ${S.startWeight} kg am ${S.startWeightDate}. Gewogen zu Wochenbeginn ${r.wStart || "–"} kg, zum nächsten Wiegetag ${r.wEnd || "noch offen"} kg. Tempo der letzten zwei Wochen: ${r.pace != null ? (Math.round(r.pace * 100) / 100) + " kg pro Woche" : "noch zu wenig Daten"}.
+${r.ms ? `Nächstes Zwischenziel: ${r.ms.kg} kg bis ${r.ms.date}.` : ""}${r.f && r.f.eta ? ` Prognose Zielgewicht: ${r.f.eta}.` : ""}
+Woche ${weekNo(r.mon)} (${dm(r.mon)}–${dm(r.sun)})${r.pre ? ", der letzte Tag läuft noch" : ""}:
+${week(r.mon)}
+Vorwoche: ${prev.n ? `${prev.n} Tage, Schnitt Aufnahme ${Math.round(prev.avg.kin)} kcal, Eiweiß ${Math.round(prev.avg.pr)} g, Bilanz Summe ${Math.round(prev.sum)} kcal` : "keine Daten"}.
+${notes.length ? "Hinweise der Person zur Woche: " + notes.join(" | ") + "\n" : ""}${ruleList().length ? "Dauerhafte Wünsche: " + ruleList().join(" | ") + "\n" : ""}`;
+  }
+  function reviewPrompt(r) {
+    return `Du bist Ernährungs- und Abnehm-Coach für eine Person, die mit dieser App gezielt abnimmt. Werte die folgende Woche aus. Sprich die Person mit „du“ an, auf Deutsch, freundlich, ehrlich und konkret, ohne Floskeln.
+Achte auf Muster: Wochentage oder Tagesarten mit hoher Aufnahme, Eiweiß unter Ziel, Snacks, Alkohol, Event-Tage, Schritte gegenüber Ziel, erwartete gegenüber gewogener Veränderung (Wasserschwankungen bei einzelnen Wiegungen sind normal). Nenne Zahlen, wenn sie die Aussage tragen. Keine medizinischen Ratschläge, kein Krafttraining vorschlagen.
+${reviewData(r)}
+Antworte NUR mit JSON: {"summary": "2–3 Sätze Gesamteinschätzung", "good": ["1–3 Punkte, was gut lief"], "notice": ["1–3 Auffälligkeiten mit Zahlen"], "tips": ["2–3 konkrete, umsetzbare Tipps für die nächste Woche"]}`;
+  }
+  const cleanReview = (x) => { const arr = (a) => (Array.isArray(a) ? a : []).map((s) => String(s).slice(0, 400)).filter(Boolean).slice(0, 4);
+    return { summary: String((x && x.summary) || "").slice(0, 800), good: arr(x && x.good), notice: arr(x && x.notice), tips: arr(x && x.tips) }; };
+  async function runReviewAi(r) {
+    const b = $("reviewAiBtn");
+    if (!directNow()) { // no direct Claude: ask at the next sync
+      saveDay(r.mon, (d) => { d.reviewRequested = true; });
+      renderReview(); setStatus("reviewAiStatus", "Angefragt. Claude analysiert die Woche beim nächsten Abgleich."); return;
+    }
+    if (b) b.disabled = true; setStatus("reviewAiStatus", "Claude analysiert die Woche …");
+    try {
+      const res = cleanReview(await sample.json(reviewPrompt(r), { modelTier: "default" }));
+      if (!res.summary && !res.tips.length) throw { code: "empty" };
+      saveDay(r.mon, (d) => { d.review = { ...res, at: new Date().toISOString() }; delete d.reviewRequested; });
+      renderReview();
+    } catch (e) {
+      setStatus("reviewAiStatus", "Die Analyse hat nicht geklappt. " + aiErr(e), true);
+      if (b) b.disabled = false;
+    }
   }
   $("prevWeek").onclick = () => { closePickers(); curWeek = addDays(curWeek, -7); renderWeek(); };
   $("nextWeek").onclick = () => { closePickers(); curWeek = addDays(curWeek, 7); renderWeek(); };

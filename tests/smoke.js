@@ -302,6 +302,24 @@ const groups = [
   await pg.unroute("https://api.anthropic.com/**", fail500);
   await pg.click("#estFallbackBtn"); await pg.waitForTimeout(300);
   check((await dayNow()).meals.some((m) => m.pending && m.request === "Fehlschlag-Essen") && !(await pg.isVisible("#estFallbackBtn")), "fallback sends the same text to Claude");
+  // weekly review: Claude analyses the week on request (direct), or it is queued for the sync ("über Claude")
+  let revPrompt = "";
+  const revRoute = (r) => { const body = r.request().postData() || ""; if (!body.includes("Abnehm-Coach")) return r.fallback(); revPrompt = body;
+    return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ summary: "Solide Woche mit klarem Defizit.", good: ["Schritte"], notice: ["Wochenende hoch"], tips: ["Eiweiß am Büro-Tag erhöhen"] }) }] }) }); };
+  await pg.route("https://api.anthropic.com/**", revRoute);
+  await pg.click("#sendMode [data-send-mode=direct]"); await pg.waitForTimeout(100);
+  await pg.click("nav.tabs a[data-tab=woche]"); await pg.click("#prevWeek"); await pg.waitForTimeout(200);
+  check(/Empfehlung/.test(await pg.textContent("#weekReview")) && (await pg.textContent("#reviewAiBtn")) === "Von Claude analysieren lassen", "weekly review offers a Claude analysis");
+  await pg.click("#reviewAiBtn"); await pg.waitForTimeout(800);
+  const rv2 = await pg.textContent("#weekReview");
+  check(/Claudes Analyse/.test(rv2) && /Eiweiß am Büro-Tag erhöhen/.test(rv2) && !/Empfehlung:/.test(rv2) && /Essen:/.test(revPrompt) && /Vorwoche/.test(revPrompt), "Claude's analysis replaces the fixed recommendation and gets the week's data");
+  await pg.click("#sendMode [data-send-mode=claude]").catch(() => {}); await pg.evaluate(() => localStorage.setItem("kurs:sendMode", "claude"));
+  await pg.click("#nextWeek"); await pg.click("#prevWeek"); await pg.waitForTimeout(200);
+  await pg.click("#reviewAiBtn"); await pg.waitForTimeout(300);
+  const wk0 = await pg.evaluate(() => { const k = Object.keys(localStorage).find((x) => /profile\/days\/2026-10-27$/.test(x)); return k ? JSON.parse(localStorage.getItem(k)) : null; });
+  check(wk0 && wk0.reviewRequested === true && /beim nächsten Abgleich/.test(await pg.textContent("#reviewAiStatus")), "without direct Claude the analysis is requested for the sync");
+  await pg.unroute("https://api.anthropic.com/**", revRoute);
+  await pg.click("#nextWeek"); await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   await pg.click("#sendMode [data-send-mode=claude]"); await pg.waitForTimeout(100);
   await pg.reload(); await pg.waitForTimeout(800);
   check((await pg.textContent("#sendBtn")) === "An Claude senden", "send mode remembered");

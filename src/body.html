@@ -79,13 +79,13 @@
     <div class="panel">
       <div class="fields">
         <div id="stepFields" style="display:contents"></div>
-        <div class="field" id="weightField"><label class="label" for="weight">Gewicht (kg)</label><input id="weight" type="number" inputmode="decimal" min="40" step="0.01" placeholder="nüchtern"></div>
+        <div class="field" id="weightField"><label class="label" for="weight">Gewicht (kg)</label><input id="weight" type="number" inputmode="decimal" min="40" step="0.01" placeholder="nüchtern" enterkeyhint="done"></div>
         <div class="field"><label class="label" for="dayType">Tagesart</label>
           <select id="dayType"><option value="HO">Home Office</option><option value="Büro">Büro</option><option value="WE">Wochenende</option><option value="Frei">Feiertag / frei</option></select></div>
       </div>
-      <label class="small" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="eventDay" style="width:auto"> Event-Tag (z. B. Essen auswärts, Feier)</label>
       <button class="linkbtn small" type="button" id="weightShow" hidden>Heute außerplanmäßig wiegen</button>
       <p class="small muted" style="margin:6px 0 0">Die Tagesart erscheint in der Wochenübersicht, und Claude berücksichtigt sie beim Anpassen des Plans. An Event-Tagen gilt statt des normalen Kalorienziels ein freier Rahmen. Die Bilanz zählt trotzdem voll.</p>
+      <label class="small evtoggle"><input type="checkbox" id="eventDay"> Event-Tag (z. B. Essen auswärts, Feier)</label>
       <div class="status" id="saveStatus"></div>
     </div>
   </section>
@@ -251,7 +251,7 @@
         <li>Alle Tage der Woche nebeneinander, mit Durchschnitt und Summe.</li>
         <li>Vergleich: Wie viel solltest du rechnerisch abgenommen haben, und was sagt die Waage?</li>
         <li><b>Hochgerechnet:</b> Wie viel du bis Wochenende abnimmst, wenn die restlichen Tage so laufen wie dein bisheriger Schnitt.</li>
-        <li><b>Wochenrückblick:</b> am letzten Tag der Woche eine erste Einschätzung, ab dem Wiegetag die fertige Auswertung mit Prognose und einem Tipp für die nächste Woche.</li>
+        <li><b>Wochenrückblick:</b> am letzten Tag der Woche eine erste Einschätzung, ab dem Wiegetag die fertige Auswertung mit Prognose. Auf Knopfdruck analysiert Claude die Woche persönlich und gibt dir Tipps für die nächste.</li>
         <li>Tipp auf den Wochennamen, um zu einer früheren Woche zu springen.</li>
       </ul>
       <h4>Verlauf: der große Überblick</h4><ul>
