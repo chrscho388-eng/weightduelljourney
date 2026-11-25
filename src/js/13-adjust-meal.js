@@ -3,7 +3,7 @@
   const GRAM_RE = /(\d+(?:[.,]\d+)?)\s?g\b/g;
   function mEditStart(m) {
     const grams = [...String(m.label).matchAll(GRAM_RE)];
-    return { id: m.id, day: curDay, label: m.label, kcal: m.kcal, protein: m.protein, orig: { kcal: m.kcal, protein: m.protein, label: m.label },
+    return { id: m.id, day: curDay, label: m.label, kcal: m.kcal, protein: m.protein, orig: { kcal: m.kcal, protein: m.protein, label: m.label }, base: { kcal: m.kcal, nutr: m.nutr, fb: m.fb },
       parts: (m.parts || []).map((pt) => ({ ...pt, g0: pt.grams, k0: pt.kcal, p0: pt.protein, gone: false })),
       g0: grams.length === 1 ? Number(grams[0][1].replace(",", ".")) : null, g: null, pct: 100, change: "" };
   }
@@ -56,7 +56,7 @@
       const label = String(e.label).trim() || e.orig.label, id = e.id, day = e.day;
       const parts = e.parts.length ? e.parts.filter((pt) => !pt.gone).map((pt) => ({ name: pt.name, grams: Math.round(Number(pt.grams) || 0), kcal: pt.kcal, protein: pt.protein })) : null;
       medit = null;
-      saveDay(day, (doc) => { doc.meals = (doc.meals || []).map((x) => x.id === id ? { ...x, label: label.slice(0, 300), kcal: Math.round(Number(e.kcal) || 0), protein: Math.round(Number(e.protein) || 0), ...(parts ? { parts } : {}) } : x); });
+      saveDay(day, (doc) => { doc.meals = (doc.meals || []).map((x) => x.id === id ? { ...x, label: label.slice(0, 300), kcal: Math.round(Number(e.kcal) || 0), protein: Math.round(Number(e.protein) || 0), ...(parts ? { parts } : {}), ...rescaledInfo(e.base, Math.round(Number(e.kcal) || 0)) } : x); });
     };
     const ask = box.querySelector('[data-ma="ask"]');
     if (ask) ask.onclick = async () => {
@@ -78,7 +78,7 @@
         const it = res && Array.isArray(res.items) && res.items.find((x) => x && x.label);
         if (!it) throw { code: "empty" };
         e.label = String(it.label).slice(0, 300); e.kcal = Math.round(Number(it.kcal) || 0); e.protein = Math.round(Number(it.protein) || 0);
-        const parts = cleanParts(it.parts);
+        const parts = cleanParts(it.parts); e.base = { kcal: e.kcal, nutr: cleanNutr(it.nutr), fb: cleanFb(it.fb) };
         e.orig = { kcal: e.kcal, protein: e.protein, label: e.label }; e.parts = parts.map((pt) => ({ ...pt, g0: pt.grams, k0: pt.kcal, p0: pt.protein, gone: false })); e.change = ""; e.g0 = null; e.pct = 100;
         renderDay();
         const st2 = document.querySelector(".medit .status"); if (st2) st2.textContent = "Neu geschätzt. Prüfen und speichern.";
@@ -107,7 +107,7 @@
     if (!label) label = "Eigener Eintrag"; // values only: the name can be changed later
     if (editingId) {
       const id = editingId;
-      saveDay(curDay, (doc) => { doc.meals = doc.meals.map((m) => m.id === id ? { ...m, label, kcal: Math.round(kcal), protein: Math.round(prot) } : m); });
+      saveDay(curDay, (doc) => { doc.meals = doc.meals.map((m) => m.id === id ? { ...m, label, kcal: Math.round(kcal), protein: Math.round(prot), ...rescaledInfo(m, Math.round(kcal)) } : m); });
     } else addMeals([{ label, kcal, protein: prot, ...(planFill ? { fromPlan: planFill } : {}) }]);
     setStatus("estStatus", ""); endEdit();
   };

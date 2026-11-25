@@ -278,11 +278,24 @@ const groups = [
   // with an API key Claude reads the menu right away and proposes the office-day lunches
   let estImgs = -1;
   await pg.route("https://api.anthropic.com/**", (r) => { const body = r.request().postData() || ""; if (body.includes("korrigiert")) return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ seen: "", items: [{ label: "Testessen ohne Soße", kcal: 515, protein: 42, parts: [{ name: "Reis", grams: 100, kcal: 350, protein: 7 }, { name: "Hähnchen", grams: 150, kcal: 165, protein: 35 }] }], note: "" }) }] }) });
-    if (body.includes("Ernährungslog")) { estImgs = (body.match(/"type":"image"/g) || []).length; return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ seen: "Teller und Etikett", items: [{ label: "Fertiggericht", kcal: 410, protein: 39, parts: [] }], note: "" }) }] }) }); } return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ summary: "Kantine eingeplant", plan: { note: "Kantine", days: [{ date: "2026-11-05", type: "Büro", meals: [{ slot: "Mittag (Kantine)", name: "Frittatensuppe, Kartoffelsalat, Topfencreme", detail: "", kcal: 750, protein: 30, cook: false }] }], swaps: [] } }) }] }) }); });
+    if (body.includes("Ernährungslog")) { estImgs = (body.match(/"type":"image"/g) || []).length; return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ seen: "Teller und Etikett", items: [{ label: "Fertiggericht", kcal: 410, protein: 39, nutr: { fat: 14, carbs: 38, sugar: 6, fiber: 4 }, fb: "Solide Eiweißquelle, eher wenig Gemüse.", parts: [] }], note: "" }) }] }) }); } return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ summary: "Kantine eingeplant", plan: { note: "Kantine", days: [{ date: "2026-11-05", type: "Büro", meals: [{ slot: "Mittag (Kantine)", name: "Frittatensuppe, Kartoffelsalat, Topfencreme", detail: "", kcal: 750, protein: 30, cook: false }] }], swaps: [] } }) }] }) }); });
   await pg.evaluate(() => localStorage.setItem("kurs:apiKey", "sk-test")); await pg.reload(); await pg.waitForTimeout(800);
   await pg.setInputFiles("#photoInput", [{ name: "a.png", mimeType: "image/png", buffer: png }, { name: "b.png", mimeType: "image/png", buffer: png }]); await pg.waitForTimeout(300);
   await pg.click("#sendBtn"); await pg.waitForTimeout(800);
   check(estImgs === 2 && await pg.isVisible("#estPreview") && !(await pg.isVisible("#attachBox")), "direct estimate sends both photos (" + estImgs + ")");
+  // 3.74: nutrients and Claude's comment are kept and shown under "Wie passt das?" with the fit to day and week
+  await pg.click("#estAccept"); await pg.waitForTimeout(500);
+  { const fm = (await dayNow()).meals.find((m) => m.label === "Fertiggericht");
+    check(fm && fm.nutr && fm.nutr.fat === 14 && fm.nutr.fiber === 4 && /Gemüse/.test(fm.fb || ""), "estimate keeps nutrients and feedback");
+    const li = pg.locator('#mealList li:has(.mname button:text-is("Fertiggericht"))');
+    await li.locator(".mfit summary").click(); await pg.waitForTimeout(100);
+    const ft = await li.locator(".mfit").textContent();
+    check(/Fett 14 g/.test(ft) && /Ballaststoffe 4 g/.test(ft) && /Solide Eiweißquelle/.test(ft) && /% deines Tagesbudgets/.test(ft) && /Wochen-Soll/.test(ft), "'Wie passt das?' shows nutrients, feedback and plan fit");
+    await li.locator(".mname button").click(); await pg.waitForTimeout(150);
+    await pg.fill('.medit [data-me="pct"]', "50"); await pg.click('.medit [data-ma="save"]'); await pg.waitForTimeout(400);
+    const hm = (await dayNow()).meals.find((m) => m.id === fm.id);
+    check(hm && hm.kcal === 205 && hm.nutr && hm.nutr.fat === 7 && !hm.fb, "half portion halves nutrients and drops the old feedback");
+  }
   check((await pg.textContent("#sendBtn")) === "Schätzen" && await pg.$eval("#askHint", (e) => e.hidden) && !(await pg.textContent("#view-heute")).includes("später"), "with API key only 'Schätzen', no 'später'");
   check(await pg.isVisible("#sendMode"), "send mode switch shown with API key and sync");
   await pg.click("#sendMode [data-send-mode=claude]"); await pg.waitForTimeout(100);

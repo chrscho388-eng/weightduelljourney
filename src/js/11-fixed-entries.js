@@ -78,5 +78,36 @@
       img.src = url;
     });
   }
+  // nutrients beyond kcal and protein are only shown (fat, carbs, sugar, fibre in g), never tracked
+  const NUTR = [["fat", "Fett"], ["carbs", "Kohlenhydrate"], ["sugar", "davon Zucker"], ["fiber", "Ballaststoffe"]];
+  const cleanNutr = (n) => { if (!n || typeof n !== "object") return null; const o = {}; NUTR.forEach(([k]) => { const v = Number(n[k]); if (n[k] != null && isFinite(v) && v >= 0) o[k] = Math.round(v); }); return Object.keys(o).length ? o : null; };
+  const cleanFb = (s) => s ? String(s).trim().slice(0, 400) : "";
+  // a changed amount scales the nutrients; Claude's comment stays only while the meal is about the same size
+  function rescaledInfo(base, kcal) {
+    const f = base.kcal ? kcal / base.kcal : 1, o = { nutr: undefined, fb: undefined };
+    if (base.nutr) { o.nutr = {}; for (const k in base.nutr) o.nutr[k] = Math.round(base.nutr[k] * f); }
+    if (base.fb && Math.abs(f - 1) <= 0.15) o.fb = base.fb;
+    return o;
+  }
+  // "Wie passt das?": nutrients, Claude's comment and how the meal fits the day and the week
+  function mealFit(m, date) {
+    if (m.pending || m.auto || !(m.kcal > 0) || !hasProfile) return null;
+    const d = dayDoc(date), bud = d.event ? S.eventKcal : S.kcalTarget, body = document.createElement("div"); body.className = "dbody";
+    const P = (txt, cls) => { const p = document.createElement("p"); p.className = cls || "seen"; p.textContent = txt; body.append(p); };
+    if (m.nutr) P(NUTR.filter(([k]) => m.nutr[k] != null).map(([k, n]) => `${n} ${fmt(m.nutr[k])} g`).join(" · "), "small muted");
+    if (m.fb) P(m.fb);
+    let t = `${fmt(m.kcal)} kcal sind ${Math.round(m.kcal / bud * 100)} % deines Tagesbudgets von ${fmt(bud)} kcal`;
+    t += S.proteinTarget ? `, ${fmt(m.protein)} g Eiweiß ${Math.round(m.protein / S.proteinTarget * 100)} % deines Eiweißziels.` : ".";
+    P(t);
+    if (date === todayStr()) {
+      const k = weekTargets(date).kcal, after = 6 - wkPos(date), r10 = (v) => fmt(Math.round(v / 10) * 10);
+      if (k.eatLeft >= 0) P(`Stand jetzt kannst du heute noch etwa ${r10(k.eatLeft)} kcal essen und bleibst im Wochen-Soll.`);
+      else if (after > 0) P(`Stand jetzt liegst du ${r10(-k.eatLeft)} kcal über dem Wochen-Soll. Zum Ausgleich an den restlichen ${after} ${after === 1 ? "Tag" : "Tagen"} je etwa ${r10(-k.eatLeft / after)} kcal weniger essen oder entsprechend mehr gehen.`);
+      else P(`Stand jetzt liegst du ${r10(-k.eatLeft)} kcal über dem Wochen-Soll. Heute endet die Woche: nicht nachholen, die neue Woche startet normal.`);
+    } else if (date < todayStr()) P(`Der Tag kam insgesamt auf ${fmt(intake(d))} von ${fmt(bud)} kcal.`);
+    const det = document.createElement("details"); det.className = "mdet mfit";
+    const su = document.createElement("summary"); su.textContent = "Wie passt das?"; det.append(su, body);
+    return det;
+  }
   const cleanParts = (arr) => (Array.isArray(arr) ? arr : []).filter((x) => x && x.name).slice(0, 15)
     .map((x) => ({ name: String(x.name).slice(0, 80), grams: Math.round(Number(x.grams) || 0), kcal: Math.round(Number(x.kcal) || 0), protein: Math.round(Number(x.protein) || 0) }));

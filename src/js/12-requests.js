@@ -98,7 +98,7 @@
     saveDay(day, (doc) => {
       doc.meals = doc.meals || [];
       if (!doc.dayType) doc.dayType = defaultType(day);
-      items.forEach((it) => doc.meals.push({ id: uid(), label: String(it.label).slice(0, 300), kcal: Math.round(Number(it.kcal) || 0), protein: Math.round(Number(it.protein) || 0), ...(it.fromPlan ? { fromPlan: it.fromPlan } : {}), ...(it.photo ? { photo: it.photo } : {}), ...(it.seen ? { seen: String(it.seen).slice(0, 600) } : {}), ...(it.parts && it.parts.length ? { parts: it.parts } : {}) }));
+      items.forEach((it) => doc.meals.push({ id: uid(), label: String(it.label).slice(0, 300), kcal: Math.round(Number(it.kcal) || 0), protein: Math.round(Number(it.protein) || 0), ...(it.fromPlan ? { fromPlan: it.fromPlan } : {}), ...(it.photo ? { photo: it.photo } : {}), ...(it.seen ? { seen: String(it.seen).slice(0, 600) } : {}), ...(it.parts && it.parts.length ? { parts: it.parts } : {}), ...(it.nutr ? { nutr: it.nutr } : {}), ...(it.fb ? { fb: it.fb } : {}) }));
     });
   }
 

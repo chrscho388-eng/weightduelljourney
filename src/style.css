@@ -136,6 +136,7 @@ input[type=number] { font-family: var(--font-data); }
 .meals .mname button { all: unset; cursor: pointer; }
 .meals .mname button:focus-visible { outline: 2px solid var(--accent); }
 .meals li .mdet { grid-column: 1 / -1; }
+.meals li .mdet + .mfit { margin-top: -2px; }
 .mdet summary { font-size: 13px; color: var(--accent); cursor: pointer; width: fit-content; }
 .mdet .dbody, .estbody { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; font-size: 14px; }
 .mphoto { width: 100%; max-width: 360px; border-radius: 8px; border: 1px solid var(--line); display: block; }

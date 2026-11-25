@@ -48,6 +48,7 @@
       if (m.auto || m.pending) st.style.visibility = "hidden";
       li.append(nm, v, st, x);
       const det = mealDetails(m); if (det) li.append(det);
+      const fit = mealFit(m, curDay); if (fit) li.append(fit);
       if (medit && medit.id === m.id && medit.day === curDay) li.append(mEditBox(m));
       ul.append(li);
     });

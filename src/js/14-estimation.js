@@ -26,8 +26,10 @@ Regeln:
 - Fasse ein Gericht als einen Posten zusammen; getrennte Lebensmittel oder Getränke als getrennte Posten.
 - label: kurz und auf Deutsch, mit den wichtigsten Mengen.
 ${withImage ? "- Die Bilder zeigen die Mahlzeit, eventuell auch Verpackung oder Nährwerttabelle. Steht eine Nährwerttabelle drauf, nimm deren Werte für die gegessene Menge; sonst schätze die Portion aus dem Bild. Der Text ergänzt die Bilder.\n" : ""}${S.estimateHints ? "Persönliche Hinweise der Person (nur für die Schätzung):\n" + S.estimateHints.slice(0, 600) + "\n" : ""}
+- nutr: Fett, Kohlenhydrate, davon Zucker und Ballaststoffe des Postens in Gramm.
+- fb: 1 bis 2 kurze Sätze in Du-Form: wie der Posten ernährungsmäßig dasteht (z. B. viel Fett oder Zucker, wenig Ballaststoffe, guter Eiweißanteil) und ein konkreter Tipp, wie er in einen Abnehmtag passt${S.kcalTarget ? ` (Tagesbudget ${S.kcalTarget} kcal, Eiweißziel ${S.proteinTarget} g)` : ""}. Keine Kalorienrechnung wiederholen, nicht belehrend.
 Antworte nur mit JSON in genau dieser Form, ohne weiteren Text:
-{"seen":"${withImage ? "1 bis 3 Sätze: was du auf dem Foto erkennst und wie groß du die Portion einschätzt" : ""}","items":[{"label":"…","kcal":0,"protein":0,"parts":[{"name":"Zutat","grams":0,"kcal":0,"protein":0}]}],"note":"eine kurze Annahme, die die Schätzung am stärksten beeinflusst"}
+{"seen":"${withImage ? "1 bis 3 Sätze: was du auf dem Foto erkennst und wie groß du die Portion einschätzt" : ""}","items":[{"label":"…","kcal":0,"protein":0,"nutr":{"fat":0,"carbs":0,"sugar":0,"fiber":0},"fb":"…","parts":[{"name":"Zutat","grams":0,"kcal":0,"protein":0}]}],"note":"eine kurze Annahme, die die Schätzung am stärksten beeinflusst"}
 parts: die wichtigsten Bestandteile des Postens mit geschätzter Menge in Gramm; ihre kcal und protein ergeben zusammen die Werte des Postens.
 
 ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste, \"wie gestern\", Anteile eines Topfes):\n" + ctx + "\n\n" : ""}Mahlzeit: ${text || "(siehe Bild)"}`;
@@ -69,7 +71,7 @@ ${ctx ? "Kontext (nur nutzen, wenn sich die Mahlzeit darauf bezieht, z. B. Reste
       if (images.length) opts.images = images;
       const image = images[0];
       const res = await sample.json(estPrompt(text, !!image), opts);
-      const items = (res && Array.isArray(res.items) ? res.items : []).filter((x) => x && x.label).map((x) => ({ label: String(x.label), kcal: Math.round(Number(x.kcal) || 0), protein: Math.round(Number(x.protein) || 0), parts: cleanParts(x.parts) }));
+      const items = (res && Array.isArray(res.items) ? res.items : []).filter((x) => x && x.label).map((x) => ({ label: String(x.label), kcal: Math.round(Number(x.kcal) || 0), protein: Math.round(Number(x.protein) || 0), parts: cleanParts(x.parts), nutr: cleanNutr(x.nutr), fb: cleanFb(x.fb) }));
       if (!items.length) throw { code: "empty" };
       const seen = res && res.seen ? String(res.seen).slice(0, 600) : "";
       const photo = image ? await thumb(image) : null;
