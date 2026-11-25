@@ -51,7 +51,7 @@ public class MainActivity extends Activity {
      * Version of the native shell (Java code, bridge, manifest). Raise it whenever something here changes:
      * releases with a higher number need a real APK install; all others only swap the page (no installer).
      */
-    static final int NATIVE = 5;
+    static final int NATIVE = 6;
 
     private WebView webView;
     private ValueCallback<Uri[]> pendingFileCallback;
@@ -133,6 +133,9 @@ public class MainActivity extends Activity {
         });
 
         if (savedInstanceState != null) {
+            // the system may end the app while the camera is open: remember where the photo goes
+            String lp = savedInstanceState.getString("lastPhotoUri");
+            if (lp != null) lastPhotoUri = Uri.parse(lp);
             webView.restoreState(savedInstanceState);
         } else {
             webView.loadUrl(START_URL);
@@ -140,6 +143,21 @@ public class MainActivity extends Activity {
     }
 
     private Uri lastPhotoUri;
+    private Uri[] orphanPhotos;
+
+    private String asDataUrl(Uri uri) {
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            if (in == null) return null;
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[65536]; int n;
+            while ((n = in.read(buf)) > 0) { out.write(buf, 0, n); if (out.size() > 25 * 1024 * 1024) return null; }
+            String type = getContentResolver().getType(uri);
+            if (type == null || !type.startsWith("image/")) type = "image/jpeg";
+            return "data:" + type + ";base64," + android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     private Uri newPhotoUri() {
         try {
@@ -154,7 +172,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode != FILE_CHOOSER_REQUEST || pendingFileCallback == null) {
+        if (requestCode != FILE_CHOOSER_REQUEST) {
             super.onActivityResult(requestCode, resultCode, data);
             return;
         }
@@ -173,7 +191,13 @@ public class MainActivity extends Activity {
                 result = new Uri[]{lastPhotoUri}; // photo taken with the camera
             }
         }
-        pendingFileCallback.onReceiveValue(result);
+        if (pendingFileCallback != null) {
+            pendingFileCallback.onReceiveValue(result);
+        } else if (result != null) {
+            // the app was restarted while the camera or file picker was open: the page picks these up itself
+            orphanPhotos = result;
+            webView.postDelayed(() -> webView.evaluateJavascript("window.__wpPhotoPoll && window.__wpPhotoPoll()", null), 1500);
+        }
         pendingFileCallback = null;
         lastPhotoUri = null;
     }
@@ -248,6 +272,7 @@ public class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         webView.saveState(outState);
+        if (lastPhotoUri != null) outState.putString("lastPhotoUri", lastPhotoUri.toString());
     }
 
     @Override
@@ -258,6 +283,15 @@ public class MainActivity extends Activity {
 
     /** Called from the page as window.WeightplanAndroid. */
     private class Bridge {
+        /** Photos that arrived after the app was restarted (camera open while the system ended the app), as a JSON array of data URLs; empty afterwards. */
+        @JavascriptInterface
+        public String takePendingPhotos() {
+            Uri[] list = orphanPhotos; orphanPhotos = null;
+            org.json.JSONArray arr = new org.json.JSONArray();
+            if (list != null) for (int i = 0; i < list.length && i < 4; i++) { String d = asDataUrl(list[i]); if (d != null) arr.put(d); }
+            return arr.toString();
+        }
+
         /** Version name of the installed app, e.g. "3.12". */
         @JavascriptInterface
         public String getVersion() {

@@ -1,7 +1,7 @@
   // ---- boot ----
   $("pStartD").value = todayStr();
   route(); renderAll();
-  draftRestore();
+  draftRestore(); draftPhotosRestore(); pullNativePhotos();
   try { const p = JSON.parse(lsGet("kurs:pendingEst") || "null"); if (p && Array.isArray(p.items) && p.items.length) { showPreview(p); setStatus("estStatus", "Nicht übernommener Eintrag wiederhergestellt. Prüfen und übernehmen."); } } catch (e) {}
   (async () => {
     if (STANDALONE && await photoInit()) photoMigrate();

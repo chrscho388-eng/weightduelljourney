@@ -264,6 +264,13 @@ const groups = [
   await pg.click("#attachList .thumb .x"); await pg.waitForTimeout(100);
   await pg.setInputFiles("#photoInput", [{ name: "d.heic", mimeType: "image/heic", buffer: Buffer.from("not an image") }]); await pg.waitForTimeout(300);
   check((await pg.$$("#attachList .thumb")).length === 1 && /nicht gelesen werden/.test(await pg.textContent("#estStatus")), "unreadable photo is reported, not attached");
+  // 3.73: attached photos survive a restart, and photos the Android app hands over after a restart are attached
+  await pg.waitForTimeout(500); await pg.reload(); await pg.waitForTimeout(900);
+  check((await pg.$$("#attachList .thumb")).length === 1, "attached photo is kept as a draft over a restart");
+  await pg.evaluate((b64) => { window.WeightplanAndroid = Object.assign(window.WeightplanAndroid || {}, { takePendingPhotos: () => JSON.stringify(["data:image/png;base64," + b64]) }); window.__wpPhotoPoll(); window.WeightplanAndroid.takePendingPhotos = () => "[]"; }, png.toString("base64"));
+  await pg.waitForTimeout(200);
+  check((await pg.$$("#attachList .thumb")).length === 2 && /Foto übernommen/.test(await pg.textContent("#estStatus")), "photo from a restarted Android app is attached");
+  await pg.click("#attachList .thumb .x"); await pg.waitForTimeout(100);
   await pg.setInputFiles("#photoInput", [{ name: "c.png", mimeType: "image/png", buffer: png }]); await pg.waitForTimeout(300);
   await pg.fill("#mealText", "Fertiggericht, Etikett"); await pg.click("#sendBtn"); await pg.waitForTimeout(800);
   const d6 = (await dayNow()).meals.find((m) => m.request === "Fertiggericht, Etikett");

@@ -28,7 +28,9 @@
     });
     $("attachBox").hidden = !attached.length;
     $("attachTxt").textContent = attached.length ? `${attached.length === 1 ? "1 Foto" : attached.length + " Fotos"} angehängt. Text ergänzen, dann „${$("sendBtn").textContent}“.` : "";
+    if (draftPhotosReady) draftPhotosSave();
   }
+  let draftPhotosReady = false; // saving starts only after the stored draft was restored at boot
   function attachPhoto(f) {
     if (!f) { attached = []; renderAttach(); return; }
     if (attached.length >= MAX_PHOTOS) { setStatus("estStatus", "Höchstens " + MAX_PHOTOS + " Fotos pro Mahlzeit.", true); return; }
@@ -40,6 +42,31 @@
     const ok = directNow() && (!imgs.length || sampleImages) ? await runEstimate(imgs) : requestMode() ? await queueEstimate(imgs) : false;
     if (ok) attachPhoto(null);
   };
+  // attached photos survive a restart (e.g. the system ended the app while the camera was open): kept as a draft
+  const b64File = (b64, name, type) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new File([u], name, { type: type || "image/jpeg" }); };
+  let draftPhotoSeq = 0;
+  async function draftPhotosSave() {
+    const seq = ++draftPhotoSeq;
+    try {
+      if (!attached.length) { localStorage.removeItem("kurs:draftPhotos"); return; }
+      const arr = []; for (const f of attached) { const b = await shrinkImage(f); if (b) arr.push(b); }
+      if (seq === draftPhotoSeq) localStorage.setItem("kurs:draftPhotos", JSON.stringify(arr));
+    } catch (e) {}
+  }
+  function draftPhotosRestore() {
+    draftPhotosReady = true;
+    try { const arr = JSON.parse(lsGet("kurs:draftPhotos") || "[]"); if (arr.length && !attached.length) { arr.slice(0, MAX_PHOTOS).forEach((b, i) => attached.push(b64File(b, "entwurf-" + (i + 1) + ".jpg"))); renderAttach(); } } catch (e) {}
+  }
+  // the Android app hands over photos taken while it was restarted
+  function pullNativePhotos() {
+    const A = window.WeightplanAndroid; if (!A || !A.takePendingPhotos) return;
+    let list = []; try { list = JSON.parse(A.takePendingPhotos() || "[]"); } catch (e) { return; }
+    let n = 0;
+    list.forEach((u, i) => { const m = String(u).match(/^data:([^;]+);base64,(.*)$/); if (m && attached.length < MAX_PHOTOS) { attached.push(b64File(m[2], "foto-" + (i + 1) + ".jpg", m[1])); n++; } });
+    if (n) { renderAttach(); if (location.hash !== "#heute") location.hash = "#heute"; setStatus("estStatus", n === 1 ? "Foto übernommen." : n + " Fotos übernommen."); }
+  }
+  window.__wpPhotoPoll = pullNativePhotos;
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pullNativePhotos(); });
   // a picture the app cannot read (e.g. HEIC from a file manager) is reported instead of silently dropped later
   const readable = (f) => new Promise((res) => { const img = new Image(), url = URL.createObjectURL(f); img.onload = () => { URL.revokeObjectURL(url); res(img.width > 0); }; img.onerror = () => { URL.revokeObjectURL(url); res(false); }; img.src = url; });
   $("photoInput").onchange = async (e) => {
