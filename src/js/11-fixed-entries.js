@@ -89,25 +89,48 @@
     if (base.fb && Math.abs(f - 1) <= 0.15) o.fb = base.fb;
     return o;
   }
-  // "Wie passt das?": nutrients, Claude's comment and how the meal fits the day and the week
+  // "Wie passt das?": nutrients, Claude's comment and where the day stands after this meal (entries in their order, only what is eaten)
+  const dayBudget = (date) => dayDoc(date).event ? S.eventKcal : S.kcalTarget;
+  // budget minus intake of the earlier days of this week (Tue–Mon) that have entries
+  function weekBuffer(date) {
+    let buf = 0;
+    for (let x = wkStart(date); x < date; x = addDays(x, 1)) { const dx = dayDoc(x); if ((dx.meals || []).length) buf += dayBudget(x) - intake(dx); }
+    return buf;
+  }
   function mealFit(m, date) {
     if (m.pending || m.auto || !(m.kcal > 0) || !hasProfile) return null;
-    const d = dayDoc(date), bud = d.event ? S.eventKcal : S.kcalTarget, body = document.createElement("div"); body.className = "dbody";
+    const d = dayDoc(date), bud = dayBudget(date), meals = (d.meals || []).filter((x) => !x.pending), i = meals.indexOf(m);
+    if (i < 0) return null;
+    const upTo = meals.slice(0, i + 1), cum = upTo.reduce((s, x) => s + (x.kcal || 0), 0), cp = upTo.reduce((s, x) => s + (x.protein || 0), 0);
+    const last = !meals.slice(i + 1).some((x) => !x.auto), r10 = (v) => fmt(Math.round(v / 10) * 10), over = cum - bud;
+    const body = document.createElement("div"); body.className = "dbody";
     const P = (txt, cls) => { const p = document.createElement("p"); p.className = cls || "seen"; p.textContent = txt; body.append(p); };
     if (m.nutr) P(NUTR.filter(([k]) => m.nutr[k] != null).map(([k, n]) => `${n} ${fmt(m.nutr[k])} g`).join(" · "), "small muted");
     if (m.fb) P(m.fb);
-    let t = `${fmt(m.kcal)} kcal sind ${Math.round(m.kcal / bud * 100)} % deines Tagesbudgets von ${fmt(bud)} kcal`;
-    t += S.proteinTarget ? `, ${fmt(m.protein)} g Eiweiß ${Math.round(m.protein / S.proteinTarget * 100)} % deines Eiweißziels.` : ".";
-    P(t);
+    P(`${fmt(m.kcal)} kcal sind ${Math.round(m.kcal / bud * 100)} % ${d.event ? "deines Event-Rahmens" : "deines Tagesbudgets"}.` +
+      ` Danach ${date === todayStr() ? "heute" : "an dem Tag"} ${fmt(cum)} von ${fmt(bud)} kcal, ${over > 0 ? fmt(over) + " kcal drüber" : "noch " + fmt(-over) + " kcal"}` +
+      (S.proteinTarget ? `; Eiweiß ${fmt(cp)} von ${fmt(S.proteinTarget)} g.` : "."));
     if (date === todayStr()) {
-      const k = weekTargets(date).kcal, after = 6 - wkPos(date), r10 = (v) => fmt(Math.round(v / 10) * 10);
-      if (k.eatLeft >= 0) P(`Stand jetzt kannst du heute noch etwa ${r10(k.eatLeft)} kcal essen und bleibst im Wochen-Soll.`);
-      else if (after > 0) P(`Stand jetzt liegst du ${r10(-k.eatLeft)} kcal über dem Wochen-Soll. Zum Ausgleich an den restlichen ${after} ${after === 1 ? "Tag" : "Tagen"} je etwa ${r10(-k.eatLeft / after)} kcal weniger essen oder entsprechend mehr gehen.`);
-      else P(`Stand jetzt liegst du ${r10(-k.eatLeft)} kcal über dem Wochen-Soll. Heute endet die Woche: nicht nachholen, die neue Woche startet normal.`);
-    } else if (date < todayStr()) P(`Der Tag kam insgesamt auf ${fmt(intake(d))} von ${fmt(bud)} kcal.`);
+      const buf = weekBuffer(date), bufTxt = `Die Woche hat bisher ${r10(buf)} kcal Puffer`;
+      if (over > 0 && (last || cum - m.kcal <= bud)) {
+        // where the surplus goes: tomorrow, or the day after when tomorrow is an event day; at most 500 kcal less on one day
+        if (buf >= 500 || buf >= over) P(`${bufTxt}, der Überschuss ist damit gedeckt. Kein Ausgleich nötig, morgen normal essen.`);
+        else {
+          const need = over - Math.max(0, buf), cut = Math.min(500, need), tm = addDays(date, 1), ev = dayDoc(tm).event, tg = ev ? addDays(date, 2) : tm, tb = dayBudget(tg);
+          P((ev ? `Morgen ist Event-Tag, dort nicht zusätzlich sparen. Gleich lieber ${WDL[weekday(tg)]} aus: ` : "Zum Ausgleich ") +
+            `iss ${ev ? "dann" : "morgen"} rund ${r10(tb - cut)} statt ${fmt(tb)} kcal.` + (buf > 0 ? ` Der Wochenpuffer von ${r10(buf)} kcal deckt schon einen Teil.` : "") + (need > 500 ? " Den Rest gleicht die Woche aus." : ""));
+        }
+      } else if (last && over <= 0) {
+        if (buf >= 500) P(`${bufTxt}, du liegst gut im Plan.`);
+        // an event day in the next three days: a small buffer today helps there
+        let evd = null; for (let k = 1; k <= 3 && !evd; k++) if (dayDoc(addDays(date, k)).event) evd = addDays(date, k);
+        if (evd && -over < 200 && buf < 500) P(`${k1(evd, date)} ist Event-Tag: ein kleiner Puffer an den Tagen davor hilft dort.`);
+      }
+    }
     const det = document.createElement("details"); det.className = "mdet mfit";
     const su = document.createElement("summary"); su.textContent = "Wie passt das?"; det.append(su, body);
     return det;
   }
+  const k1 = (x, date) => x === addDays(date, 1) ? "Morgen" : WDL[weekday(x)];
   const cleanParts = (arr) => (Array.isArray(arr) ? arr : []).filter((x) => x && x.name).slice(0, 15)
     .map((x) => ({ name: String(x.name).slice(0, 80), grams: Math.round(Number(x.grams) || 0), kcal: Math.round(Number(x.kcal) || 0), protein: Math.round(Number(x.protein) || 0) }));

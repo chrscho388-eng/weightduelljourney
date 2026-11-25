@@ -290,11 +290,18 @@ const groups = [
     const li = pg.locator('#mealList li:has(.mname button:text-is("Fertiggericht"))');
     await li.locator(".mfit summary").click(); await pg.waitForTimeout(100);
     const ft = await li.locator(".mfit").textContent();
-    check(/Fett 14 g/.test(ft) && /Ballaststoffe 4 g/.test(ft) && /Solide Eiweißquelle/.test(ft) && /% deines Tagesbudgets/.test(ft) && /Wochen-Soll/.test(ft), "'Wie passt das?' shows nutrients, feedback and plan fit");
+    check(/Fett 14 g/.test(ft) && /Ballaststoffe 4 g/.test(ft) && /Solide Eiweißquelle/.test(ft) && /% deines Tagesbudgets/.test(ft) && /Danach heute [\d.]+ von [\d.]+ kcal/.test(ft) && /Eiweiß [\d.]+ von [\d.]+ g/.test(ft), "'Wie passt das?' shows nutrients, feedback and the day after this meal");
     await li.locator(".mname button").click(); await pg.waitForTimeout(150);
     await pg.fill('.medit [data-me="pct"]', "50"); await pg.click('.medit [data-ma="save"]'); await pg.waitForTimeout(400);
     const hm = (await dayNow()).meals.find((m) => m.id === fm.id);
     check(hm && hm.kcal === 205 && hm.nutr && hm.nutr.fat === 7 && !hm.fb, "half portion halves nutrients and drops the old feedback");
+    // a meal over the budget: either the week buffer covers it or tomorrow gets a smaller budget
+    await pg.fill("#mealText", "Riesenpizza"); await pg.fill("#manKcal", "2600"); await pg.fill("#manProt", "80"); await pg.click("#manAdd"); await pg.waitForTimeout(400);
+    const big = pg.locator('#mealList li:has(.mname button:text-is("Riesenpizza"))');
+    await big.locator(".mfit summary").click(); await pg.waitForTimeout(100);
+    const bt = await big.locator(".mfit").textContent();
+    check(/kcal drüber/.test(bt) && (/iss (morgen|dann) rund [\d.]+ statt/.test(bt) || /Puffer, der Überschuss ist damit gedeckt/.test(bt)), "over the budget: compensation tomorrow or covered by the week buffer");
+    await big.locator(".x:not(.star)").click(); await pg.waitForTimeout(300);
   }
   check((await pg.textContent("#sendBtn")) === "Schätzen" && await pg.$eval("#askHint", (e) => e.hidden) && !(await pg.textContent("#view-heute")).includes("später"), "with API key only 'Schätzen', no 'später'");
   check(await pg.isVisible("#sendMode"), "send mode switch shown with API key and sync");
