@@ -60,6 +60,10 @@
       rh.hidden = !(curDay === t && hasProfile && (wd === 6 || wd === 0));
       if (!rh.hidden) { const m = wd === 6 ? wkStart(t) : addDays(wkStart(t), -7); rh.textContent = wd === 6 ? "Wochenrückblick: Vorabinfo ansehen ›" : "Wochenrückblick der letzten Woche ansehen ›"; rh.onclick = () => { curWeek = m; location.hash = "#woche"; renderWeek(); }; } }
 
+    { const ib = $("interimBtn"), dd = dayDoc(curDay), t = todayStr();
+      ib.hidden = !(hasProfile && dd.weight && wkPos(curDay) !== 0 && (curDay === t || curDay === addDays(t, -1)));
+      if (!ib.hidden) { ib.textContent = dd.interim ? "Zwischen-Review ansehen ›" : "Zwischen-Review erstellen ›";
+        ib.onclick = () => { if (!dd.interim) saveDay(curDay, (d) => { d.interim = { at: new Date().toISOString() }; }); curWeek = wkStart(curDay); location.hash = "#woche"; renderWeek(); }; } }
     // plan chips
     const plan = plans[mondayOf(curDay)]; // meal plans stay Mon–Sun
     const pday = plan && (plan.days || []).find((x) => x.date === curDay);

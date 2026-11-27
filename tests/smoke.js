@@ -346,6 +346,19 @@ const groups = [
   const wk0 = await pg.evaluate(() => { const k = Object.keys(localStorage).find((x) => /profile\/days\/2026-10-27$/.test(x)); return k ? JSON.parse(localStorage.getItem(k)) : null; });
   check(wk0 && wk0.reviewRequested === true && /beim nächsten Abgleich/.test(await pg.textContent("#reviewAiStatus")), "without direct Claude the analysis is requested for the sync");
   await pg.unroute("https://api.anthropic.com/**", revRoute);
+  // 3.76: interim review on a day with a weigh-in; its weight stands in when the weigh day has none
+  await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(100);
+  await pg.evaluate(() => { const k = "kurs:data/users/local/profile/days/2026-11-04", d = JSON.parse(localStorage.getItem(k)); d.weight = 88.4; localStorage.setItem(k, JSON.stringify(d)); });
+  await pg.reload(); await pg.waitForTimeout(900);
+  check(await pg.isVisible("#interimBtn") && /Zwischen-Review erstellen/.test(await pg.textContent("#interimBtn")), "a day with a weigh-in offers an interim review");
+  await pg.click("#interimBtn"); await pg.waitForTimeout(300);
+  const iv = await pg.textContent("#interimWrap");
+  check(await pg.isVisible("#interimWrap") && /Zwischen-Review Mi 04\.11\./.test(iv) && /88,4 kg/.test(iv) && /bleibt unverändert/.test(iv) && (await dayNow()).interim, "interim review is shown in the week tab and stored on the day");
+  check(/Zwischen-Review/.test(await pg.textContent("#weekSum")), "the interim weight stands in for the missing weigh-day weight");
+  await pg.click("#interimDel"); await pg.waitForTimeout(300);
+  check(!(await pg.isVisible("#interimWrap")) && !(await dayNow()).interim, "interim review can be removed");
+  await pg.evaluate(() => { const k = "kurs:data/users/local/profile/days/2026-11-04", d = JSON.parse(localStorage.getItem(k)); delete d.weight; localStorage.setItem(k, JSON.stringify(d)); });
+  await pg.reload(); await pg.waitForTimeout(900);
   await pg.click("#nextWeek"); await pg.click("nav.tabs a[data-tab=heute]"); await pg.waitForTimeout(150);
   await pg.click("#sendMode [data-send-mode=claude]"); await pg.waitForTimeout(100);
   await pg.reload(); await pg.waitForTimeout(800);

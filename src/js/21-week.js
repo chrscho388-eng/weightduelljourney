@@ -1,5 +1,11 @@
   // ---- week ----
   // only finished days count: today (and later) is still running and stays out of sums, averages and expectations
+  // weight on a regular weigh day; without one, the latest interim weigh-in of the week before stands in ({w, alt: date})
+  function weekWeight(day) {
+    const d = days[day]; if (d && d.weight) return { w: d.weight, alt: null };
+    for (let i = 1; i <= 6; i++) { const x = addDays(day, -i), dx = days[x]; if (dx && dx.interim && dx.weight) return { w: dx.weight, alt: x }; }
+    return { w: null, alt: null };
+  }
   function weekStats(mon) {
     let sum = 0, n = 0, kin = 0, out = 0, pr = 0;
     const rows = [], today = todayStr();
@@ -13,11 +19,10 @@
       if (live) continue;
       sum += a - b; kin += a; out += b; pr += protein(d); n++;
     }
-    const wStart = days[mon] && days[mon].weight;
-    const wEnd = days[addDays(mon, 7)] && days[addDays(mon, 7)].weight;
+    const ws = weekWeight(mon), we = weekWeight(addDays(mon, 7)), wStart = ws.w, wEnd = we.w, wStartAlt = ws.alt, wEndAlt = we.alt;
     // projection: every day without a finished entry (today included) gets the average of the finished days
     const proj = n ? { avg: sum / n, rest: 7 - n, sum: sum / n * 7 } : null;
-    return { rows, sum, n, running, avg: n ? { kin: kin / n, out: out / n, bal: sum / n, pr: pr / n } : null, expected: sum / S.kcalPerKg, proj, wStart, wEnd };
+    return { rows, sum, n, running, avg: n ? { kin: kin / n, out: out / n, bal: sum / n, pr: pr / n } : null, expected: sum / S.kcalPerKg, proj, wStart, wEnd, wStartAlt, wEndAlt };
   }
   const r5 = (x) => Math.round(x / 5) * 5;
   function stepsTxt(d) {
@@ -43,7 +48,7 @@
         <span class="dsub">Aufnahme <b>${fmt(r5(st.avg.kin))}</b> · Verbrauch <b>${fmt(r5(st.avg.out))}</b> · Eiweiß <b>${fmt(st.avg.pr)} g</b></span>
         <span class="dsub">Verbrauch: Grund <b>${fmt(S.baseKcal)}</b> · durch Schritte <b>${fmt(r5(st.avg.out - S.baseKcal))}</b></span></div>`;
     $("weekTable").innerHTML = h;
-    renderReview();
+    renderInterim(); renderReview();
     $("weekTable").querySelectorAll("button[data-date]").forEach((b) => { b.title = "Tag öffnen"; b.onclick = () => { curDay = b.dataset.date; endEdit(); location.hash = "#heute"; renderDay(); }; });
     const actual = (st.wStart && st.wEnd) ? st.wEnd - st.wStart : null;
     $("weekSum").innerHTML = !st.n ? `<div class="muted">${st.running ? "Noch kein abgeschlossener Tag. Der heutige Tag zählt ab morgen mit." : "Für diese Woche gibt es noch keine Einträge."}</div>` : `
@@ -51,6 +56,6 @@
         <div><div class="label">Summe Bilanz</div><div class="num" style="font-size:20px">${signed(r5(st.sum))} kcal</div><div class="small muted">${st.n} von 7 Tagen erfasst</div></div>
         <div><div class="label">Erwartet</div><div class="num" style="font-size:20px">${signedKg(st.expected)}</div><div class="small muted">Summe / ${fmt(S.kcalPerKg)} kcal pro kg</div></div>
         <div id="weekProj"><div class="label">Hochgerechnet</div><div class="num" style="font-size:20px">${signedKg(st.proj.sum / S.kcalPerKg)}</div><div class="small muted">${st.proj.rest ? `Schnitt ${signed(r5(st.proj.avg))} kcal × ${st.proj.rest} ${st.proj.rest === 1 ? "Resttag" : "Resttage"}` : "alle 7 Tage abgeschlossen"}</div></div>
-        <div><div class="label">Tatsächlich (${WD[S.weighDay ?? 1]} → ${WD[S.weighDay ?? 1]})</div><div class="num" style="font-size:20px">${actual == null ? "offen" : signedKg(actual)}</div><div class="small muted">${st.wStart ? fmtW(st.wStart) : "?"} → ${st.wEnd ? fmtW(st.wEnd) : "Di " + dm(addDays(curWeek, 8))} kg</div></div>
+        <div><div class="label">Tatsächlich (${WD[S.weighDay ?? 1]} → ${WD[S.weighDay ?? 1]})</div><div class="num" style="font-size:20px">${actual == null ? "offen" : signedKg(actual)}</div><div class="small muted">${st.wStartAlt || st.wEndAlt ? `Gewicht vom ${[st.wStartAlt, st.wEndAlt].filter(Boolean).map((x) => WD[weekday(x)] + " " + dm(x)).join(" und ")} (Zwischen-Review) · ` : ""}${st.wStart ? fmtW(st.wStart) : "?"} → ${st.wEnd ? fmtW(st.wEnd) : "Di " + dm(addDays(curWeek, 8))} kg</div></div>
       </div>`;
   }
